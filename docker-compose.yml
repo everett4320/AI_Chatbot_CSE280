@@ -1,0 +1,26 @@
+services:
+  api:
+    build:
+      context: ./api
+    environment:
+      DATABASE_PATH: ${DATABASE_PATH:-/data/app.db}
+      KB_DIR: ${KB_DIR:-/knowledge_base}
+      DATA_RETENTION_DAYS: ${DATA_RETENTION_DAYS:-30}
+      ENABLE_DEV_ENDPOINTS: ${ENABLE_DEV_ENDPOINTS:-1}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-1.5-flash}
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./data:/data
+      - ./knowledge_base:/knowledge_base:ro
+
+  web:
+    image: nginx:1.25-alpine
+    depends_on:
+      - api
+    ports:
+      - "8080:80"
+    volumes:
+      - ./web:/usr/share/nginx/html:ro
+      - ./nginx/nginx.conf:/etc/nginx/conf.d/default.conf:ro

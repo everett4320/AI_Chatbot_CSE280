@@ -1,2 +1,12 @@
 agent.md
+.env
+__pycache__/
+*.pyc
+.DS_Store
+Deployment & Integration Playbook.docx
+data/*
+!data/.gitkeep
 
+# Local-only docs (kept off remote)
+docs/DEV_SETUP.zh-CN.md
+ai-chat-widget/

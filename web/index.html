@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>AI Chatbot Local Demo</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="page">
+      <header class="hero">
+        <h1>AI Chatbot Local Demo</h1>
+        <p>This is the minimal runnable example: frontend UI -> backend /chat.</p>
+      </header>
+
+      <section class="content">
+        <h2>What this demo shows</h2>
+        <ul>
+          <li>The frontend only handles UI and requests.</li>
+          <li>The Gemini API key is stored only on the backend.</li>
+          <li>Echo mode is enabled for easy local testing.</li>
+        </ul>
+      </section>
+    </main>
+
+    <button id="chat-toggle" class="chat-toggle" aria-expanded="false">
+      Chat
+    </button>
+
+    <section id="chat-panel" class="chat-panel" aria-hidden="true">
+      <header class="chat-header">
+        <h3>Lehigh AI Chatbot</h3>
+        <button id="chat-close" class="chat-close" aria-label="Close chat">x</button>
+      </header>
+      <div id="chat-messages" class="chat-messages" role="log" aria-live="polite"></div>
+      <footer class="chat-input">
+        <input id="chat-input" type="text" placeholder="Type a message..." />
+        <button id="chat-send">Send</button>
+      </footer>
+    </section>
+
+    <script src="app.js"></script>
+  </body>
+</html>
