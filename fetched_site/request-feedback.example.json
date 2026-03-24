@@ -1,0 +1,7 @@
+{
+  "action": "feedback",
+  "bot_name": "le-chat",
+  "sessionId": "session-abc1234",
+  "questionId": "question-def5678",
+  "feedback": "Good"
+}

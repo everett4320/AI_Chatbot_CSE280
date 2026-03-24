@@ -1,8 +1,8 @@
-Knowledge Base (Local)
+Knowledge Base
 
 - Put Markdown files in this folder.
 - These files are committed to Git and shared across the team.
-- When `GEMINI_API_KEY` is set, the backend reads all `.md` files and sends the full knowledge base content to Gemini for each chat request.
+- The deployed chatbot can filter retrieval by `source_uri_filter` values that match source document URIs.
 
 Conventions
 - Use `.md` files.

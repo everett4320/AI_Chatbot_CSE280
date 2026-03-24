@@ -1,5 +1,4 @@
-agent.md
-agents.md
+AGENTS.md
 .env
 __pycache__/
 *.pyc
@@ -11,3 +10,4 @@ data/*
 # Local-only docs (kept off remote)
 docs/DEV_SETUP.zh-CN.md
 ai-chat-widget/
+fetched_site/test_results/

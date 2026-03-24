@@ -1,0 +1,10 @@
+{
+  "action": "question",
+  "bot_name": "le-chat",
+  "httpMethod": "POST",
+  "userMessage": "What are your office hours?",
+  "sessionId": "session-abc1234",
+  "questionId": "question-def5678",
+  "model_id": "global.anthropic.claude-sonnet-4-5-20250929-v1:0",
+  "source_uri_filter": "policy,faq"
+}

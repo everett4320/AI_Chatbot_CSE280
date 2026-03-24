@@ -1,48 +1,36 @@
-AI Chatbot Minimal Local Demo (Docker)
+# AI Chatbot Integration Notes
 
-Goals
-- Run a minimal local loop: frontend UI -> backend /chat -> frontend display.
-- Keep the Gemini API key only on the backend (never in the browser).
+This repository now stores:
+- `knowledge_base/`: Markdown documents for RAG content.
+- `fetched_site/`: source files pulled from `https://dev-le-chat.cc.lehigh.edu/`.
+- `scripts/fetch_site_assets.sh`: refresh script for downloading site assets.
 
-Prerequisites
-- Docker Desktop installed
+## Captured site files
 
-Quick start
-1) Copy the env template
-   cp .env.example .env
-   (If you do not have a Gemini key yet, leave it empty.)
+From the reference site:
+- `fetched_site/index.html`
+- `fetched_site/dist/bundle-pretty.js`
 
-2) Start the stack
-   docker compose up --build
+These files are used as implementation references for building a custom frontend.
 
-3) Open the demo site
-   http://localhost:8080
+## API integration summary
 
-4) Backend health check
-   http://localhost:8000/health
+From `fetched_site/dist/bundle-pretty.js`, frontend requests are sent to:
+- `https://8lyrpsdez5.execute-api.us-east-1.amazonaws.com/call`
 
-Project layout
-- `docker-compose.yml`: local orchestration (web + api)
-- `web/`: minimal frontend demo (embedded chat UI)
-- `api/`: minimal backend demo (/chat endpoint)
-- `nginx/`: reverse proxy config (/api -> backend)
-- `knowledge_base/`: knowledge base Markdown files (committed to Git)
-- `data/`: local runtime data (SQLite DB file; not committed)
+Main request modes:
+- `action: "question"`
+- `action: "feedback"`
 
-Notes
-- This demo is for fast local integration and follows the rule: UI only in frontend, Gemini calls only in backend.
-- Once local flow works, we can hand off to LTS/WMS for Drupal module integration.
+See `fetched_site/README.md` for payload examples and optional parameters.
+See `fetched_site/PROMPT_CHANGE_AND_TESTING.md` for detailed prompt change/testing workflow.
+Prompt override file for testing/frontend integration:
+- `fetched_site/prompts/custom_prompt.txt` (non-empty = send `custom_prompt`, empty = backend default)
 
-Storage (Local)
-- SQLite is used for conversations and metrics. The DB file is persisted at `data/app.db`.
-- Knowledge base content lives as Markdown in `knowledge_base/`.
-- When `GEMINI_API_KEY` is set, the backend sends the entire knowledge base content to Gemini on each chat request.
-- When `GEMINI_API_KEY` is not set, the backend runs in echo mode.
+## Refresh captured assets
 
-Optional dev endpoints
-- `GET /dev/metrics` (simple chat request metrics)
-- `GET /dev/conversations` (recent conversation IDs)
+Run:
 
-Reset local data
-- Stop containers: `docker compose down`
-- Remove DB file: `rm -f data/app.db`
+```bash
+./scripts/fetch_site_assets.sh
+```
