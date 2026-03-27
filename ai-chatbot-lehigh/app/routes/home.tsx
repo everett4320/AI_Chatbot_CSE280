@@ -1,13 +1,31 @@
 import type { Route } from "./+types/home";
-import { Welcome } from "../welcome/welcome";
+import { ChatWidget } from "~/components/chat-widget";
 
 export function meta({}: Route.MetaArgs) {
   return [
-    { title: "New React Router App" },
-    { name: "description", content: "Welcome to React Router!" },
+    { title: "AI Chatbot - Lehigh CSE280" },
+    { name: "description", content: "AI Chatbot for Lehigh CSE280" },
   ];
 }
 
 export default function Home() {
-  return <Welcome />;
+  return (
+    <>
+      {/* Page content */}
+      <main className="min-h-screen bg-white dark:bg-gray-950">
+        <div className="max-w-4xl mx-auto px-6 py-16 text-center">
+          <h1 className="text-4xl font-bold text-gray-900 dark:text-gray-100 mb-4">
+            Lehigh CSE280
+          </h1>
+          <p className="text-lg text-gray-600 dark:text-gray-400">
+            Click the chat icon in the bottom-right corner to talk with the AI
+            assistant.
+          </p>
+        </div>
+      </main>
+
+      {/* Floating chatbot widget */}
+      <ChatWidget />
+    </>
+  );
 }
