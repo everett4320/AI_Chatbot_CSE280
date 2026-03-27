@@ -4,11 +4,10 @@ import { ChatArea } from "~/components/chat-area";
 
 export function ChatWidget() {
   const [isOpen, setIsOpen] = useState(false);
-  const { messages, isLoading, error, sendMessage, clearChat } = useChat();
+  const { messages, isLoading, error, sendMessage } = useChat();
 
   return (
     <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end gap-4">
-      {/* Chat panel */}
       {isOpen && (
         <ChatArea
           messages={messages}
@@ -19,13 +18,12 @@ export function ChatWidget() {
         />
       )}
 
-      {/* Toggle button */}
       {!isOpen && (
         <button
           onClick={() => setIsOpen(true)}
-          className="w-14 h-14 rounded-full bg-[#502D0E] text-white shadow-lg
+          className="w-14 h-14 rounded-full bg-lehigh-brown text-white shadow-lg
                      flex items-center justify-center
-                     hover:bg-[#3D2209] transition-colors"
+                     hover:bg-lehigh-brown-dark transition-colors"
           aria-label="Open chat"
         >
           <svg

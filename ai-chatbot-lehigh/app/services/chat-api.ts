@@ -3,7 +3,6 @@ import type { Message } from "~/types/chat";
 const API_URL = import.meta.env.VITE_CHAT_API_URL as string | undefined;
 
 export async function sendMessage(messages: Message[]): Promise<string> {
-  // Dev stub — no backend needed for UI development
   if (!API_URL) {
     return new Promise((resolve) =>
       setTimeout(
@@ -29,6 +28,5 @@ export async function sendMessage(messages: Message[]): Promise<string> {
   }
 
   const data = await res.json();
-  // Expects { reply: "..." } — adjust to match your backend
   return data.reply;
 }

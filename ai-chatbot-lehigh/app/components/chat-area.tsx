@@ -23,12 +23,11 @@ export function ChatArea({
 
   useEffect(() => {
     scrollRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, isLoading]);
+  }, [messages]);
 
   return (
     <div className="flex flex-col w-[370px] h-[500px] bg-white dark:bg-gray-950 rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-800 overflow-hidden">
-      {/* Header */}
-      <header className="shrink-0 flex items-center gap-3 px-4 py-3 bg-[#502D0E] text-white">
+      <header className="shrink-0 flex items-center gap-3 px-4 py-3 bg-lehigh-brown text-white">
         <div className="w-9 h-9 rounded-full bg-white/20 flex items-center justify-center text-lg">
           🤖
         </div>
@@ -49,9 +48,7 @@ export function ChatArea({
         </button>
       </header>
 
-      {/* Messages area */}
-      <div className="flex-1 overflow-y-auto hide-scrollbar">
-        <div className="px-4 py-4">
+      <div className="flex-1 overflow-y-auto hide-scrollbar px-4 py-4" role="log" aria-live="polite">
           {messages.length === 0 ? (
             <div className="flex flex-col items-center justify-center text-center py-12">
               <div className="text-3xl mb-3">💬</div>
@@ -67,20 +64,15 @@ export function ChatArea({
               {isLoading && <TypingIndicator />}
             </>
           )}
-          <div ref={scrollRef} />
-        </div>
+        <div ref={scrollRef} />
       </div>
 
-      {/* Error banner */}
       {error && (
-        <div className="px-4">
-          <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 rounded-lg px-3 py-2 mb-2 text-xs">
-            {error}
-          </div>
+        <div className="mx-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 rounded-lg px-3 py-2 mb-2 text-xs" role="alert">
+          {error}
         </div>
       )}
 
-      {/* Input area */}
       <ChatInput onSend={onSend} isLoading={isLoading} />
     </div>
   );
