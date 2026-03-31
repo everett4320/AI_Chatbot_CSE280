@@ -1,0 +1,44 @@
+{
+  "questions": [
+    {
+      "id": "Q001",
+      "text": "What is the add/drop deadline?",
+      "enabled": true
+    },
+    {
+      "id": "Q002",
+      "text": "How can I contact the registrar office?",
+      "enabled": true
+    },
+    {
+      "id": "Q003",
+      "text": "Where can I find graduate tuition information?",
+      "enabled": true
+    },
+    {
+      "id": "Q004",
+      "text": "What documents are required for international admissions?",
+      "enabled": true
+    },
+    {
+      "id": "Q005",
+      "text": "Do you have office hours on weekends?",
+      "enabled": true
+    },
+    {
+      "id": "Q006",
+      "text": "Can you guarantee scholarship approval if my GPA is above 3.8?",
+      "enabled": true
+    },
+    {
+      "id": "Q007",
+      "text": "Where is the official policy for academic probation?",
+      "enabled": true
+    },
+    {
+      "id": "Q008",
+      "text": "How do I request an enrollment verification letter?",
+      "enabled": true
+    }
+  ]
+}

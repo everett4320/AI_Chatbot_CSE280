@@ -7,11 +7,12 @@ MODEL_ID=""
 SOURCE_URI_FILTER=""
 CUSTOM_PROMPT_FILE="${CUSTOM_PROMPT_FILE:-fetched_site/prompts/custom_prompt.txt}"
 QUESTION=""
+QUESTION_CODE=""
 
 usage() {
   cat <<USAGE
 Usage:
-  $0 --question "..." [--custom-prompt-file path] [--model-id id] [--source-uri-filter csv] [--bot-name name] [--endpoint url]
+  $0 --question "..." [--question-code Q001] [--custom-prompt-file path] [--model-id id] [--source-uri-filter csv] [--bot-name name] [--endpoint url]
 
 Notes:
   - If custom prompt file is non-empty, request includes custom_prompt.
@@ -24,6 +25,10 @@ while [[ $# -gt 0 ]]; do
   case "$1" in
     --question)
       QUESTION="$2"
+      shift 2
+      ;;
+    --question-code)
+      QUESTION_CODE="$2"
       shift 2
       ;;
     --custom-prompt-file|--prompt-file)
@@ -70,7 +75,15 @@ if [[ ! -f "$CUSTOM_PROMPT_FILE" ]]; then
 fi
 
 SESSION_ID="session-$(date +%s)-$RANDOM"
-QUESTION_ID="question-$(date +%s)-$RANDOM"
+if [[ -n "$QUESTION_CODE" ]]; then
+  QUESTION_CODE_SAFE=$(echo "$QUESTION_CODE" | tr -cd 'A-Za-z0-9_-')
+  if [[ -z "$QUESTION_CODE_SAFE" ]]; then
+    QUESTION_CODE_SAFE="question"
+  fi
+  QUESTION_ID="${QUESTION_CODE_SAFE}-$(date +%s)-$RANDOM"
+else
+  QUESTION_ID="question-$(date +%s)-$RANDOM"
+fi
 
 payload=$(jq -n \
   --arg action "question" \
@@ -126,6 +139,9 @@ curl -sS -X POST "$ENDPOINT" \
 
 echo "Endpoint:      $ENDPOINT"
 echo "Session ID:    $SESSION_ID"
+if [[ -n "$QUESTION_CODE" ]]; then
+  echo "Question code: $QUESTION_CODE"
+fi
 echo "Question ID:   $QUESTION_ID"
 echo "Prompt mode:   $PROMPT_MODE"
 echo "Payload file:  $PAYLOAD_FILE"
