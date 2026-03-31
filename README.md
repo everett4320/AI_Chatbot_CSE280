@@ -26,6 +26,10 @@ See `fetched_site/README.md` for payload examples and optional parameters.
 See `fetched_site/PROMPT_CHANGE_AND_TESTING.md` for detailed prompt change/testing workflow.
 Prompt override file for testing/frontend integration:
 - `fetched_site/prompts/custom_prompt.txt` (non-empty = send `custom_prompt`, empty = backend default)
+Numbered question set for batch testing:
+- `fetched_site/questions/test_questions.json`
+Simplest batch test command:
+- `bash scripts/run_question_suite.sh`
 
 ## Refresh captured assets
 

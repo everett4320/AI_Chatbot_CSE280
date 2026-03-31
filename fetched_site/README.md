@@ -58,7 +58,8 @@ Default prompt mentioned in guidance:
 - Prompt and A/B testing guide: `fetched_site/PROMPT_CHANGE_AND_TESTING.md`
 - Prompt file:
   - `fetched_site/prompts/custom_prompt.txt` (non-empty = use `custom_prompt`, empty = use backend default)
-- Test runner:
+- Numbered question set:
+  - `fetched_site/questions/test_questions.json`
+- Test runners:
+  - `scripts/run_question_suite.sh` (batch, simplest entrypoint)
   - `scripts/test_prompt_request.sh`
-- Sample questions:
-  - `fetched_site/test_questions.example.txt`
