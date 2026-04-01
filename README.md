@@ -30,6 +30,10 @@ Numbered question set for batch testing:
 - `fetched_site/questions/test_questions.json`
 Simplest batch test command:
 - `bash scripts/run_question_suite.sh`
+Also works from inside `scripts/`:
+- `bash run_question_suite.sh`
+Per-run consolidated record:
+- `fetched_site/prompt_effectiveness_runs/<run_id>/run_record.json`
 
 ## Refresh captured assets
 

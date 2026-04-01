@@ -1,13 +1,35 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
+
 ENDPOINT="${ENDPOINT:-https://8lyrpsdez5.execute-api.us-east-1.amazonaws.com/call}"
 BOT_NAME="${BOT_NAME:-le-chat}"
 MODEL_ID=""
 SOURCE_URI_FILTER=""
 CUSTOM_PROMPT_FILE="${CUSTOM_PROMPT_FILE:-fetched_site/prompts/custom_prompt.txt}"
+RESULTS_DIR="${RESULTS_DIR:-fetched_site/prompt_effectiveness_runs/single_requests}"
 QUESTION=""
 QUESTION_CODE=""
+
+resolve_path() {
+  local p="$1"
+  if [[ "$p" = /* ]]; then
+    printf '%s\n' "$p"
+  else
+    printf '%s\n' "${REPO_ROOT}/${p}"
+  fi
+}
+
+to_repo_relative() {
+  local p="$1"
+  if [[ "$p" == "${REPO_ROOT}/"* ]]; then
+    printf '%s\n' "${p#${REPO_ROOT}/}"
+  else
+    printf '%s\n' "$p"
+  fi
+}
 
 usage() {
   cat <<USAGE
@@ -17,7 +39,7 @@ Usage:
 Notes:
   - If custom prompt file is non-empty, request includes custom_prompt.
   - If custom prompt file is empty, request uses backend default prompt.
-  - Outputs payload and response files under fetched_site/test_results/.
+  - Outputs payload and response files under fetched_site/prompt_effectiveness_runs/single_requests/ by default.
 USAGE
 }
 
@@ -69,9 +91,12 @@ if [[ -z "$QUESTION" ]]; then
   exit 1
 fi
 
-mkdir -p "$(dirname "$CUSTOM_PROMPT_FILE")"
-if [[ ! -f "$CUSTOM_PROMPT_FILE" ]]; then
-  : > "$CUSTOM_PROMPT_FILE"
+CUSTOM_PROMPT_FILE_ABS="$(resolve_path "$CUSTOM_PROMPT_FILE")"
+RESULTS_DIR_ABS="$(resolve_path "$RESULTS_DIR")"
+
+mkdir -p "$(dirname "$CUSTOM_PROMPT_FILE_ABS")"
+if [[ ! -f "$CUSTOM_PROMPT_FILE_ABS" ]]; then
+  : > "$CUSTOM_PROMPT_FILE_ABS"
 fi
 
 SESSION_ID="session-$(date +%s)-$RANDOM"
@@ -116,19 +141,21 @@ if [[ -n "$SOURCE_URI_FILTER" ]]; then
   payload=$(jq --arg source_uri_filter "$SOURCE_URI_FILTER" '. + {source_uri_filter:$source_uri_filter}' <<< "$payload")
 fi
 
-CUSTOM_PROMPT_CONTENT=$(cat "$CUSTOM_PROMPT_FILE")
+CUSTOM_PROMPT_CONTENT=$(cat "$CUSTOM_PROMPT_FILE_ABS")
 if [[ -n "$CUSTOM_PROMPT_CONTENT" ]]; then
   payload=$(jq --arg custom_prompt "$CUSTOM_PROMPT_CONTENT" '. + {custom_prompt:$custom_prompt}' <<< "$payload")
-  PROMPT_MODE="custom_prompt from ${CUSTOM_PROMPT_FILE}"
+  PROMPT_MODE="custom_prompt from $(to_repo_relative "$CUSTOM_PROMPT_FILE_ABS")"
 else
   PROMPT_MODE="backend default prompt (custom prompt file is empty)"
 fi
 
-mkdir -p fetched_site/test_results
+mkdir -p "$RESULTS_DIR_ABS"
 TS_UTC=$(date -u +"%Y%m%dT%H%M%SZ")
 TAG="${TS_UTC}_${SESSION_ID}_${QUESTION_ID}"
-PAYLOAD_FILE="fetched_site/test_results/${TAG}.payload.json"
-RESPONSE_FILE="fetched_site/test_results/${TAG}.response.json"
+PAYLOAD_FILE="${RESULTS_DIR_ABS}/${TAG}.payload.json"
+RESPONSE_FILE="${RESULTS_DIR_ABS}/${TAG}.response.json"
+PAYLOAD_FILE_DISPLAY="$(to_repo_relative "$PAYLOAD_FILE")"
+RESPONSE_FILE_DISPLAY="$(to_repo_relative "$RESPONSE_FILE")"
 
 printf '%s\n' "$payload" > "$PAYLOAD_FILE"
 
@@ -144,8 +171,8 @@ if [[ -n "$QUESTION_CODE" ]]; then
 fi
 echo "Question ID:   $QUESTION_ID"
 echo "Prompt mode:   $PROMPT_MODE"
-echo "Payload file:  $PAYLOAD_FILE"
-echo "Response file: $RESPONSE_FILE"
+echo "Payload file:  $PAYLOAD_FILE_DISPLAY"
+echo "Response file: $RESPONSE_FILE_DISPLAY"
 
 echo
 echo "Response preview:"

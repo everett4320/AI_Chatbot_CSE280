@@ -11,3 +11,4 @@ data/*
 docs/DEV_SETUP.zh-CN.md
 ai-chat-widget/
 fetched_site/test_results/
+fetched_site/prompt_effectiveness_runs/

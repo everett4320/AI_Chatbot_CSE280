@@ -63,3 +63,9 @@ Default prompt mentioned in guidance:
 - Test runners:
   - `scripts/run_question_suite.sh` (batch, simplest entrypoint)
   - `scripts/test_prompt_request.sh`
+- Per-run records:
+  - `fetched_site/prompt_effectiveness_runs/<run_id>/run_record.json`
+
+Legacy note:
+- `fetched_site/test_results/` is deprecated.
+- Use `fetched_site/prompt_effectiveness_runs/` for all new test records.

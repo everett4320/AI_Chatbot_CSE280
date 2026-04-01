@@ -69,6 +69,21 @@ EOF_PROMPT
 bash scripts/run_question_suite.sh
 ```
 
+This command can be run from:
+- repo root: `bash scripts/run_question_suite.sh`
+- `scripts/` directory: `bash run_question_suite.sh`
+
+Each run creates a dedicated folder:
+- `fetched_site/prompt_effectiveness_runs/<run_id>/`
+
+Main record file for that run:
+- `fetched_site/prompt_effectiveness_runs/<run_id>/run_record.json`
+
+This run record includes:
+- the exact prompt text used in this run,
+- prompt mode (`custom_prompt` or `backend_default`),
+- and all question responses for the run.
+
 ### 5.2 Baseline run (default prompt)
 
 ```bash
@@ -94,6 +109,8 @@ bash scripts/run_question_suite.sh \
 bash scripts/run_question_suite.sh --only-codes "Q001,Q005"
 ```
 
+When using `--only-codes`, `run_record.json` will contain only the executed subset.
+
 ### 5.5 Optional filters
 
 If using `--source-uri-filter`, use at least 2 comma-separated entries:
@@ -113,8 +130,11 @@ bash scripts/run_question_suite.sh \
   - `scripts/run_question_suite.sh` (batch)
   - `scripts/test_prompt_request.sh` (single question)
 - Output logs:
-  - `fetched_site/test_results/*.payload.json`
-  - `fetched_site/test_results/*.response.json`
+  - `fetched_site/prompt_effectiveness_runs/<run_id>/run_record.json` (single consolidated run record)
+  - `fetched_site/prompt_effectiveness_runs/<run_id>/raw/*.payload.json`
+  - `fetched_site/prompt_effectiveness_runs/<run_id>/raw/*.response.json`
+- Legacy:
+  - `fetched_site/test_results/` is deprecated and should not be used for new runs.
 
 ## 7) Evaluation Rubric
 
