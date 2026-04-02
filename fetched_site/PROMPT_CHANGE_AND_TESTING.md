@@ -9,20 +9,30 @@ This guide explains:
 
 Use only one file for custom prompt text:
 - `fetched_site/prompts/custom_prompt.txt`
+- `fetched_site/prompts/README.md` (editing guidance)
 
 Behavior in scripts:
 - If `custom_prompt.txt` is non-empty: request includes `custom_prompt` with that file content.
 - If `custom_prompt.txt` is empty: request does not include `custom_prompt`, so backend default prompt is used.
 
+Format note:
+- `.txt` vs `.md` extension does not inherently improve model quality.
+- Prompt structure quality (clear constraints and sections) is what matters.
+
 ## 2) Numbered Question Set Rule
 
 Use one JSON file for team testing:
 - `fetched_site/questions/test_questions.json`
+- `fetched_site/questions/README.md` (scope and maintenance guidance)
 
 Each question item should include:
 - `id` (example: `Q001`)
 - `text`
 - `enabled` (`true` or `false`)
+
+Current suite intent:
+- evaluate distinctions among engineering/science computing-related programs (CS, CSE, CSB, ISE, EES, ECE, ME, Bioengineering),
+- and test whether answers correctly identify majors/departments and program differences.
 
 ## 3) What Is Visible Right Now
 
