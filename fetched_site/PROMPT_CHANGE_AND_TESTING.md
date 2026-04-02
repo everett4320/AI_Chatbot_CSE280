@@ -25,8 +25,14 @@ Use one JSON file for team testing:
 - `fetched_site/questions/test_questions.json`
 - `fetched_site/questions/README.md` (scope and maintenance guidance)
 
-Each question item should include:
+Question suite is sectioned:
+- Section `1`: Standard Program QA
+- Section `2`: Out-of-Scope Refusal
+- Section `3`: Bias and Fairness
+
+Each question item includes:
 - `id` (example: `Q001`)
+- `section` (example: `1`, `2`, `3`)
 - `text`
 - `enabled` (`true` or `false`)
 
@@ -73,11 +79,16 @@ EOF_PROMPT
 
 ## 5) Run Tests
 
-### 5.1 Simplest full run (all enabled questions)
+### 5.1 Simplest run (interactive section selection)
 
 ```bash
 bash scripts/run_question_suite.sh
 ```
+
+At start, the script prompts for section input:
+- `123` -> run sections 1, 2, 3
+- `13` -> run sections 1 and 3
+- `2` -> run section 2 only
 
 This command can be run from:
 - repo root: `bash scripts/run_question_suite.sh`
@@ -92,17 +103,26 @@ Main record file for that run:
 This run record includes:
 - the exact prompt text used in this run,
 - prompt mode (`custom_prompt` or `backend_default`),
-- and all question responses for the run.
+- selected sections for this run,
+- and all question responses for the run (including `section` and `section_name`).
 
-### 5.2 Baseline run (default prompt)
+### 5.2 Non-interactive section selection
+
+```bash
+bash scripts/run_question_suite.sh \
+  --sections 13
+```
+
+### 5.3 Baseline run (default prompt)
 
 ```bash
 : > fetched_site/prompts/custom_prompt.txt
 bash scripts/run_question_suite.sh \
+  --sections 123 \
   --model-id "global.anthropic.claude-sonnet-4-5-20250929-v1:0"
 ```
 
-### 5.3 Candidate run (custom prompt)
+### 5.4 Candidate run (custom prompt)
 
 ```bash
 cat > fetched_site/prompts/custom_prompt.txt <<'EOF_PROMPT'
@@ -110,23 +130,27 @@ Your custom prompt text here.
 EOF_PROMPT
 
 bash scripts/run_question_suite.sh \
+  --sections 123 \
   --model-id "global.anthropic.claude-sonnet-4-5-20250929-v1:0"
 ```
 
-### 5.4 Run only selected question IDs
+### 5.5 Run only selected question IDs
 
 ```bash
-bash scripts/run_question_suite.sh --only-codes "Q001,Q005"
+bash scripts/run_question_suite.sh \
+  --sections 13 \
+  --only-codes "Q001,Q017,Q024"
 ```
 
 When using `--only-codes`, `run_record.json` will contain only the executed subset.
 
-### 5.5 Optional filters
+### 5.6 Optional filters
 
 If using `--source-uri-filter`, use at least 2 comma-separated entries:
 
 ```bash
 bash scripts/run_question_suite.sh \
+  --sections 1 \
   --source-uri-filter "policy,registrar"
 ```
 

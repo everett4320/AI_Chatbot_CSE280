@@ -31,6 +31,7 @@ Numbered question set for batch testing:
 - `fetched_site/questions/README.md`
 Simplest batch test command:
 - `bash scripts/run_question_suite.sh`
+  - The script prompts section selection at start (`123` = all, `13` = sections 1+3, `2` = section 2 only).
 Also works from inside `scripts/`:
 - `bash run_question_suite.sh`
 Per-run consolidated record:

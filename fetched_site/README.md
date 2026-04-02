@@ -63,7 +63,7 @@ Default prompt mentioned in guidance:
   - `fetched_site/questions/test_questions.json`
   - `fetched_site/questions/README.md`
 - Test runners:
-  - `scripts/run_question_suite.sh` (batch, simplest entrypoint)
+  - `scripts/run_question_suite.sh` (batch, with interactive section selection such as `123` / `13` / `2`)
   - `scripts/test_prompt_request.sh`
 - Per-run records:
   - `fetched_site/prompt_effectiveness_runs/<run_id>/run_record.json`
