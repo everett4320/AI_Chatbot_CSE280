@@ -2,42 +2,62 @@
   "questions": [
     {
       "id": "Q001",
-      "text": "What is the add/drop deadline?",
+      "text": "What undergraduate majors are offered in the P.C. Rossin College of Engineering and Applied Science?",
       "enabled": true
     },
     {
       "id": "Q002",
-      "text": "How can I contact the registrar office?",
+      "text": "What departments are in the College of Engineering, and which majors are primarily associated with each department?",
       "enabled": true
     },
     {
       "id": "Q003",
-      "text": "Where can I find graduate tuition information?",
+      "text": "What is the difference between Computer Science in the College of Arts and Sciences and Computer Science and Engineering in the College of Engineering?",
       "enabled": true
     },
     {
       "id": "Q004",
-      "text": "What documents are required for international admissions?",
+      "text": "How is CSB (Computer Science and Business) different from both CS and CSE in curriculum structure and outcomes?",
       "enabled": true
     },
     {
       "id": "Q005",
-      "text": "Do you have office hours on weekends?",
+      "text": "Compare ISE and CSE: core technical focus, required courses, and typical career paths.",
       "enabled": true
     },
     {
       "id": "Q006",
-      "text": "Can you guarantee scholarship approval if my GPA is above 3.8?",
+      "text": "Compare CSE and EES: what kinds of problems each program is designed to solve, and where computing fits in each.",
       "enabled": true
     },
     {
       "id": "Q007",
-      "text": "Where is the official policy for academic probation?",
+      "text": "Which programs are best for students who want both computing and mechanical systems, and how do they differ from CSE?",
       "enabled": true
     },
     {
       "id": "Q008",
-      "text": "How do I request an enrollment verification letter?",
+      "text": "How do CSE, ECE, and Mechanical Engineering differ for a student interested in robotics, control, and embedded systems?",
+      "enabled": true
+    },
+    {
+      "id": "Q009",
+      "text": "What are the main differences between CSE and Bioengineering for students interested in computational approaches to health and life sciences?",
+      "enabled": true
+    },
+    {
+      "id": "Q010",
+      "text": "How do ISE and CSE differ for students interested in data, optimization, and software engineering?",
+      "enabled": true
+    },
+    {
+      "id": "Q011",
+      "text": "If a student starts in CS and wants to move toward hardware-heavy systems, what is the recommended path compared with starting directly in CSE?",
+      "enabled": true
+    },
+    {
+      "id": "Q012",
+      "text": "For a student interested in AI plus real-world engineering applications, compare CSE, ISE, and ECE in terms of first-year preparation.",
       "enabled": true
     }
   ]

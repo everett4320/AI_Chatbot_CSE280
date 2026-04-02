@@ -28,6 +28,7 @@ Prompt override file for testing/frontend integration:
 - `fetched_site/prompts/custom_prompt.txt` (non-empty = send `custom_prompt`, empty = backend default)
 Numbered question set for batch testing:
 - `fetched_site/questions/test_questions.json`
+- `fetched_site/questions/README.md`
 Simplest batch test command:
 - `bash scripts/run_question_suite.sh`
 Also works from inside `scripts/`:
