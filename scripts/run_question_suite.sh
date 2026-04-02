@@ -15,6 +15,7 @@ SOURCE_URI_FILTER=""
 BOT_NAME=""
 ENDPOINT=""
 ONLY_CODES=""
+SECTIONS=""
 SLEEP_SECONDS="0"
 
 resolve_path() {
@@ -51,14 +52,15 @@ Usage:
   bash scripts/run_question_suite.sh [options]
 
 Options:
-  --questions-file path         JSON file with numbered questions
+  --questions-file path         JSON file with numbered questions and sections
   --custom-prompt-file path     Prompt file (non-empty => send custom_prompt)
   --runs-dir path               Directory for per-run records
   --model-id id                 Optional Bedrock model ID
   --source-uri-filter csv       Optional source filter (at least 2 entries if used)
   --bot-name name               Optional bot name
   --endpoint url                Optional API endpoint
-  --only-codes Q001,Q003        Run only selected question IDs
+  --sections 13                 Sections to run (e.g., 123, 13, 2). If omitted, interactive prompt is shown.
+  --only-codes Q001,Q003        Run only selected question IDs (applies after section filtering)
   --sleep-seconds N             Sleep between requests (default: 0)
   -h, --help                    Show help
 
@@ -95,6 +97,10 @@ while [[ $# -gt 0 ]]; do
       ;;
     --endpoint)
       ENDPOINT="$2"
+      shift 2
+      ;;
+    --sections)
+      SECTIONS="$2"
       shift 2
       ;;
     --only-codes)
@@ -140,6 +146,11 @@ if ! jq -e '.questions | type == "array"' "$QUESTIONS_FILE_ABS" >/dev/null 2>&1;
   exit 1
 fi
 
+if ! jq -e '[.questions[] | (.section // empty | tostring)] | all(length > 0)' "$QUESTIONS_FILE_ABS" >/dev/null 2>&1; then
+  echo "Error: each question must include a non-empty section field." >&2
+  exit 1
+fi
+
 mkdir -p "$(dirname "$CUSTOM_PROMPT_FILE_ABS")"
 if [[ ! -f "$CUSTOM_PROMPT_FILE_ABS" ]]; then
   : > "$CUSTOM_PROMPT_FILE_ABS"
@@ -163,6 +174,126 @@ if [[ -n "$BOT_NAME" ]]; then
   EFFECTIVE_BOT_NAME="$BOT_NAME"
 fi
 
+AVAILABLE_SECTIONS_NL="$(jq -r '. as $root
+  | if (($root.sections? | type) == "array" and (($root.sections? | length) > 0))
+    then $root.sections[] | (.id | tostring)
+    else $root.questions[] | (.section | tostring)
+    end' "$QUESTIONS_FILE_ABS" | awk '!seen[$0]++')"
+
+if [[ -z "$AVAILABLE_SECTIONS_NL" ]]; then
+  echo "Error: no sections found in questions file." >&2
+  exit 1
+fi
+
+is_available_section() {
+  local sid="$1"
+  printf '%s\n' "$AVAILABLE_SECTIONS_NL" | grep -Fxq "$sid"
+}
+
+get_section_name() {
+  local sid="$1"
+  local name
+  name="$(jq -r --arg sid "$sid" '. as $root | (($root.sections[]? | select((.id | tostring) == $sid) | .name) // empty)' "$QUESTIONS_FILE_ABS" | head -n 1)"
+  if [[ -n "$name" ]]; then
+    printf '%s\n' "$name"
+  else
+    printf 'Section %s\n' "$sid"
+  fi
+}
+
+get_section_description() {
+  local sid="$1"
+  local desc
+  desc="$(jq -r --arg sid "$sid" '. as $root | (($root.sections[]? | select((.id | tostring) == $sid) | .description) // empty)' "$QUESTIONS_FILE_ABS" | head -n 1)"
+  printf '%s\n' "$desc"
+}
+
+parse_section_input() {
+  local raw="$1"
+  local cleaned
+  local ch
+  local i
+  local len
+  local selected_nl=""
+  cleaned="$(echo "$raw" | tr -d ' ,')"
+
+  if [[ -z "$cleaned" ]]; then
+    return 1
+  fi
+
+  len=${#cleaned}
+  i=0
+  while [[ $i -lt $len ]]; do
+    ch="${cleaned:$i:1}"
+    i=$((i + 1))
+
+    if ! [[ "$ch" =~ [0-9] ]]; then
+      return 1
+    fi
+
+    if ! is_available_section "$ch"; then
+      return 1
+    fi
+
+    if ! printf '%s\n' "$selected_nl" | grep -Fxq "$ch"; then
+      selected_nl+="$ch"$'\n'
+    fi
+  done
+
+  SELECTED_SECTIONS_NL="$(printf '%s\n' "$selected_nl" | sed '/^$/d')"
+  if [[ -z "$SELECTED_SECTIONS_NL" ]]; then
+    return 1
+  fi
+
+  SELECTED_SECTIONS_CSV="$(printf '%s\n' "$SELECTED_SECTIONS_NL" | paste -sd, -)"
+  SELECTED_SECTIONS_JSON="$(printf '%s\n' "$SELECTED_SECTIONS_NL" | jq -Rsc 'split("\n") | map(select(length>0))')"
+  return 0
+}
+
+prompt_for_sections() {
+  local sid
+  local name
+  local desc
+  local input
+
+  echo "Select question sections to run:"
+  while IFS= read -r sid; do
+    [[ -z "$sid" ]] && continue
+    name="$(get_section_name "$sid")"
+    desc="$(get_section_description "$sid")"
+    if [[ -n "$desc" ]]; then
+      echo "  [$sid] $name - $desc"
+    else
+      echo "  [$sid] $name"
+    fi
+  done <<< "$AVAILABLE_SECTIONS_NL"
+
+  while true; do
+    read -r -p "Enter sections (e.g., 123, 13, 2): " input
+    if parse_section_input "$input"; then
+      break
+    fi
+    echo "Invalid selection. Please enter only available section digits, such as 123 or 13."
+  done
+}
+
+if [[ -n "$SECTIONS" ]]; then
+  if ! parse_section_input "$SECTIONS"; then
+    echo "Error: invalid --sections value '$SECTIONS'." >&2
+    exit 1
+  fi
+else
+  if [[ -t 0 ]]; then
+    prompt_for_sections
+  else
+    # Non-interactive fallback: run all available sections.
+    if ! parse_section_input "$(printf '%s\n' "$AVAILABLE_SECTIONS_NL" | paste -sd '' -)"; then
+      echo "Error: failed to initialize section selection for non-interactive mode." >&2
+      exit 1
+    fi
+  fi
+fi
+
 should_run_code() {
   local code="$1"
   local item trimmed
@@ -179,9 +310,13 @@ should_run_code() {
   return 1
 }
 
-enabled_count=$(jq '[.questions[] | select((.enabled // true) == true)] | length' "$QUESTIONS_FILE_ABS")
+enabled_count=$(jq --argjson selected "$SELECTED_SECTIONS_JSON" '[.questions[]
+  | select((.enabled // true) == true)
+  | select((.section | tostring) as $s | ($selected | index($s)))
+] | length' "$QUESTIONS_FILE_ABS")
+
 if [[ "$enabled_count" -eq 0 ]]; then
-  echo "No enabled questions found in $QUESTIONS_FILE_DISPLAY"
+  echo "No enabled questions found for selected sections: $SELECTED_SECTIONS_CSV"
   exit 0
 fi
 
@@ -208,14 +343,19 @@ echo "Questions file:      $QUESTIONS_FILE_DISPLAY"
 echo "Custom prompt file:  $CUSTOM_PROMPT_FILE_DISPLAY"
 echo "Prompt mode:         $PROMPT_MODE"
 echo "Run output dir:      $RUN_DIR_DISPLAY"
+echo "Selected sections:   $SELECTED_SECTIONS_CSV"
+while IFS= read -r sid; do
+  [[ -z "$sid" ]] && continue
+  echo "  - [$sid] $(get_section_name "$sid")"
+done <<< "$SELECTED_SECTIONS_NL"
 echo "Total enabled items: $enabled_count"
 echo
 
-while IFS=$'\t' read -r qid qtext; do
+while IFS=$'\t' read -r qid qsection qtext; do
   total=$((total + 1))
 
-  if [[ -z "$qid" || -z "$qtext" ]]; then
-    echo "[SKIP] Item #$total is missing id or text."
+  if [[ -z "$qid" || -z "$qtext" || -z "$qsection" ]]; then
+    echo "[SKIP] Item #$total is missing id, section, or text."
     continue
   fi
 
@@ -224,7 +364,7 @@ while IFS=$'\t' read -r qid qtext; do
   fi
 
   ran=$((ran + 1))
-  echo "[$qid] $qtext"
+  echo "[$qid][Section $qsection] $qtext"
 
   cmd=("${SCRIPT_DIR}/test_prompt_request.sh" --question "$qtext" --question-code "$qid" --custom-prompt-file "$CUSTOM_PROMPT_FILE_ABS" --bot-name "$EFFECTIVE_BOT_NAME" --endpoint "$EFFECTIVE_ENDPOINT")
   if [[ -n "$MODEL_ID" ]]; then
@@ -293,6 +433,8 @@ while IFS=$'\t' read -r qid qtext; do
 
   result_obj=$(jq -n \
     --arg id "$qid" \
+    --arg section "$qsection" \
+    --arg section_name "$(get_section_name "$qsection")" \
     --arg question "$qtext" \
     --arg status "$status" \
     --arg session_id "$session_id_out" \
@@ -304,6 +446,8 @@ while IFS=$'\t' read -r qid qtext; do
     --argjson sources "$sources_json" \
     '{
       id: $id,
+      section: $section,
+      section_name: $section_name,
       question: $question,
       status: $status,
       session_id: (if $session_id == "" then null else $session_id end),
@@ -323,7 +467,12 @@ while IFS=$'\t' read -r qid qtext; do
   fi
 
   echo
-done < <(jq -r '.questions[] | select((.enabled // true) == true) | [(.id // ""), (.text // "")] | @tsv' "$QUESTIONS_FILE_ABS")
+done < <(jq -r --argjson selected "$SELECTED_SECTIONS_JSON" '.questions[]
+  | select((.enabled // true) == true)
+  | (.section | tostring) as $s
+  | select($selected | index($s))
+  | [(.id // ""), $s, (.text // "")]
+  | @tsv' "$QUESTIONS_FILE_ABS")
 
 ENDED_AT_UTC="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
 RUN_RECORD_FILE_ABS="${RUN_DIR_ABS}/run_record.json"
@@ -343,8 +492,10 @@ jq -n \
   --arg bot_name "$EFFECTIVE_BOT_NAME" \
   --arg endpoint "$EFFECTIVE_ENDPOINT" \
   --arg only_codes "$ONLY_CODES" \
+  --arg sections "$SELECTED_SECTIONS_CSV" \
   --arg run_dir "$RUN_DIR_DISPLAY" \
   --arg raw_dir "$RAW_DIR_DISPLAY" \
+  --argjson selected_sections "$SELECTED_SECTIONS_JSON" \
   --argjson enabled "$enabled_count" \
   --argjson executed "$ran" \
   --argjson failed "$failed" \
@@ -365,7 +516,9 @@ jq -n \
       source_uri_filter: (if $source_uri_filter == "" then null else $source_uri_filter end),
       bot_name: $bot_name,
       endpoint: $endpoint,
-      only_codes: (if $only_codes == "" then null else $only_codes end)
+      only_codes: (if $only_codes == "" then null else $only_codes end),
+      sections_input: $sections,
+      selected_sections: $selected_sections
     },
     summary: {
       enabled: $enabled,
@@ -382,10 +535,10 @@ jq -n \
   }' > "$RUN_RECORD_FILE_ABS"
 
 echo "Run summary:"
-echo "  Enabled in file: $enabled_count"
-echo "  Executed:        $ran"
-echo "  Failed:          $failed"
-echo "  Run record:      $RUN_RECORD_FILE_DISPLAY"
+echo "  Enabled in selected sections: $enabled_count"
+echo "  Executed:                    $ran"
+echo "  Failed:                      $failed"
+echo "  Run record:                  $RUN_RECORD_FILE_DISPLAY"
 
 if [[ $failed -gt 0 ]]; then
   exit 1
