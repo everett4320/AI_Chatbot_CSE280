@@ -1,51 +1,55 @@
 import pandas as pd
 import os
+import re
 
 INPUT_FILE = "AI Chatbot Official Survey_April 14, 2026_13.06.csv"
 OUTPUT_DIR = "split_output"
 
-# Read CSV, skipping Qualtrics metadata rows (question text + import IDs)
 df = pd.read_csv(INPUT_FILE, skiprows=[1, 2])
-
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
-# --- Split 1: by Affiliation + Engineer Interest ---
-print("=== Split by Affiliation + Engineer Interest ===")
-grouped = df.groupby(["Affiliation", "Engineer Interest"], dropna=False)
 
-for (affiliation, eng_interest), group_df in grouped:
-    parts = [str(affiliation).replace("/", "_")]
-    if pd.notna(eng_interest) and str(eng_interest).strip():
-        parts.append(str(eng_interest))
-    filename = "survey_" + "_".join(parts) + ".csv"
+def slug(s: str) -> str:
+    s = re.sub(r"[^\w]+", "_", s.strip())
+    return s.strip("_")
 
-    output_path = os.path.join(OUTPUT_DIR, filename)
-    group_df.to_csv(output_path, index=False)
-    print(f"{filename}: {len(group_df)} rows")
 
-# --- Split 2: by C1-1 (PC Rossin affiliation) ---
-print("\n=== Split by C1-1 (PC Rossin Affiliation) ===")
-grouped2 = df.groupby("C1-1", dropna=False)
+def write(name: str, rows: pd.DataFrame) -> None:
+    path = os.path.join(OUTPUT_DIR, name)
+    rows.to_csv(path, index=False)
+    print(f"{name}: {len(rows)} rows")
 
-for val, group_df in grouped2:
-    if pd.notna(val) and str(val) == "Other":
-        continue  # these rows go into C1-1_Other_Text instead
-    if pd.isna(val):
-        label = "NA"
+
+C1_LABELS = {
+    "Yes (primary appointment)": "Yes_primary",
+    "Yes (secondary / joint appointment)": "Yes_secondary",
+    "Not College of Engineering faculty (but I collaborate with College of Engineering)": "Not_faculty_collaborate",
+    "No connection to the College of Engineering": "No_connection",
+}
+
+for affiliation, aff_df in df.groupby("Affiliation", dropna=False):
+    aff_slug = slug(str(affiliation))
+
+    if affiliation == "Student":
+        for answer, sub_df in aff_df.groupby("A1-2", dropna=False):
+            if pd.isna(answer):
+                continue
+            write(f"survey_Student_Rossin_{slug(str(answer))}.csv", sub_df)
+
+    elif affiliation == "Faculty/Staff":
+        for option, label in C1_LABELS.items():
+            sub_df = aff_df[aff_df["C1-1"] == option]
+            write(f"survey_Faculty_Staff_C1_{label}.csv", sub_df)
+        other_df = aff_df[aff_df["C1-1"] == "Other"]
+        write("survey_Faculty_Staff_C1_Other.csv", other_df)
+
+    elif affiliation == "Prospective Student":
+        for answer, sub_df in aff_df.groupby("B1-1", dropna=False):
+            if pd.isna(answer):
+                continue
+            write(f"survey_Prospective_Student_Engineering_{slug(str(answer))}.csv", sub_df)
+
     else:
-        label = str(val).replace("/", "_").replace(" ", "_")
-    filename = f"survey_C1-1_{label}.csv"
-
-    output_path = os.path.join(OUTPUT_DIR, filename)
-    group_df.to_csv(output_path, index=False)
-    print(f"{filename}: {len(group_df)} rows")
-
-# --- Split 3: C1-1_5_TEXT (Other free-text responses) ---
-print("\n=== C1-1_5_TEXT (Other free-text) ===")
-other_text_df = df[df["C1-1_5_TEXT"].notna()]
-filename = "survey_C1-1_Other_Text.csv"
-output_path = os.path.join(OUTPUT_DIR, filename)
-other_text_df.to_csv(output_path, index=False)
-print(f"{filename}: {len(other_text_df)} rows")
+        write(f"survey_{aff_slug}.csv", aff_df)
 
 print(f"\nTotal rows in source: {len(df)}")
