@@ -3,6 +3,10 @@
 @theme {
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif,
     "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+  --color-lehigh-navy: #12354C;
+  --color-lehigh-navy-dark: #0D2A3D;
+  --color-lehigh-mint: #D1E9E8;
+  --color-lehigh-surface: #F5F7F7;
   --color-lehigh-brown: #502D0E;
   --color-lehigh-brown-dark: #3D2209;
 }
