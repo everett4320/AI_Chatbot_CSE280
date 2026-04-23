@@ -89,12 +89,9 @@ export function ChatArea({
 
       <div className="flex-1 overflow-y-auto hide-scrollbar px-4 py-4" role="log" aria-live="polite">
           {messages.length === 0 ? (
-            <div className="flex flex-col items-center justify-center text-center py-12">
-              <div className="text-3xl mb-3">💬</div>
-              <p className="text-gray-500 dark:text-gray-400 text-sm">
-                Ask a question
-              </p>
-            </div>
+            <p className="text-lehigh-navy font-bold text-[18px] leading-[22px] tracking-[-0.2px] pt-2">
+              Hello, I&rsquo;m Ross, your guide to Lehigh College of Engineering
+            </p>
           ) : (
             <>
               {messages.map((msg) => (
