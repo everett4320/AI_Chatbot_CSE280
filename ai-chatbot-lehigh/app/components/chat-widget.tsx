@@ -21,9 +21,9 @@ export function ChatWidget() {
       {!isOpen && (
         <button
           onClick={() => setIsOpen(true)}
-          className="w-14 h-14 rounded-full bg-lehigh-brown text-white shadow-lg
+          className="w-14 h-14 rounded-full bg-lehigh-navy text-white shadow-lg
                      flex items-center justify-center
-                     hover:bg-lehigh-brown-dark transition-colors"
+                     hover:bg-lehigh-navy-dark transition-colors"
           aria-label="Open chat"
         >
           <svg

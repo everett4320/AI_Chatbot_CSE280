@@ -26,12 +26,51 @@ export function ChatArea({
   }, [messages]);
 
   return (
-    <div className="flex flex-col w-[370px] h-[500px] bg-white dark:bg-gray-950 rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-800 overflow-hidden">
-      <header className="shrink-0 flex items-center gap-3 px-4 py-3 bg-lehigh-brown text-white">
-        <div className="w-9 h-9 rounded-full bg-white/20 flex items-center justify-center text-lg">
-          🤖
+    <div className="flex flex-col w-[400px] h-[620px] bg-white rounded-[12px] shadow-[0_4px_18.6px_rgba(0,0,0,0.11)] overflow-hidden">
+      <header className="shrink-0 h-[70px] flex items-center gap-2 px-3 bg-lehigh-navy text-white">
+        <button
+          onClick={onClose}
+          className="w-7 h-7 flex items-center justify-center rounded hover:bg-white/10 transition-colors"
+          aria-label="Collapse chat"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            className="w-4 h-4"
+          >
+            <polyline points="15 18 9 12 15 6" />
+            <polyline points="19 18 13 12 19 6" />
+          </svg>
+        </button>
+        <div className="w-[45px] h-[45px] flex items-center justify-center shrink-0">
+          <div className="w-[30px] h-[30px] rotate-45 bg-lehigh-mint" />
         </div>
-        <h1 className="flex-1 text-base font-semibold">Lehigh AI Chatbot</h1>
+        <h1 className="flex-1 text-[22px] font-bold tracking-wide text-lehigh-mint leading-none">
+          Ross
+        </h1>
+        <button
+          type="button"
+          className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-white/20 transition-colors"
+          aria-label="Help"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.8"
+            className="w-5 h-5"
+          >
+            <circle cx="12" cy="12" r="9.5" />
+            <path d="M9.5 9a2.5 2.5 0 1 1 3.6 2.25c-.7.37-1.1.9-1.1 1.75v.5" strokeLinecap="round" />
+            <circle cx="12" cy="17" r="0.9" fill="currentColor" stroke="none" />
+          </svg>
+        </button>
         <button
           onClick={onClose}
           className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-white/20 transition-colors"

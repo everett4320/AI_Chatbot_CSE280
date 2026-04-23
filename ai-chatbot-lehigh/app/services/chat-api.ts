@@ -4,15 +4,30 @@ const API_URL = import.meta.env.VITE_CHAT_API_URL as string | undefined;
 
 export async function sendMessage(messages: Message[]): Promise<string> {
   if (!API_URL) {
-    return new Promise((resolve) =>
-      setTimeout(
-        () =>
-          resolve(
-            "This is a placeholder response. Set VITE_CHAT_API_URL to connect a real backend."
-          ),
-        1000
-      )
-    );
+    const stub = `Here is a list of Lehigh University College of Engineering Programs:
+
+**Undergraduate Programs**
+- Mechanical Engineering
+- Electrical Engineering
+- Computer Engineering
+- Chemical Engineering
+- Civil Engineering
+- Industrial & Systems Engineering
+- Materials Science & Engineering
+- Bioengineering
+
+**Interdisciplinary / Specialized**
+- Integrated Engineering
+- Environmental Engineering
+
+**Graduate**
+- Data Science
+- Energy Systems Engineering
+- Financial Engineering
+- Technical Entrepreneurship
+
+Is there a specific engineering program you are interested in at Lehigh?`;
+    return new Promise((resolve) => setTimeout(() => resolve(stub), 600));
   }
 
   const res = await fetch(API_URL, {
