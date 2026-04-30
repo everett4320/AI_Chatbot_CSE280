@@ -19,7 +19,7 @@ export function ChatInput({ onSend, isLoading }: ChatInputProps) {
     const textarea = textareaRef.current;
     if (textarea) {
       textarea.style.height = "auto";
-      textarea.style.height = `${Math.min(textarea.scrollHeight, 200)}px`;
+      textarea.style.height = `${Math.min(textarea.scrollHeight, 140)}px`;
     }
   }, [input]);
 
@@ -39,38 +39,46 @@ export function ChatInput({ onSend, isLoading }: ChatInputProps) {
   };
 
   return (
-    <div className="border-t border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 px-3 py-3">
-      <form onSubmit={handleSubmit} className="flex items-end gap-2">
-        <textarea
-          ref={textareaRef}
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          onKeyDown={handleKeyDown}
-          aria-label="Message input"
-          placeholder="Write a message..."
-          rows={1}
-          disabled={isLoading}
-          className="flex-1 resize-none rounded-lg border border-gray-300 dark:border-gray-700
-                     bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100
-                     px-3 py-2 text-sm leading-relaxed
-                     focus:outline-none focus:ring-2 focus:ring-lehigh-brown focus:border-transparent
-                     disabled:opacity-50 placeholder-gray-400 dark:placeholder-gray-500"
-        />
+    <div className="bg-white px-5 pb-5 pt-2">
+      <form onSubmit={handleSubmit} className="flex items-center gap-2">
+        <div className="flex-1 bg-lehigh-surface rounded-[8px] shadow-[0_4px_13.1px_rgba(0,0,0,0.08)] px-4 py-3">
+          <textarea
+            ref={textareaRef}
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={handleKeyDown}
+            aria-label="Message input"
+            placeholder="Ask a question..."
+            rows={1}
+            disabled={isLoading}
+            className="w-full resize-none bg-transparent border-0 outline-none
+                       text-[15px] leading-[1.35] text-lehigh-navy
+                       placeholder:uppercase placeholder:tracking-[0.04em]
+                       placeholder:text-lehigh-navy placeholder:opacity-80
+                       disabled:opacity-50"
+          />
+        </div>
         <button
           type="submit"
           disabled={!input.trim() || isLoading}
-          className="shrink-0 w-9 h-9 rounded-lg bg-lehigh-brown text-white
-                     flex items-center justify-center
-                     hover:bg-lehigh-brown-dark disabled:opacity-50 disabled:cursor-not-allowed
+          className="shrink-0 w-9 h-9 flex items-center justify-center
+                     text-lehigh-navy hover:text-lehigh-navy-dark
+                     disabled:opacity-40 disabled:cursor-not-allowed
                      transition-colors"
+          aria-label="Send message"
         >
           <svg
             xmlns="http://www.w3.org/2000/svg"
             viewBox="0 0 24 24"
-            fill="currentColor"
-            className="w-5 h-5"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.8"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            className="w-6 h-6"
           >
-            <path d="M3.478 2.404a.75.75 0 0 0-.926.941l2.432 7.905H13.5a.75.75 0 0 1 0 1.5H4.984l-2.432 7.905a.75.75 0 0 0 .926.94 60.519 60.519 0 0 0 18.445-8.986.75.75 0 0 0 0-1.218A60.517 60.517 0 0 0 3.478 2.404Z" />
+            <path d="M22 2 11 13" />
+            <path d="M22 2 15 22l-4-9-9-4 20-7z" />
           </svg>
         </button>
       </form>
