@@ -20,6 +20,8 @@ export const ChatMessage = memo(function ChatMessage({ message }: { message: Mes
     );
   }
 
+  const sources = message.sources ?? [];
+
   return (
     <div className="flex items-start gap-2 mb-4">
       <div className="w-[29px] h-[29px] rounded-full bg-lehigh-mint shrink-0 mt-1" />
@@ -49,6 +51,25 @@ export const ChatMessage = memo(function ChatMessage({ message }: { message: Mes
           >
             {message.content}
           </ReactMarkdown>
+          {sources.length > 0 && (
+            <div className="mt-3 pt-2 border-t border-lehigh-navy/15 text-xs">
+              <p className="font-semibold mb-1">Sources</p>
+              <ul className="list-disc pl-5 space-y-0.5">
+                {sources.map((s, i) => (
+                  <li key={i}>
+                    <a
+                      href={s.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="underline"
+                    >
+                      {s.title}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
         </div>
       </div>
     </div>
