@@ -19,9 +19,14 @@ export function ChatInput({ onSend, isLoading }: ChatInputProps) {
     const textarea = textareaRef.current;
     if (textarea) {
       textarea.style.height = "auto";
-      textarea.style.height = `${Math.min(textarea.scrollHeight, 200)}px`;
+      textarea.style.height = `${Math.min(textarea.scrollHeight, 84)}px`;
     }
   }, [input]);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => textareaRef.current?.focus(), 240);
+    return () => window.clearTimeout(timer);
+  }, []);
 
   const handleSubmit = (e?: FormEvent) => {
     e?.preventDefault();
@@ -39,39 +44,26 @@ export function ChatInput({ onSend, isLoading }: ChatInputProps) {
   };
 
   return (
-    <div className="border-t border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 px-3 py-3">
-      <form onSubmit={handleSubmit} className="flex items-end gap-2">
+    <div className="ross-composer-wrap">
+      <form onSubmit={handleSubmit} className="ross-composer">
         <textarea
           ref={textareaRef}
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={handleKeyDown}
           aria-label="Message input"
-          placeholder="Write a message..."
+          placeholder="ASK A QUESTION..."
           rows={1}
           disabled={isLoading}
-          className="flex-1 resize-none rounded-lg border border-gray-300 dark:border-gray-700
-                     bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100
-                     px-3 py-2 text-sm leading-relaxed
-                     focus:outline-none focus:ring-2 focus:ring-lehigh-brown focus:border-transparent
-                     disabled:opacity-50 placeholder-gray-400 dark:placeholder-gray-500"
+          className="ross-composer__input"
         />
         <button
           type="submit"
           disabled={!input.trim() || isLoading}
-          className="shrink-0 w-9 h-9 rounded-lg bg-lehigh-brown text-white
-                     flex items-center justify-center
-                     hover:bg-lehigh-brown-dark disabled:opacity-50 disabled:cursor-not-allowed
-                     transition-colors"
+          className="ross-composer__send"
+          aria-label="Send message"
         >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            viewBox="0 0 24 24"
-            fill="currentColor"
-            className="w-5 h-5"
-          >
-            <path d="M3.478 2.404a.75.75 0 0 0-.926.941l2.432 7.905H13.5a.75.75 0 0 1 0 1.5H4.984l-2.432 7.905a.75.75 0 0 0 .926.94 60.519 60.519 0 0 0 18.445-8.986.75.75 0 0 0 0-1.218A60.517 60.517 0 0 0 3.478 2.404Z" />
-          </svg>
+          <img src="/figma/paper-plane.png" alt="" />
         </button>
       </form>
     </div>

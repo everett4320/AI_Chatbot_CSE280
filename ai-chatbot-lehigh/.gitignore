@@ -6,3 +6,8 @@
 /.react-router/
 /build/
 .claude/*
+
+# Local Codex browser-verification artifacts
+/.codex-tmp/
+/.playwright-cli/
+/output/

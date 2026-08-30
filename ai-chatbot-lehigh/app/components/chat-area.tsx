@@ -1,5 +1,5 @@
-import { useRef, useEffect } from "react";
-import type { Message } from "~/types/chat";
+import { useRef, useEffect, useState } from "react";
+import type { FeedbackRating, Message } from "~/types/chat";
 import { ChatMessage } from "~/components/chat-message";
 import { ChatInput } from "~/components/chat-input";
 import { TypingIndicator } from "~/components/typing-indicator";
@@ -10,6 +10,8 @@ interface ChatAreaProps {
   error: string | null;
   onSend: (content: string) => void;
   onClose: () => void;
+  onRestart: () => void;
+  onFeedback: (messageId: string, rating: FeedbackRating) => void;
 }
 
 export function ChatArea({
@@ -18,62 +20,109 @@ export function ChatArea({
   error,
   onSend,
   onClose,
+  onRestart,
+  onFeedback,
 }: ChatAreaProps) {
-  const scrollRef = useRef<HTMLDivElement>(null);
+  const transcriptRef = useRef<HTMLDivElement>(null);
+  const [showHelp, setShowHelp] = useState(false);
+  const hasConversation = messages.length > 0;
 
   useEffect(() => {
-    scrollRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+    const transcript = transcriptRef.current;
+    if (transcript) {
+      transcript.scrollTo({ top: transcript.scrollHeight, behavior: "smooth" });
+    }
+  }, [messages, isLoading]);
+
+  const handleBack = () => {
+    if (hasConversation) onRestart();
+    else onClose();
+  };
 
   return (
-    <div className="flex flex-col w-[370px] h-[500px] bg-white dark:bg-gray-950 rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-800 overflow-hidden">
-      <header className="shrink-0 flex items-center gap-3 px-4 py-3 bg-lehigh-brown text-white">
-        <div className="w-9 h-9 rounded-full bg-white/20 flex items-center justify-center text-lg">
-          🤖
-        </div>
-        <h1 className="flex-1 text-base font-semibold">Lehigh AI Chatbot</h1>
+    <section className="ross-panel" aria-label="Ross, Lehigh engineering assistant">
+      <header className="ross-header">
         <button
+          type="button"
+          className="ross-header__icon ross-header__back"
+          onClick={handleBack}
+          aria-label={hasConversation ? "Start a new conversation" : "Minimize chat"}
+        >
+          <img src="/figma/collapse.png" alt="" />
+        </button>
+
+        <span className="ross-brand-mark" aria-hidden="true">
+          <img src="/figma/ross-mark.svg" alt="" />
+        </span>
+        <h1>Ross</h1>
+
+        <button
+          type="button"
+          className="ross-header__icon ross-header__help"
+          onClick={() => setShowHelp((value) => !value)}
+          aria-label="Chat help"
+          aria-expanded={showHelp}
+        >
+          <img src="/figma/help.png" alt="" />
+        </button>
+        <button
+          type="button"
           onClick={onClose}
-          className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-white/20 transition-colors"
+          className="ross-header__icon ross-header__close"
           aria-label="Close chat"
         >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            viewBox="0 0 24 24"
-            fill="currentColor"
-            className="w-5 h-5"
-          >
-            <path d="M6.225 4.811a1 1 0 0 0-1.414 1.414L10.586 12 4.81 17.775a1 1 0 1 0 1.414 1.414L12 13.414l5.775 5.775a1 1 0 0 0 1.414-1.414L13.414 12l5.775-5.775a1 1 0 0 0-1.414-1.414L12 10.586 6.225 4.811Z" />
-          </svg>
+          <img src="/figma/close.png" alt="" />
         </button>
       </header>
 
-      <div className="flex-1 overflow-y-auto hide-scrollbar px-4 py-4" role="log" aria-live="polite">
-          {messages.length === 0 ? (
-            <div className="flex flex-col items-center justify-center text-center py-12">
-              <div className="text-3xl mb-3">💬</div>
-              <p className="text-gray-500 dark:text-gray-400 text-sm">
-                Ask a question
-              </p>
-            </div>
-          ) : (
-            <>
-              {messages.map((msg) => (
-                <ChatMessage key={msg.id} message={msg} />
-              ))}
-              {isLoading && <TypingIndicator />}
-            </>
-          )}
-        <div ref={scrollRef} />
-      </div>
+      {showHelp && (
+        <div className="ross-help-popover" role="status">
+          <strong>Ask Ross about Lehigh Engineering.</strong>
+          <span>Enter sends · Shift + Enter adds a new line.</span>
+        </div>
+      )}
 
-      {error && (
-        <div className="mx-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 rounded-lg px-3 py-2 mb-2 text-xs" role="alert">
-          {error}
+      {!hasConversation ? (
+        <div className="ross-welcome">
+          <div className="ross-welcome__copy">
+            <h2>Hello, I’m Ross, your guide to Lehigh College of Engineering</h2>
+            <p>How can I assist you today?</p>
+          </div>
+        </div>
+      ) : (
+        <div
+          ref={transcriptRef}
+          className={`ross-transcript ${isLoading ? "ross-transcript--pending" : ""}`}
+          role="log"
+          aria-live="polite"
+        >
+          <div className="ross-transcript__content">
+            {messages.map((message) => (
+              <ChatMessage
+                key={message.id}
+                message={message}
+                onFeedback={onFeedback}
+              />
+            ))}
+            {isLoading && <TypingIndicator />}
+            {error && (
+              <div className="ross-error" role="alert">
+                <strong>Ross couldn’t answer just now.</strong>
+                <span>{error}</span>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {!hasConversation && error && (
+        <div className="ross-error ross-error--welcome" role="alert">
+          <strong>Ross couldn’t connect.</strong>
+          <span>{error}</span>
         </div>
       )}
 
       <ChatInput onSend={onSend} isLoading={isLoading} />
-    </div>
+    </section>
   );
 }
