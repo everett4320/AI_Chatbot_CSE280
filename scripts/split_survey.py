@@ -2,7 +2,7 @@ import pandas as pd
 import os
 import re
 
-INPUT_FILE = "AI Chatbot Official Survey_April 14, 2026_13.06.csv"
+INPUT_FILE = "AI Chatbot Official Survey_August 27, 2026_13.30.csv"
 OUTPUT_DIR = "split_output"
 
 df = pd.read_csv(INPUT_FILE, skiprows=[1, 2])
@@ -15,6 +15,8 @@ def slug(s: str) -> str:
 
 
 def write(name: str, rows: pd.DataFrame) -> None:
+    if rows.empty:
+        return
     path = os.path.join(OUTPUT_DIR, name)
     rows.to_csv(path, index=False)
     print(f"{name}: {len(rows)} rows")
@@ -27,14 +29,24 @@ C1_LABELS = {
     "No connection to the College of Engineering": "No_connection",
 }
 
-for affiliation, aff_df in df.groupby("Affiliation", dropna=False):
+# Drop partial responses: rows with no Affiliation at all.
+df = df[df["Affiliation"].notna() & (df["Affiliation"].str.strip() != "")]
+
+for affiliation, aff_df in df.groupby("Affiliation"):
+    print(f"Processing affiliation group: {affiliation!r} ({len(aff_df)} rows)")
     aff_slug = slug(str(affiliation))
 
     if affiliation == "Student":
-        for answer, sub_df in aff_df.groupby("A1-2", dropna=False):
+        for answer, sub_df in aff_df.groupby("Engineer Interest", dropna=False):
             if pd.isna(answer):
                 continue
-            write(f"survey_Student_Rossin_{slug(str(answer))}.csv", sub_df)
+            write(f"survey_Current_Student_{slug(str(answer))}.csv", sub_df)
+
+    elif affiliation == "Prospective Student":
+        for answer, sub_df in aff_df.groupby("Engineer Interest", dropna=False):
+            if pd.isna(answer):
+                continue
+            write(f"survey_Prospective_Student_{slug(str(answer))}.csv", sub_df)
 
     elif affiliation == "Faculty/Staff":
         for option, label in C1_LABELS.items():
@@ -43,13 +55,7 @@ for affiliation, aff_df in df.groupby("Affiliation", dropna=False):
         other_df = aff_df[aff_df["C1-1"] == "Other"]
         write("survey_Faculty_Staff_C1_Other.csv", other_df)
 
-    elif affiliation == "Prospective Student":
-        for answer, sub_df in aff_df.groupby("B1-1", dropna=False):
-            if pd.isna(answer):
-                continue
-            write(f"survey_Prospective_Student_Engineering_{slug(str(answer))}.csv", sub_df)
-
-    else:
+    else:  # Alumni, Other
         write(f"survey_{aff_slug}.csv", aff_df)
 
-print(f"\nTotal rows in source: {len(df)}")
+print(f"\nTotal rows in source (after dropping blank-Affiliation partials): {len(df)}")
