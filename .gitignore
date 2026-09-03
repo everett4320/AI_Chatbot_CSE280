@@ -14,3 +14,9 @@ fetched_site/test_results/
 fetched_site/prompt_effectiveness_runs/
 split_output/*
 */split_output/*
+
+# Accidental root-level lockfile (the real one lives in ai-chatbot-lehigh/)
+/package-lock.json
+
+# Local Claude Code settings (per-developer, not shared)
+.claude/settings.local.json
