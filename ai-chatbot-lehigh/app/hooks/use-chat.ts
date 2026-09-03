@@ -1,6 +1,6 @@
 import { useState, useCallback, useRef } from "react";
 import type { Message } from "~/types/chat";
-import { sendMessage as sendApiMessage } from "~/services/chat-api";
+import { sendMessage as sendApiMessage, resetSession } from "~/services/chat-api";
 
 export function useChat() {
   const [messages, setMessages] = useState<Message[]>([]);
@@ -21,20 +21,19 @@ export function useChat() {
       timestamp: Date.now(),
     };
 
-    const updatedMessages = [...messagesRef.current, userMessage];
-
     setError(null);
     loadingRef.current = true;
     setIsLoading(true);
-    setMessages(updatedMessages);
+    setMessages([...messagesRef.current, userMessage]);
 
     try {
-      const reply = await sendApiMessage(updatedMessages);
+      const { reply, sources } = await sendApiMessage(trimmed);
 
       const assistantMessage: Message = {
         id: crypto.randomUUID(),
         role: "assistant",
         content: reply,
+        sources,
         timestamp: Date.now(),
       };
 
@@ -52,6 +51,7 @@ export function useChat() {
     setError(null);
     loadingRef.current = false;
     setIsLoading(false);
+    resetSession();
   }, []);
 
   return { messages, isLoading, error, sendMessage, clearChat };

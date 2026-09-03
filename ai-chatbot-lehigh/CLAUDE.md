@@ -22,13 +22,22 @@ This is a **React Router v7 framework-mode** app (`ssr: true` in `react-router.c
 
 **Route surface is tiny on purpose.** `app/routes.ts` declares a single `index("routes/home.tsx")`. The homepage is a static landing page that mounts `<ChatWidget />`. All real UX lives inside the floating chat widget — adding features typically means extending the chat tree, not adding routes.
 
-**Chat state flow.** `app/hooks/use-chat.ts` is the single source of truth — `messages`, `isLoading`, `error`. It uses `loadingRef` + `messagesRef` so `sendMessage` has a stable identity but sees current state. There is **no persistence** (refresh wipes the conversation) and no streaming — responses arrive as one string. Message shape is `{ id, role: "user" | "assistant", content, timestamp }` (`app/types/chat.ts`).
+**Chat state flow.** `app/hooks/use-chat.ts` is the single source of truth — `messages`, `isLoading`, `error`. It uses `loadingRef` + `messagesRef` so `sendMessage` has a stable identity but sees current state. There is **no persistence** (refresh wipes the conversation) and no streaming — responses arrive as one string. Message shape is `{ id, role: "user" | "assistant", content, timestamp, sources? }` where `sources` is an optional `{title, url}[]` populated for assistant messages from the backend's `Sources` (`app/types/chat.ts`).
 
 **Component tree (all in `app/components/`):** `ChatWidget` owns open/close state and the `useChat()` instance → `ChatArea` is the 400×620 panel (header, scrollable log, error banner, input) → `ChatMessage` renders assistant content via `react-markdown` and exports `ASSISTANT_BUBBLE` so `TypingIndicator` can match the bubble style → `ChatInput` is an auto-growing textarea (capped at 140px) with Enter-to-send, Shift+Enter for newline.
 
-**API boundary — important.** `app/services/chat-api.ts` is the only network code. It `POST`s `{ messages: [{role, content}, …] }` to `import.meta.env.VITE_CHAT_API_URL` and expects `{ reply: string }` back. **If `VITE_CHAT_API_URL` is unset, it returns a hardcoded stub after 600ms** — that's what you see in local dev. Create a gitignored `.env` with `VITE_CHAT_API_URL=…` and restart `npm run dev` to hit a real backend.
+**API boundary — important.** `app/services/chat-api.ts` is the only network code. It targets the Lehigh LTS shared chatbot endpoint at `https://8lyrpsdez5.execute-api.us-east-1.amazonaws.com/call` (set `VITE_CHAT_API_URL` to that in a gitignored `.env` to enable). **If `VITE_CHAT_API_URL` is unset, it returns a hardcoded stub after 600ms** — that's what you see in local dev without env config.
 
-Note: this payload shape does **not** match the upstream AWS endpoint documented in `../fetched_site/` (`action: "question"` against `https://8lyrpsdez5.execute-api.us-east-1.amazonaws.com/call`). Wiring up the real backend requires rewriting the request/response mapping in `chat-api.ts`; the stub shape was invented here and is not a contract with any deployed service.
+Request payload (only the latest user turn — the backend tracks history server-side via `sessionId`):
+```json
+{ "action": "question", "bot_name": "le-chat", "httpMethod": "POST",
+  "userMessage": "...", "sessionId": "session-xxx", "questionId": "question-xxx" }
+```
+Response: `{ Response: string, Sources: [{title, url}], sessionId, questionId, error? }`. Note the capital `R`/`S`. Even on HTTP 200, check `data.error` and throw if present.
+
+`sessionId` is generated lazily by `chat-api.ts` and held in a module-level variable (no localStorage — refresh wipes the conversation, matching the no-persistence semantics below). `useChat.clearChat()` calls `resetSession()` so the in-app "clear" also drops backend context. `questionId` is fresh per call.
+
+Optional payload fields documented but not currently sent: `model_id`, `custom_prompt`, `source_uri_filter`. Backend defaults apply when omitted.
 
 **Styling = Tailwind v4 with a custom theme in CSS.** `app/app.css` declares tokens via `@theme { … }` — use `lehigh-navy`, `lehigh-navy-dark`, `lehigh-mint`, `lehigh-surface`, `lehigh-brown`, `lehigh-brown-dark` as Tailwind color utilities. There is **no** `tailwind.config.*` file; theme lives entirely in CSS. Inter is preloaded in `app/root.tsx`.
 
