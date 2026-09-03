@@ -38,7 +38,7 @@ for affiliation, aff_df in df.groupby("Affiliation"):
 
     if affiliation == "Student":
         for answer, sub_df in aff_df.groupby("Engineer Interest", dropna=False):
-            if pd.isna(answer):
+            if pd.isna(answer) or str(answer).strip() == "":
                 continue
             write(f"survey_Current_Student_{slug(str(answer))}.csv", sub_df)
 
