@@ -3,6 +3,23 @@ import type { Source } from "~/types/chat";
 const API_URL = import.meta.env.VITE_CHAT_API_URL as string | undefined;
 const BOT_NAME = "le-chat";
 
+/**
+ * Give up on a question after this long. The backend is buffered (no streaming),
+ * so nothing arrives until the model finishes — a long answer has been observed
+ * to take 11-14s, hence the generous ceiling.
+ */
+export const REQUEST_TIMEOUT_MS = 60_000;
+
+/** Thrown when the request exceeded REQUEST_TIMEOUT_MS. */
+export class ChatTimeoutError extends Error {
+  constructor() {
+    super(
+      "Ross took too long to respond (over 60 seconds). Please try asking again.",
+    );
+    this.name = "ChatTimeoutError";
+  }
+}
+
 export interface ChatResponse {
   reply: string;
   sources: Source[];
@@ -62,11 +79,34 @@ Is there a specific engineering program you are interested in at Lehigh?`;
     questionId: generateQuestionId(),
   };
 
-  const res = await fetch(API_URL, {
-    method: "POST",
-    headers: { Accept: "application/json", "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
-  });
+  const controller = new AbortController();
+  let timedOut = false;
+  const timer = setTimeout(() => {
+    timedOut = true;
+    controller.abort();
+  }, REQUEST_TIMEOUT_MS);
+
+  let res: Response;
+  try {
+    res = await fetch(API_URL, {
+      method: "POST",
+      headers: { Accept: "application/json", "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+      signal: controller.signal,
+    });
+  } catch (err) {
+    // An abort surfaces as a generic AbortError, so our own flag is what
+    // distinguishes "we timed out" from any other network failure.
+    if (timedOut) throw new ChatTimeoutError();
+    throw err;
+  } finally {
+    clearTimeout(timer);
+  }
+
+  // The gateway gives up before we do, so surface its timeout the same way.
+  if (res.status === 504 || res.status === 502) {
+    throw new ChatTimeoutError();
+  }
 
   if (!res.ok) {
     throw new Error(`API error: ${res.status} ${res.statusText}`);

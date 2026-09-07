@@ -11,8 +11,8 @@ export const ChatMessage = memo(function ChatMessage({ message }: { message: Mes
   if (isUser) {
     return (
       <div className="flex justify-end mb-4">
-        <div className="max-w-[75%] px-4 py-2.5 bg-lehigh-navy text-white rounded-[8px] shadow-[0_4px_13.1px_rgba(0,0,0,0.08)]">
-          <p className="whitespace-pre-wrap break-words text-sm leading-snug text-right">
+        <div className="min-w-0 max-w-[75%] px-4 py-2.5 bg-lehigh-navy text-white rounded-[8px] shadow-[0_4px_13.1px_rgba(0,0,0,0.08)]">
+          <p className="whitespace-pre-wrap wrap-anywhere text-sm leading-snug text-right">
             {message.content}
           </p>
         </div>
@@ -25,8 +25,8 @@ export const ChatMessage = memo(function ChatMessage({ message }: { message: Mes
   return (
     <div className="flex items-start gap-2 mb-4">
       <div className="w-[29px] h-[29px] rounded-full bg-lehigh-mint shrink-0 mt-1" />
-      <div className={`max-w-[85%] px-4 py-3 ${ASSISTANT_BUBBLE}`}>
-        <div className="text-sm leading-[1.45] text-lehigh-navy">
+      <div className={`min-w-0 max-w-[85%] px-4 py-3 ${ASSISTANT_BUBBLE}`}>
+        <div className="text-sm leading-[1.45] text-lehigh-navy wrap-anywhere">
           <ReactMarkdown
             components={{
               p: ({ node, ...props }) => (
@@ -46,6 +46,21 @@ export const ChatMessage = memo(function ChatMessage({ message }: { message: Mes
               ),
               a: ({ node, ...props }) => (
                 <a className="underline" {...props} />
+              ),
+              pre: ({ node, ...props }) => (
+                <pre
+                  className="my-2 max-w-full overflow-x-auto rounded bg-lehigh-navy/5 p-2 text-xs"
+                  {...props}
+                />
+              ),
+              code: ({ node, className, ...props }) => (
+                <code
+                  className={`${className ?? ""} rounded bg-lehigh-navy/10 px-1 py-0.5 text-[0.9em] [pre_&]:bg-transparent [pre_&]:p-0`}
+                  {...props}
+                />
+              ),
+              img: ({ node, ...props }) => (
+                <img className="max-w-full h-auto" {...props} />
               ),
             }}
           >
