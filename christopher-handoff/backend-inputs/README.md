@@ -1,35 +1,25 @@
-# Backend configuration inputs
+# Backend inputs
 
-This folder contains clone-specific **inputs**, not backend source code.
+Use this folder when setting up the Ross clone.
 
 ## System prompt
 
-`SYSTEM_PROMPT.txt` is the Ross system prompt. It is plain UTF-8 because that
-is the exact form the model should receive; `.txt` here is intentional, not an
-informal source file. Its identity is Ross, while the grounding, refusal, and
-response-format rules remain unchanged from the reviewed structured prompt.
+Load `SYSTEM_PROMPT.txt` as the prompt for the Ross clone. It identifies the
+assistant as Ross and keeps the existing grounding and refusal rules.
 
-- SHA-256: verify the checked-out file with `Get-FileHash` before approving a
-  final prompt version.
-- Status: ready for Christopher's clone-level configuration and QA; not evidence
-  that it is already active in Christopher's backend clone.
-- Action: configure it through Christopher's supported clone-level mechanism,
-  then record the active configuration and hash in `../RELEASE_MANIFEST.md`.
-  If only request-level overrides exist, confirm the production design before
-  enabling the bot.
+The QA scripts use the same prompt file. Before the test run, record its hash
+in `../RELEASE_MANIFEST.md` so we know which version was used.
 
-Do not expose a final prompt as a browser-side request override in the
-production frontend. A request-level `custom_prompt` is suitable only for
-controlled test runs, not for the service's grounding or safety boundary.
+Do not send the prompt from the browser on every request. It belongs in the
+clone configuration.
 
-## Source catalog and knowledge base
+## Source links
 
-`SOURCE_CATALOG.csv` is the canonical machine-and-human-readable source list.
-It contains five verified official starting URLs that Chris can ingest. The
-legacy `knowledge_base/sample.md` is a placeholder and must not be ingested as
-Ross content.
+`SOURCE_CATALOG.csv` is the input for the ingestion job. It has five public
+Lehigh URLs. The `backend_source_uri` column is blank because those IDs only
+exist after ingestion.
 
-See `SOURCE_CATALOG.md` before adding entries. In particular,
-`canonical_url` is the public original content while `backend_source_uri` is the
-identifier Christopher's platform returns after ingestion. Do not treat them as
-interchangeable.
+Do not ingest `knowledge_base/sample.md`. It is a placeholder from the student
+repo, not Ross content.
+
+`SOURCE_CATALOG.md` explains the columns and the provenance of the five links.

@@ -18,9 +18,9 @@ legacy mirror must remain byte-identical when it is retained for reference.
 ## Editing Rules
 
 - Keep prompts in English.
-- Preserve non-negotiable grounding constraints.
+- Preserve the grounding constraints.
 - Keep restricted-topic rules explicit (visa/immigration, scholarships/funding).
-- Keep the final guidance behavior explicit ("Would you like me to also...").
+- Add a follow-up only when it helps the user move forward.
 
 ## How it is used
 
