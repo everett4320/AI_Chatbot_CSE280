@@ -9,9 +9,11 @@ origin. After that, most changes are smaller.
 Examples: layout, wording, accessibility, or chat interaction changes.
 
 1. The student team pushes the frontend change to this branch.
-2. Chris pulls the branch, rebuilds `ai-chatbot-lehigh/`, and restarts the
-   frontend host.
-3. The team checks the updated test link.
+2. If the student team hosts the test frontend, the team rebuilds and redeploys
+   `ai-chatbot-lehigh/`.
+3. If Chris hosts the frontend, Chris pulls the branch, rebuilds it, and
+   restarts the frontend host.
+4. The team checks the updated test link.
 
 The prompt and source catalog do not need to change for a frontend-only update.
 
