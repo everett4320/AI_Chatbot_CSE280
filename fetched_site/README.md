@@ -57,7 +57,8 @@ Default prompt mentioned in guidance:
 
 - Prompt and A/B testing guide: `fetched_site/PROMPT_CHANGE_AND_TESTING.md`
 - Prompt file:
-  - `fetched_site/prompts/custom_prompt.txt` (non-empty = use `custom_prompt`, empty = use backend default)
+  - `christopher-handoff/backend-inputs/SYSTEM_PROMPT.txt` (default canonical Ross prompt)
+  - `fetched_site/prompts/custom_prompt.txt` (legacy byte-identical reference mirror)
   - `fetched_site/prompts/README.md`
 - Numbered question set:
   - `fetched_site/questions/test_questions.json`

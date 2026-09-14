@@ -1,0 +1,68 @@
+name: Frontend CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+      - everett
+      - "codex/its-*"
+      - "codex/christopher-*"
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ai-chatbot-lehigh
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: ai-chatbot-lehigh/package-lock.json
+
+      - run: npm ci
+      - run: npm audit --audit-level=high
+      - run: npm run verify:deployment
+        env:
+          VITE_CHAT_API_URL: https://example.test/ross-api
+          VITE_CHAT_BOT_NAME: ross-ci
+          VITE_BASE_PATH: /ross-test/
+
+      - name: Smoke-test the subpath build
+        run: |
+          npm run start > /tmp/ross-frontend.log 2>&1 &
+          server_pid=$!
+          trap 'kill "$server_pid"' EXIT
+          for attempt in {1..20}; do
+            if curl --fail --silent --show-error http://127.0.0.1:3000/ross-test/ > /dev/null; then
+              exit 0
+            fi
+            sleep 1
+          done
+          cat /tmp/ross-frontend.log
+          exit 1
+
+      - name: Build and smoke-test the Docker image
+        run: |
+          docker build \
+            --build-arg VITE_CHAT_API_URL="https://example.test/ross-api" \
+            --build-arg VITE_CHAT_BOT_NAME="ross-ci" \
+            --build-arg VITE_BASE_PATH="/ross-test/" \
+            -t ross-frontend:ci .
+          container_id=$(docker run --rm -d -p 3001:3000 ross-frontend:ci)
+          trap 'docker stop "$container_id"' EXIT
+          for attempt in {1..20}; do
+            if curl --fail --silent --show-error http://127.0.0.1:3001/ross-test/ > /dev/null; then
+              exit 0
+            fi
+            sleep 1
+          done
+          docker logs "$container_id"
+          exit 1

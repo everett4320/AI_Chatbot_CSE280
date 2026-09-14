@@ -29,6 +29,16 @@ export const ChatMessage = memo(function ChatMessage({
                   a: ({ node: _node, ...props }) => (
                     <a {...props} target="_blank" rel="noreferrer" />
                   ),
+                  table: ({ node: _node, ...props }) => (
+                    <div
+                      className="ross-table-scroll"
+                      role="region"
+                      aria-label="Scrollable answer table"
+                      tabIndex={0}
+                    >
+                      <table {...props} />
+                    </div>
+                  ),
                 }}
               >
                 {message.content}
