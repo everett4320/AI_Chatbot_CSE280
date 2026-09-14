@@ -5,10 +5,10 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 
 ENDPOINT="${ENDPOINT:-https://8lyrpsdez5.execute-api.us-east-1.amazonaws.com/call}"
-BOT_NAME="${BOT_NAME:-le-chat}"
+BOT_NAME="${BOT_NAME:-}"
 MODEL_ID=""
 SOURCE_URI_FILTER=""
-CUSTOM_PROMPT_FILE="${CUSTOM_PROMPT_FILE:-fetched_site/prompts/custom_prompt.txt}"
+CUSTOM_PROMPT_FILE="${CUSTOM_PROMPT_FILE:-christopher-handoff/backend-inputs/SYSTEM_PROMPT.txt}"
 RESULTS_DIR="${RESULTS_DIR:-fetched_site/prompt_effectiveness_runs/single_requests}"
 QUESTION=""
 QUESTION_CODE=""
@@ -34,7 +34,7 @@ to_repo_relative() {
 usage() {
   cat <<USAGE
 Usage:
-  $0 --question "..." [--question-code Q001] [--custom-prompt-file path] [--model-id id] [--source-uri-filter csv] [--bot-name name] [--endpoint url]
+  $0 --question "..." --bot-name name [--question-code Q001] [--custom-prompt-file path] [--model-id id] [--source-uri-filter csv] [--endpoint url]
 
 Notes:
   - If custom prompt file is non-empty, request includes custom_prompt.
@@ -88,6 +88,12 @@ done
 if [[ -z "$QUESTION" ]]; then
   echo "Error: --question is required." >&2
   usage
+  exit 1
+fi
+
+BOT_NAME="$(echo "$BOT_NAME" | xargs)"
+if [[ -z "$BOT_NAME" ]]; then
+  echo "Error: --bot-name is required. Refusing to send a Ross QA request to a default bot." >&2
   exit 1
 fi
 

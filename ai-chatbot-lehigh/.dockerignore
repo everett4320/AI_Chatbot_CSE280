@@ -1,4 +1,12 @@
+.git
+.github
 .react-router
 build
 node_modules
 README.md
+.codex-tmp
+.playwright-cli
+output
+.env
+.env.*
+!.env.example

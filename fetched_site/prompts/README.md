@@ -1,6 +1,9 @@
 # Prompt File Guide
 
-Primary prompt file used by test scripts:
+Canonical Ross prompt used by default test scripts:
+- `christopher-handoff/backend-inputs/SYSTEM_PROMPT.txt`
+
+Legacy mirror retained for reference only:
 - `fetched_site/prompts/custom_prompt.txt`
 
 ## TXT vs Markdown
@@ -9,7 +12,8 @@ Primary prompt file used by test scripts:
 - File extension (`.txt` vs `.md`) does not change model capability by itself.
 - What improves quality is prompt structure (clear sections, constraints, and explicit rules).
 
-For this project, keep `custom_prompt.txt` as the active file to avoid changing existing script defaults.
+For this project, keep the canonical handoff prompt as the active file. The
+legacy mirror must remain byte-identical when it is retained for reference.
 
 ## Editing Rules
 
@@ -20,5 +24,5 @@ For this project, keep `custom_prompt.txt` as the active file to avoid changing 
 
 ## How it is used
 
-- If `custom_prompt.txt` is non-empty, batch testing sends it as `custom_prompt`.
-- If it is empty, backend default prompt is used.
+- By default, batch testing sends the canonical Ross prompt as `custom_prompt`.
+- Use `--custom-prompt-file` only for an explicitly named experiment.

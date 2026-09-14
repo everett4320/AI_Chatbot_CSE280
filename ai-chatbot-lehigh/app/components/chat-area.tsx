@@ -4,6 +4,8 @@ import { ChatMessage } from "~/components/chat-message";
 import { ChatInput } from "~/components/chat-input";
 import { TypingIndicator } from "~/components/typing-indicator";
 
+const figmaAssetBase = `${import.meta.env.BASE_URL}figma/`;
+
 interface ChatAreaProps {
   messages: Message[];
   isLoading: boolean;
@@ -30,7 +32,13 @@ export function ChatArea({
   useEffect(() => {
     const transcript = transcriptRef.current;
     if (transcript) {
-      transcript.scrollTo({ top: transcript.scrollHeight, behavior: "smooth" });
+      const reduceMotion = window.matchMedia(
+        "(prefers-reduced-motion: reduce)",
+      ).matches;
+      transcript.scrollTo({
+        top: transcript.scrollHeight,
+        behavior: reduceMotion ? "auto" : "smooth",
+      });
     }
   }, [messages, isLoading]);
 
@@ -48,11 +56,11 @@ export function ChatArea({
           onClick={handleBack}
           aria-label={hasConversation ? "Start a new conversation" : "Minimize chat"}
         >
-          <img src="/figma/collapse.png" alt="" />
+          <img src={`${figmaAssetBase}collapse.png`} alt="" />
         </button>
 
         <span className="ross-brand-mark" aria-hidden="true">
-          <img src="/figma/ross-mark.svg" alt="" />
+          <img src={`${figmaAssetBase}ross-mark.svg`} alt="" />
         </span>
         <h1>Ross</h1>
 
@@ -63,7 +71,7 @@ export function ChatArea({
           aria-label="Chat help"
           aria-expanded={showHelp}
         >
-          <img src="/figma/help.png" alt="" />
+          <img src={`${figmaAssetBase}help.png`} alt="" />
         </button>
         <button
           type="button"
@@ -71,7 +79,7 @@ export function ChatArea({
           className="ross-header__icon ross-header__close"
           aria-label="Close chat"
         >
-          <img src="/figma/close.png" alt="" />
+          <img src={`${figmaAssetBase}close.png`} alt="" />
         </button>
       </header>
 

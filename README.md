@@ -1,46 +1,67 @@
-# AI Chatbot Integration Notes
+# Ross Chatbot Frontend
 
-This repository now stores:
-- `knowledge_base/`: Markdown documents for RAG content.
-- `fetched_site/`: source files pulled from `https://dev-le-chat.cc.lehigh.edu/`.
-- `scripts/fetch_site_assets.sh`: refresh script for downloading site assets.
+This repository contains the student-maintained frontend for Ross, the Lehigh
+College of Engineering chatbot, plus reference and testing material used during
+development.
 
-## Captured site files
+## Deployment boundary
 
-From the reference site:
-- `fetched_site/index.html`
-- `fetched_site/dist/bundle-pretty.js`
+- `ai-chatbot-lehigh/` is the only deployable application in this repository.
+  It is a React Router Node SSR frontend.
+- The chatbot API, model, retrieval pipeline, knowledge store, and production
+  data are external services managed by Lehigh ITS/LTS. Their source and
+  configuration are not in this repository. Christopher's clone-level
+  configuration is requested through `christopher-handoff/`, not changed here.
+- The Node process in this repository serves the frontend and its assets. It is
+  not the ITS/LTS chatbot backend.
 
-These files are used as implementation references for building a custom frontend.
+## Repository map
 
-## API integration summary
+| Path | Purpose | Deploy with the frontend? |
+| --- | --- | --- |
+| `ai-chatbot-lehigh/` | Frontend source, build, tests, and Dockerfile | Yes |
+| `christopher-handoff/` | Human-engineer package for clone configuration, prompt, source catalog, and QA | Give to Christopher; it is not backend source code |
+| `fetched_site/` | Snapshot of the earlier test site and observed API contract | No |
+| `scripts/` | API/prompt testing and reference-site capture helpers | No |
+| `knowledge_base/` | Project research material; not a frontend runtime dependency | No |
 
-From `fetched_site/dist/bundle-pretty.js`, frontend requests are sent to:
-- `https://8lyrpsdez5.execute-api.us-east-1.amazonaws.com/call`
+## ITS test handoff
 
-Main request modes:
-- `action: "question"`
-- `action: "feedback"`
+Build and run from `ai-chatbot-lehigh/` with Node.js 22. Before building, set:
 
-See `fetched_site/README.md` for payload examples and optional parameters.
-See `fetched_site/PROMPT_CHANGE_AND_TESTING.md` for detailed prompt change/testing workflow.
-Prompt override file for testing/frontend integration:
-- `fetched_site/prompts/custom_prompt.txt` (non-empty = send `custom_prompt`, empty = backend default)
-Numbered question set for batch testing:
-- `fetched_site/questions/test_questions.json`
-- `fetched_site/questions/README.md`
-Simplest batch test command:
-- `bash scripts/run_question_suite.sh`
-  - The script prompts section selection at start (`123` = all, `13` = sections 1+3, `2` = section 2 only).
-Also works from inside `scripts/`:
-- `bash run_question_suite.sh`
-Per-run consolidated record:
-- `fetched_site/prompt_effectiveness_runs/<run_id>/run_record.json`
+- `VITE_CHAT_API_URL` to the ITS/LTS chatbot endpoint.
+- `VITE_CHAT_BOT_NAME` to Christopher's stable Ross clone identifier.
+- `VITE_BASE_PATH` to `/` for root hosting or the assigned URL prefix, such as
+  `/ross-test/`, for subpath hosting.
 
-## Refresh captured assets
+All three values are compiled into the frontend at build time. Changing any one
+requires a new build; setting them only on the running container does not
+change an existing bundle. `VITE_CHAT_BOT_NAME` must never fall back to
+`le-chat` for a Ross deployment.
 
-Run:
+The endpoint captured from the earlier reference site is:
 
-```bash
-./scripts/fetch_site_assets.sh
+```text
+https://8lyrpsdez5.execute-api.us-east-1.amazonaws.com/call
 ```
+
+It is reference evidence only, not an approved Ross deployment setting.
+Christopher must supply the actual Ross clone endpoint and bot identifier.
+
+See [`ai-chatbot-lehigh/README.md`](ai-chatbot-lehigh/README.md) for the exact
+API contract, source and Docker deployment procedures, and the test-link smoke
+checklist.
+
+## Christopher clone handoff
+
+The frontend alone cannot create a Ross knowledge base or configure a persistent
+system prompt in the shared ITS chatbot platform. The human-engineer handoff is
+in [`christopher-handoff/README.md`](christopher-handoff/README.md). It keeps
+the frontend, Ross prompt, source catalog, and validation materials separate
+and explicitly marks the remaining clone-configuration and ingestion work.
+
+## Reference documents
+
+- `fetched_site/README.md` records the observed upstream API behavior.
+- `fetched_site/PROMPT_CHANGE_AND_TESTING.md` documents prompt and question-suite
+  testing. It does not expose or configure the ITS/LTS backend.

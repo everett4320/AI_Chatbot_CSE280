@@ -11,6 +11,8 @@ interface ChatInputProps {
   isLoading: boolean;
 }
 
+const paperPlaneUrl = `${import.meta.env.BASE_URL}figma/paper-plane.png`;
+
 export function ChatInput({ onSend, isLoading }: ChatInputProps) {
   const [input, setInput] = useState("");
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -24,6 +26,11 @@ export function ChatInput({ onSend, isLoading }: ChatInputProps) {
   }, [input]);
 
   useEffect(() => {
+    const supportsDesktopFocus = window.matchMedia(
+      "(hover: hover) and (pointer: fine)",
+    ).matches;
+    if (!supportsDesktopFocus) return;
+
     const timer = window.setTimeout(() => textareaRef.current?.focus(), 240);
     return () => window.clearTimeout(timer);
   }, []);
@@ -63,7 +70,7 @@ export function ChatInput({ onSend, isLoading }: ChatInputProps) {
           className="ross-composer__send"
           aria-label="Send message"
         >
-          <img src="/figma/paper-plane.png" alt="" />
+          <img src={paperPlaneUrl} alt="" />
         </button>
       </form>
     </div>

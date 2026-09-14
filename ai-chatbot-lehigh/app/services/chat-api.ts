@@ -6,7 +6,23 @@ import type {
 } from "~/types/chat";
 
 const API_URL = import.meta.env.VITE_CHAT_API_URL as string | undefined;
+const CONFIGURED_BOT_NAME = (
+  import.meta.env.VITE_CHAT_BOT_NAME as string | undefined
+)?.trim();
 const SESSION_STORAGE_KEY = "ross-chat-session-id";
+const CONFIGURATION_ERROR =
+  "The chat service is not configured for this deployment. Please contact the site administrator.";
+const BOT_NAME_CONFIGURATION_ERROR =
+  "The chatbot identity is not configured for this deployment. Please contact the site administrator.";
+
+export const REQUEST_TIMEOUT_MS = 60_000;
+
+export class ChatTimeoutError extends Error {
+  constructor() {
+    super("The chat service did not respond in time. Please try again.");
+    this.name = "ChatTimeoutError";
+  }
+}
 
 export interface LehighApiResponse {
   Response?: string;
@@ -19,7 +35,7 @@ export interface LehighApiResponse {
 
 export interface QuestionPayload {
   action: "question";
-  bot_name: "le-chat";
+  bot_name: string;
   httpMethod: "POST";
   userMessage: string;
   sessionId: string;
@@ -28,7 +44,7 @@ export interface QuestionPayload {
 
 export interface FeedbackPayload {
   action: "feedback";
-  bot_name: "le-chat";
+  bot_name: string;
   sessionId: string;
   questionId: string;
   feedback: "Good" | "Bad";
@@ -54,6 +70,12 @@ function getSessionId() {
   return sessionId;
 }
 
+export function requireBotName(botName: string | undefined) {
+  const normalizedBotName = botName?.trim();
+  if (normalizedBotName) return normalizedBotName;
+  throw new Error(BOT_NAME_CONFIGURATION_ERROR);
+}
+
 function normalizeSources(sources: LehighApiResponse["Sources"]): Source[] {
   if (!Array.isArray(sources)) return [];
 
@@ -72,10 +94,11 @@ export function buildQuestionPayload(
   userMessage: string,
   sessionId: string,
   questionId: string,
+  botName: string,
 ): QuestionPayload {
   return {
     action: "question",
-    bot_name: "le-chat",
+    bot_name: botName,
     httpMethod: "POST",
     userMessage,
     sessionId,
@@ -87,10 +110,11 @@ export function buildFeedbackPayload(
   sessionId: string,
   questionId: string,
   rating: FeedbackRating,
+  botName: string,
 ): FeedbackPayload {
   return {
     action: "feedback",
-    bot_name: "le-chat",
+    bot_name: botName,
     sessionId,
     questionId,
     feedback: rating === "up" ? "Good" : "Bad",
@@ -206,6 +230,55 @@ function wait(milliseconds: number) {
   return new Promise((resolve) => window.setTimeout(resolve, milliseconds));
 }
 
+export async function postToApi(
+  apiUrl: string,
+  payload: QuestionPayload | FeedbackPayload,
+  requestLabel: "API" | "Feedback API",
+  options: { parseJson: boolean; timeoutMs?: number },
+): Promise<LehighApiResponse | undefined> {
+  const timeoutMs = options.timeoutMs ?? REQUEST_TIMEOUT_MS;
+
+  const controller = new AbortController();
+  const timeoutId = globalThis.setTimeout(() => controller.abort(), timeoutMs);
+
+  try {
+    const response = await fetch(apiUrl, {
+      method: "POST",
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload),
+      signal: controller.signal,
+    });
+
+    if (response.status === 504) {
+      throw new ChatTimeoutError();
+    }
+
+    if (!response.ok) {
+      throw new Error(
+        `${requestLabel} error: ${response.status} ${response.statusText}`,
+      );
+    }
+
+    if (options.parseJson) {
+      return (await response.json()) as LehighApiResponse;
+    }
+
+    await response.arrayBuffer();
+    return undefined;
+  } catch (error) {
+    if (error instanceof ChatTimeoutError) throw error;
+    if (error instanceof Error && error.name === "AbortError") {
+      throw new ChatTimeoutError();
+    }
+    throw error;
+  } finally {
+    globalThis.clearTimeout(timeoutId);
+  }
+}
+
 export async function sendMessage(messages: Message[]): Promise<ChatReply> {
   const latestUserMessage = [...messages]
     .reverse()
@@ -217,23 +290,24 @@ export async function sendMessage(messages: Message[]): Promise<ChatReply> {
   const questionId = createId("question");
 
   if (!API_URL) {
+    if (import.meta.env.PROD) throw new Error(CONFIGURATION_ERROR);
     await wait(900);
     return createDemoReply(messages, sessionId, questionId);
   }
 
-  const res = await fetch(API_URL, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(
-      buildQuestionPayload(latestUserMessage.content, sessionId, questionId),
+  const data = await postToApi(
+    API_URL,
+    buildQuestionPayload(
+      latestUserMessage.content,
+      sessionId,
+      questionId,
+      requireBotName(CONFIGURED_BOT_NAME),
     ),
-  });
+    "API",
+    { parseJson: true },
+  );
 
-  if (!res.ok) {
-    throw new Error(`API error: ${res.status} ${res.statusText}`);
-  }
-
-  const data = (await res.json()) as LehighApiResponse;
+  if (!data) throw new Error("The assistant returned an empty response.");
   return parseChatReply(data, { sessionId, questionId });
 }
 
@@ -242,19 +316,22 @@ export async function sendFeedback(
   rating: FeedbackRating,
 ): Promise<void> {
   if (!API_URL) {
+    if (import.meta.env.PROD) throw new Error(CONFIGURATION_ERROR);
     await wait(180);
     return;
   }
 
-  const res = await fetch(API_URL, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(buildFeedbackPayload(getSessionId(), questionId, rating)),
-  });
-
-  if (!res.ok) {
-    throw new Error(`Feedback API error: ${res.status} ${res.statusText}`);
-  }
+  await postToApi(
+    API_URL,
+    buildFeedbackPayload(
+      getSessionId(),
+      questionId,
+      rating,
+      requireBotName(CONFIGURED_BOT_NAME),
+    ),
+    "Feedback API",
+    { parseJson: false },
+  );
 }
 
 export function resetChatSession() {

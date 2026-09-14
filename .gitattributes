@@ -1,0 +1,2 @@
+# Bash QA scripts must remain runnable on Linux/ITS hosts.
+*.sh text eol=lf
