@@ -60,6 +60,9 @@ The exact request and response format is in `backend-inputs/API_CONTRACT.md`.
 The build instructions are in `frontend/README.md` and
 `ai-chatbot-lehigh/README.md`.
 
+For routine frontend, prompt, and source updates after the first setup, see
+`UPDATES.md`.
+
 ## Notes on the source list
 
 Two Rossin academics URLs came from the existing frontend source references.
@@ -76,4 +79,5 @@ ai-chatbot-lehigh/                         frontend source
 christopher-handoff/backend-inputs/        prompt, source catalog, API contract
 christopher-handoff/validation/            test questions and acceptance list
 christopher-handoff/RELEASE_MANIFEST.md    deployment record
+christopher-handoff/UPDATES.md             later update workflow
 ```
