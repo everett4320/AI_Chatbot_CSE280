@@ -393,7 +393,7 @@ while IFS=$'\t' read -r qid qsection qtext; do
   ran=$((ran + 1))
   echo "[$qid][Section $qsection] $qtext"
 
-  cmd=("${SCRIPT_DIR}/test_prompt_request.sh" --question "$qtext" --question-code "$qid" --bot-name "$EFFECTIVE_BOT_NAME" --endpoint "$EFFECTIVE_ENDPOINT")
+  cmd=(bash "${SCRIPT_DIR}/test_prompt_request.sh" --question "$qtext" --question-code "$qid" --bot-name "$EFFECTIVE_BOT_NAME" --endpoint "$EFFECTIVE_ENDPOINT")
   if [[ -n "$CUSTOM_PROMPT_FILE_ABS" ]]; then
     cmd+=(--custom-prompt-file "$CUSTOM_PROMPT_FILE_ABS")
   fi

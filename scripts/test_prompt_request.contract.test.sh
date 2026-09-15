@@ -66,24 +66,30 @@ done
 ENDPOINT="http://127.0.0.1:$(cat "$PORT_FILE")"
 QUESTION="What engineering programs are available?"
 
-if "$REQUEST_SCRIPT" --question "$QUESTION" --bot-name ross-test --results-dir "$TMP_DIR/no-endpoint" >"$TMP_DIR/no-endpoint.out" 2>&1; then
+if RESULTS_DIR="$TMP_DIR/no-endpoint" bash "$REQUEST_SCRIPT" --question "$QUESTION" --bot-name ross-test >"$TMP_DIR/no-endpoint.out" 2>&1; then
   echo "request script accepted a missing endpoint" >&2
   exit 1
 fi
-grep -Fq -- "--endpoint or ROSS_API_ENDPOINT is required" "$TMP_DIR/no-endpoint.out"
+if ! grep -Fq -- "--endpoint or ROSS_API_ENDPOINT is required" "$TMP_DIR/no-endpoint.out"; then
+  cat "$TMP_DIR/no-endpoint.out" >&2
+  exit 1
+fi
 
-request_output="$("$REQUEST_SCRIPT" --question "$QUESTION" --bot-name ross-test --endpoint "$ENDPOINT/ok" --results-dir "$TMP_DIR/request-ok")"
+if ! request_output="$(RESULTS_DIR="$TMP_DIR/request-ok" bash "$REQUEST_SCRIPT" --question "$QUESTION" --bot-name ross-test --endpoint "$ENDPOINT/ok" 2>&1)"; then
+  printf '%s\n' "$request_output" >&2
+  exit 1
+fi
 grep -Fq "HTTP status:   200" <<<"$request_output"
 request_payload="$(find "$TMP_DIR/request-ok" -name '*.payload.json' -print -quit)"
 jq -e 'has("custom_prompt") | not' "$request_payload" >/dev/null
 
-if "$REQUEST_SCRIPT" --question "$QUESTION" --bot-name ross-test --endpoint "$ENDPOINT/failure" --results-dir "$TMP_DIR/request-failure" >"$TMP_DIR/request-failure.out" 2>&1; then
+if RESULTS_DIR="$TMP_DIR/request-failure" bash "$REQUEST_SCRIPT" --question "$QUESTION" --bot-name ross-test --endpoint "$ENDPOINT/failure" >"$TMP_DIR/request-failure.out" 2>&1; then
   echo "request script accepted an HTTP 502 response" >&2
   exit 1
 fi
 grep -Fq "HTTP status:   502" "$TMP_DIR/request-failure.out"
 
-if "$REQUEST_SCRIPT" --question "$QUESTION" --bot-name ross-test --endpoint "$ENDPOINT/wrong-id" --results-dir "$TMP_DIR/request-wrong-id" >"$TMP_DIR/request-wrong-id.out" 2>&1; then
+if RESULTS_DIR="$TMP_DIR/request-wrong-id" bash "$REQUEST_SCRIPT" --question "$QUESTION" --bot-name ross-test --endpoint "$ENDPOINT/wrong-id" >"$TMP_DIR/request-wrong-id.out" 2>&1; then
   echo "request script accepted a response with a mismatched question ID" >&2
   exit 1
 fi
@@ -96,7 +102,7 @@ cat > "$TMP_DIR/questions.json" <<'JSON'
 }
 JSON
 
-"$SUITE_SCRIPT"   --questions-file "$TMP_DIR/questions.json"   --runs-dir "$TMP_DIR/suite-ok"   --bot-name ross-test   --endpoint "$ENDPOINT/ok"   --sections 1 >"$TMP_DIR/suite-ok.out"
+bash "$SUITE_SCRIPT"   --questions-file "$TMP_DIR/questions.json"   --runs-dir "$TMP_DIR/suite-ok"   --bot-name ross-test   --endpoint "$ENDPOINT/ok"   --sections 1 >"$TMP_DIR/suite-ok.out"
 
 suite_record="$(find "$TMP_DIR/suite-ok" -name run_record.json -print -quit)"
 jq -e '
@@ -109,7 +115,7 @@ jq -e '
 suite_payload="$(find "$TMP_DIR/suite-ok" -name '*.payload.json' -print -quit)"
 jq -e 'has("custom_prompt") | not' "$suite_payload" >/dev/null
 
-if "$SUITE_SCRIPT"   --questions-file "$TMP_DIR/questions.json"   --runs-dir "$TMP_DIR/suite-failure"   --bot-name ross-test   --endpoint "$ENDPOINT/failure"   --sections 1 >"$TMP_DIR/suite-failure.out" 2>&1; then
+if bash "$SUITE_SCRIPT"   --questions-file "$TMP_DIR/questions.json"   --runs-dir "$TMP_DIR/suite-failure"   --bot-name ross-test   --endpoint "$ENDPOINT/failure"   --sections 1 >"$TMP_DIR/suite-failure.out" 2>&1; then
   echo "suite accepted an HTTP 502 response" >&2
   exit 1
 fi
@@ -120,7 +126,7 @@ jq -e '
   and .results[0].http_status == "502"
 ' "$failure_record" >/dev/null
 
-if "$FETCH_SCRIPT" >"$TMP_DIR/fetch-no-args.out" 2>&1; then
+if bash "$FETCH_SCRIPT" >"$TMP_DIR/fetch-no-args.out" 2>&1; then
   echo "legacy fetch utility accepted implicit source and output defaults" >&2
   exit 1
 fi
