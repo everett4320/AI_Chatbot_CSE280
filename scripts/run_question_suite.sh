@@ -35,14 +35,26 @@ to_repo_relative() {
   fi
 }
 
+normalize_endpoint_for_comparison() {
+  local value="$1"
+  value="${value%%\?*}"
+  value="${value%%\#*}"
+  while [[ "$value" == */ ]]; do
+    value="${value%/}"
+  done
+  printf '%s\n' "$value" | tr '[:upper:]' '[:lower:]'
+}
+
 validate_endpoint() {
   local endpoint="$1"
+  local normalized_endpoint
 
   if [[ -z "$endpoint" ]]; then
     echo "Error: --endpoint or ROSS_API_ENDPOINT is required for a Ross QA suite." >&2
     exit 1
   fi
-  if [[ "$endpoint" == "$LEGACY_SHARED_ENDPOINT" ]]; then
+  normalized_endpoint="$(normalize_endpoint_for_comparison "$endpoint")"
+  if [[ "$normalized_endpoint" == "$LEGACY_SHARED_ENDPOINT" ]]; then
     echo "Error: the historical shared endpoint is not a Ross endpoint. Supply Christopher's assigned endpoint." >&2
     exit 1
   fi

@@ -75,6 +75,16 @@ if ! grep -Fq -- "--endpoint or ROSS_API_ENDPOINT is required" "$TMP_DIR/no-endp
   exit 1
 fi
 
+for legacy_variant in \
+  "https://8lyrpsdez5.execute-api.us-east-1.amazonaws.com/call/" \
+  "https://8lyrpsdez5.execute-api.us-east-1.amazonaws.com/call?ignored=1"; do
+  if RESULTS_DIR="$TMP_DIR/legacy-endpoint" bash "$REQUEST_SCRIPT" --question "$QUESTION" --bot-name ross-test --endpoint "$legacy_variant" >"$TMP_DIR/legacy-endpoint.out" 2>&1; then
+    echo "request script accepted a historical endpoint variant" >&2
+    exit 1
+  fi
+  grep -Fq "historical shared endpoint" "$TMP_DIR/legacy-endpoint.out"
+done
+
 if ! request_output="$(RESULTS_DIR="$TMP_DIR/request-ok" bash "$REQUEST_SCRIPT" --question "$QUESTION" --bot-name ross-test --endpoint "$ENDPOINT/ok" 2>&1)"; then
   printf '%s\n' "$request_output" >&2
   exit 1
@@ -101,6 +111,17 @@ cat > "$TMP_DIR/questions.json" <<'JSON'
   "questions": [{"id": "Q001", "section": "1", "text": "What engineering programs are available?", "enabled": true}]
 }
 JSON
+
+if bash "$SUITE_SCRIPT" \
+  --questions-file "$TMP_DIR/questions.json" \
+  --runs-dir "$TMP_DIR/legacy-suite" \
+  --bot-name ross-test \
+  --endpoint "https://8lyrpsdez5.execute-api.us-east-1.amazonaws.com/call/?ignored=1" \
+  --sections 1 >"$TMP_DIR/legacy-suite.out" 2>&1; then
+  echo "suite accepted a historical endpoint variant" >&2
+  exit 1
+fi
+grep -Fq "historical shared endpoint" "$TMP_DIR/legacy-suite.out"
 
 bash "$SUITE_SCRIPT"   --questions-file "$TMP_DIR/questions.json"   --runs-dir "$TMP_DIR/suite-ok"   --bot-name ross-test   --endpoint "$ENDPOINT/ok"   --sections 1 >"$TMP_DIR/suite-ok.out"
 

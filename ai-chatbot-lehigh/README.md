@@ -80,7 +80,7 @@ Feedback uses:
 ```
 
 The frontend expects a response with `Response`, optional `Sources`, `sessionId`,
-and `questionId`. It also accepts `reply` for compatibility with older services.
+and `questionId`. A response that only uses a retired legacy field is rejected.
 
 ## Test link check
 
