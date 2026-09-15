@@ -35,6 +35,10 @@ Request payload (only the latest user turn — the backend tracks history server
 ```
 Response: `{ Response: string, Sources: [{title, url}], sessionId, questionId, error? }`. Note the capital `R`/`S`. Even on HTTP 200, check `data.error` and throw if present.
 
+**The backend is buffered, not streaming.** It is API Gateway REST (`x-amz-apigw-id` in response headers), which has no chunked/SSE mode — probes with `Accept: text/event-stream` and with `"stream": true` in the payload both returned a single chunk with `content-length` set. Nothing arrives until the model finishes; a ~400-word answer takes 11-14s. Do not attempt token streaming in the frontend; it would require LTS to move the endpoint to a Lambda Function URL with `RESPONSE_STREAM` invoke mode (and to add `Accept` to `access-control-allow-headers`, which the current CORS preflight omits).
+
+**Timeouts.** `sendMessage` aborts after `REQUEST_TIMEOUT_MS` (60s) via `AbortController` and throws `ChatTimeoutError`; gateway `502`/`504` are mapped to the same error. `useChat` surfaces `error` and `ChatArea` renders it in the `role="alert"` banner above the input.
+
 `sessionId` is generated lazily by `chat-api.ts` and held in a module-level variable (no localStorage — refresh wipes the conversation, matching the no-persistence semantics below). `useChat.clearChat()` calls `resetSession()` so the in-app "clear" also drops backend context. `questionId` is fresh per call.
 
 Optional payload fields documented but not currently sent: `model_id`, `custom_prompt`, `source_uri_filter`. Backend defaults apply when omitted.
