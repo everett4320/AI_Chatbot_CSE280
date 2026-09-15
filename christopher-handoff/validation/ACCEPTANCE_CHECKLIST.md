@@ -26,14 +26,19 @@
 
 - [ ] The HTTPS test URL and direct subpath reload work.
 - [ ] Browser assets load with no CORS or 404 errors.
-- [ ] A question reaches the Ross clone, not `le-chat` or another bot.
+- [ ] A question reaches the assigned Ross clone, not another bot; retain
+      backend routing evidence or an approved clone-identity response field.
 - [ ] A normal answer renders Markdown and source links.
 - [ ] Good and Bad feedback reach the expected clone.
 - [ ] Clearing the chat starts a new backend session.
 
 ## Behavior QA
 
-- [ ] Run `validation/test_questions.json` and retain the resulting test record.
+- [ ] Run `validation/test_questions.json` with the assigned endpoint and bot
+      slug, then retain the resulting transport record.
+- [ ] Manually score clone identity, grounding, sources, and refusal quality;
+      the suite's automated result is transport-only and is not acceptance by
+      itself.
 - [ ] Program questions are grounded in the ingested Ross sources.
 - [ ] Unsupported questions return the intended evidence-limited response.
 - [ ] Visa/immigration and funding questions are handled within the prompt's

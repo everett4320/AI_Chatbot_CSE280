@@ -1,6 +1,6 @@
 # Prompt File Guide
 
-Canonical Ross prompt used by default test scripts:
+Canonical Ross prompt used for clone configuration and explicit experiments:
 - `christopher-handoff/backend-inputs/SYSTEM_PROMPT.txt`
 
 Legacy mirror retained for reference only:
@@ -24,5 +24,6 @@ legacy mirror must remain byte-identical when it is retained for reference.
 
 ## How it is used
 
-- By default, batch testing sends the canonical Ross prompt as `custom_prompt`.
-- Use `--custom-prompt-file` only for an explicitly named experiment.
+- By default, batch testing exercises the clone's configured backend prompt.
+- Use `--custom-prompt-file` only for an explicitly named request-scoped experiment.
+- A custom-prompt result does not prove persistent clone configuration.

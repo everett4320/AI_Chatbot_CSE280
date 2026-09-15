@@ -59,7 +59,9 @@ Minimal example:
 Default interactive mode:
 
 ```bash
-bash scripts/run_question_suite.sh
+bash scripts/run_question_suite.sh \
+  --bot-name "<Christopher-assigned-Ross-bot-name>" \
+  --endpoint "<Christopher-assigned-Ross-endpoint>"
 ```
 
 The script prompts:
@@ -70,13 +72,19 @@ The script prompts:
 Non-interactive section selection:
 
 ```bash
-bash scripts/run_question_suite.sh --sections 13
+bash scripts/run_question_suite.sh \
+  --bot-name "<Christopher-assigned-Ross-bot-name>" \
+  --endpoint "<Christopher-assigned-Ross-endpoint>" \
+  --sections 13
 ```
 
 Run only specific question IDs (applies after section filtering):
 
 ```bash
-bash scripts/run_question_suite.sh --sections 13 --only-codes "Q001,Q017,Q024"
+bash scripts/run_question_suite.sh \
+  --bot-name "<Christopher-assigned-Ross-bot-name>" \
+  --endpoint "<Christopher-assigned-Ross-endpoint>" \
+  --sections 13 --only-codes "Q001,Q017,Q024"
 ```
 
 ## Maintenance rules

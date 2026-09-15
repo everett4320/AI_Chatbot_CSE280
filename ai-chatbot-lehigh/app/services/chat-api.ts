@@ -9,11 +9,12 @@ const API_URL = import.meta.env.VITE_CHAT_API_URL as string | undefined;
 const CONFIGURED_BOT_NAME = (
   import.meta.env.VITE_CHAT_BOT_NAME as string | undefined
 )?.trim();
-const SESSION_STORAGE_KEY = "ross-chat-session-id";
+const SESSION_STORAGE_KEY_PREFIX = "ross-chat-session-id";
 const CONFIGURATION_ERROR =
   "The chat service is not configured for this deployment. Please contact the site administrator.";
 const BOT_NAME_CONFIGURATION_ERROR =
   "The chatbot identity is not configured for this deployment. Please contact the site administrator.";
+let sessionEpoch = 0;
 
 export const REQUEST_TIMEOUT_MS = 60_000;
 
@@ -29,7 +30,6 @@ export interface LehighApiResponse {
   Sources?: Array<{ title?: string; url?: string }>;
   sessionId?: string;
   questionId?: string;
-  reply?: string;
   error?: string;
 }
 
@@ -59,15 +59,37 @@ function createId(prefix: string) {
   return `${prefix}-${value}`;
 }
 
-function getSessionId() {
+export function getSessionStorageKey(
+  apiUrl = API_URL,
+  botName = CONFIGURED_BOT_NAME,
+) {
+  const scope = `${apiUrl?.trim() || "demo"}|${botName?.trim() || "unconfigured"}`;
+  return `${SESSION_STORAGE_KEY_PREFIX}:${encodeURIComponent(scope)}`;
+}
+
+export function getSessionId() {
   if (typeof window === "undefined") return createId("session");
 
-  const existing = window.sessionStorage.getItem(SESSION_STORAGE_KEY);
+  const storageKey = getSessionStorageKey();
+  const existing = window.sessionStorage.getItem(storageKey);
   if (existing) return existing;
 
   const sessionId = createId("session");
-  window.sessionStorage.setItem(SESSION_STORAGE_KEY, sessionId);
+  window.sessionStorage.setItem(storageKey, sessionId);
   return sessionId;
+}
+
+export function persistSessionId(sessionId: string, expectedEpoch = sessionEpoch) {
+  const normalizedSessionId = sessionId.trim();
+  if (
+    !normalizedSessionId ||
+    expectedEpoch !== sessionEpoch ||
+    typeof window === "undefined"
+  ) {
+    return;
+  }
+
+  window.sessionStorage.setItem(getSessionStorageKey(), normalizedSessionId);
 }
 
 export function requireBotName(botName: string | undefined) {
@@ -127,7 +149,7 @@ export function parseChatReply(
 ): ChatReply {
   if (data.error) throw new Error(data.error);
 
-  const content = data.Response ?? data.reply;
+  const content = data.Response;
   if (!content) throw new Error("The assistant returned an empty response.");
 
   return {
@@ -287,6 +309,7 @@ export async function sendMessage(messages: Message[]): Promise<ChatReply> {
   if (!latestUserMessage) throw new Error("No question was provided.");
 
   const sessionId = getSessionId();
+  const requestSessionEpoch = sessionEpoch;
   const questionId = createId("question");
 
   if (!API_URL) {
@@ -308,12 +331,15 @@ export async function sendMessage(messages: Message[]): Promise<ChatReply> {
   );
 
   if (!data) throw new Error("The assistant returned an empty response.");
-  return parseChatReply(data, { sessionId, questionId });
+  const reply = parseChatReply(data, { sessionId, questionId });
+  persistSessionId(reply.sessionId, requestSessionEpoch);
+  return reply;
 }
 
 export async function sendFeedback(
   questionId: string,
   rating: FeedbackRating,
+  sessionId?: string,
 ): Promise<void> {
   if (!API_URL) {
     if (import.meta.env.PROD) throw new Error(CONFIGURATION_ERROR);
@@ -324,7 +350,7 @@ export async function sendFeedback(
   await postToApi(
     API_URL,
     buildFeedbackPayload(
-      getSessionId(),
+      sessionId?.trim() || getSessionId(),
       questionId,
       rating,
       requireBotName(CONFIGURED_BOT_NAME),
@@ -335,7 +361,8 @@ export async function sendFeedback(
 }
 
 export function resetChatSession() {
+  sessionEpoch += 1;
   if (typeof window !== "undefined") {
-    window.sessionStorage.removeItem(SESSION_STORAGE_KEY);
+    window.sessionStorage.removeItem(getSessionStorageKey());
   }
 }

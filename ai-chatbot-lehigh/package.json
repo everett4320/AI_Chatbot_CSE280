@@ -6,7 +6,7 @@
     "build": "react-router build",
     "dev": "react-router dev",
     "start": "react-router-serve ./build/server/index.js",
-    "test:contract": "vitest run --exclude \"output/**\" app/services/chat-api.contract.test.ts",
+    "test:contract": "node scripts/verify-ross-contract.mjs && vitest run --exclude \"output/**\"",
     "typecheck": "react-router typegen && tsc",
     "verify": "npm run typecheck && npm run test:contract && npm run build",
     "verify:deployment": "node scripts/verify-deployment-config.mjs && npm run verify"
