@@ -1,23 +1,42 @@
-import pandas as pd
 import os
 import re
+from pathlib import Path
 
-INPUT_FILE = "AI Chatbot Official Survey_August 27, 2026_13.30.csv"
-OUTPUT_DIR = "split_output"
+import pandas as pd
 
-df = pd.read_csv(INPUT_FILE, skiprows=[1, 2])
-os.makedirs(OUTPUT_DIR, exist_ok=True)
+input_file = os.environ.get("SURVEY_INPUT_FILE")
+output_dir = Path(os.environ.get("SURVEY_OUTPUT_DIR", "split_output"))
+
+if not input_file:
+    raise SystemExit(
+        "Set SURVEY_INPUT_FILE to an approved local survey CSV. "
+        "Survey exports are intentionally not versioned."
+    )
+
+input_path = Path(input_file)
+if not input_path.is_file():
+    raise SystemExit(f"Survey input does not exist: {input_path}")
+
+df = pd.read_csv(input_path)
+required_columns = {"Affiliation", "Engineer Interest", "C1-1"}
+missing_columns = sorted(required_columns.difference(df.columns))
+if missing_columns:
+    raise SystemExit(
+        "Survey input is missing required columns: " + ", ".join(missing_columns)
+    )
+
+output_dir.mkdir(parents=True, exist_ok=True)
 
 
-def slug(s: str) -> str:
-    s = re.sub(r"[^\w]+", "_", s.strip())
-    return s.strip("_")
+def slug(value: str) -> str:
+    value = re.sub(r"[^\w]+", "_", value.strip())
+    return value.strip("_")
 
 
 def write(name: str, rows: pd.DataFrame) -> None:
     if rows.empty:
         return
-    path = os.path.join(OUTPUT_DIR, name)
+    path = output_dir / name
     rows.to_csv(path, index=False)
     print(f"{name}: {len(rows)} rows")
 
@@ -29,12 +48,13 @@ C1_LABELS = {
     "No connection to the College of Engineering": "No_connection",
 }
 
-# Drop partial responses: rows with no Affiliation at all.
-df = df[df["Affiliation"].notna() & (df["Affiliation"].str.strip() != "")]
+affiliation_values = df["Affiliation"].astype("string")
+df = df[affiliation_values.notna() & affiliation_values.str.strip().ne("")]
 
+print(f"Writing local survey splits to: {output_dir}")
 for affiliation, aff_df in df.groupby("Affiliation"):
     print(f"Processing affiliation group: {affiliation!r} ({len(aff_df)} rows)")
-    aff_slug = slug(str(affiliation))
+    affiliation_slug = slug(str(affiliation))
 
     if affiliation == "Student":
         for answer, sub_df in aff_df.groupby("Engineer Interest", dropna=False):
@@ -44,18 +64,22 @@ for affiliation, aff_df in df.groupby("Affiliation"):
 
     elif affiliation == "Prospective Student":
         for answer, sub_df in aff_df.groupby("Engineer Interest", dropna=False):
-            if pd.isna(answer):
+            if pd.isna(answer) or str(answer).strip() == "":
                 continue
             write(f"survey_Prospective_Student_{slug(str(answer))}.csv", sub_df)
 
     elif affiliation == "Faculty/Staff":
         for option, label in C1_LABELS.items():
-            sub_df = aff_df[aff_df["C1-1"] == option]
-            write(f"survey_Faculty_Staff_C1_{label}.csv", sub_df)
-        other_df = aff_df[aff_df["C1-1"] == "Other"]
-        write("survey_Faculty_Staff_C1_Other.csv", other_df)
+            write(
+                f"survey_Faculty_Staff_C1_{label}.csv",
+                aff_df[aff_df["C1-1"] == option],
+            )
+        write(
+            "survey_Faculty_Staff_C1_Other.csv",
+            aff_df[aff_df["C1-1"] == "Other"],
+        )
 
-    else:  # Alumni, Other
-        write(f"survey_{aff_slug}.csv", aff_df)
+    else:
+        write(f"survey_{affiliation_slug}.csv", aff_df)
 
-print(f"\nTotal rows in source (after dropping blank-Affiliation partials): {len(df)}")
+print(f"Total rows after dropping blank-Affiliation partials: {len(df)}")
