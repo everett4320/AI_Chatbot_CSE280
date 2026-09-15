@@ -1,11 +1,17 @@
 import { memo } from "react";
 import ReactMarkdown from "react-markdown";
-import type { Message } from "~/types/chat";
+import remarkGfm from "remark-gfm";
+import type { FeedbackRating, Message } from "~/types/chat";
 
-export const ASSISTANT_BUBBLE =
-  "bg-lehigh-mint text-lehigh-navy rounded-[8px] shadow-[0_4px_13.1px_rgba(0,0,0,0.08)]";
+interface ChatMessageProps {
+  message: Message;
+  onFeedback: (messageId: string, rating: FeedbackRating) => void;
+}
 
-export const ChatMessage = memo(function ChatMessage({ message }: { message: Message }) {
+export const ChatMessage = memo(function ChatMessage({
+  message,
+  onFeedback,
+}: ChatMessageProps) {
   const isUser = message.role === "user";
 
   if (isUser) {
@@ -23,55 +29,75 @@ export const ChatMessage = memo(function ChatMessage({ message }: { message: Mes
   const sources = message.sources ?? [];
 
   return (
-    <div className="flex items-start gap-2 mb-4">
-      <div className="w-[29px] h-[29px] rounded-full bg-lehigh-mint shrink-0 mt-1" />
-      <div className={`max-w-[85%] px-4 py-3 ${ASSISTANT_BUBBLE}`}>
-        <div className="text-sm leading-[1.45] text-lehigh-navy">
-          <ReactMarkdown
-            components={{
-              p: ({ node, ...props }) => (
-                <p className="mb-2 last:mb-0" {...props} />
-              ),
-              strong: ({ node, ...props }) => (
-                <strong className="font-bold" {...props} />
-              ),
-              ul: ({ node, ...props }) => (
-                <ul className="list-disc pl-5 my-1.5" {...props} />
-              ),
-              ol: ({ node, ...props }) => (
-                <ol className="list-decimal pl-5 my-1.5" {...props} />
-              ),
-              li: ({ node, ...props }) => (
-                <li className="mb-0.5" {...props} />
-              ),
-              a: ({ node, ...props }) => (
-                <a className="underline" {...props} />
-              ),
-            }}
-          >
-            {message.content}
-          </ReactMarkdown>
-          {sources.length > 0 && (
-            <div className="mt-3 pt-2 border-t border-lehigh-navy/15 text-xs">
-              <p className="font-semibold mb-1">Sources</p>
-              <ul className="list-disc pl-5 space-y-0.5">
-                {sources.map((s, i) => (
-                  <li key={i}>
-                    <a
-                      href={s.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="underline"
+    <article className={`ross-message ross-message--${message.role}`}>
+      {!isUser && <span className="ross-message__avatar" aria-hidden="true" />}
+      <div className="ross-message__bubble">
+        {isUser ? (
+          <p>{message.content}</p>
+        ) : (
+          <>
+            <div className="ross-markdown">
+              <ReactMarkdown
+                remarkPlugins={[remarkGfm]}
+                components={{
+                  a: ({ node: _node, ...props }) => (
+                    <a {...props} target="_blank" rel="noreferrer" />
+                  ),
+                  table: ({ node: _node, ...props }) => (
+                    <div
+                      className="ross-table-scroll"
+                      role="region"
+                      aria-label="Scrollable answer table"
+                      tabIndex={0}
                     >
-                      {s.title}
-                    </a>
-                  </li>
-                ))}
-              </ul>
+                      <table {...props} />
+                    </div>
+                  ),
+                }}
+              >
+                {message.content}
+              </ReactMarkdown>
             </div>
-          )}
-        </div>
+            {!!message.sources?.length && (
+              <details className="ross-sources">
+                <summary>Sources ({message.sources.length})</summary>
+                <ol>
+                  {message.sources.map((source, index) => (
+                    <li key={`${source.url}-${source.title}-${index}`}>
+                      <a href={source.url} target="_blank" rel="noreferrer">
+                        {source.title}
+                      </a>
+                    </li>
+                  ))}
+                </ol>
+              </details>
+            )}
+            <div className="ross-feedback" aria-label="Rate this answer">
+              <span>Was this helpful?</span>
+              <div className="ross-feedback__actions">
+                <button
+                  type="button"
+                  className={message.feedback === "up" ? "is-selected" : ""}
+                  aria-label="Helpful"
+                  aria-pressed={message.feedback === "up"}
+                  onClick={() => onFeedback(message.id, "up")}
+                >
+                  <span aria-hidden="true">👍</span>
+                </button>
+                <button
+                  type="button"
+                  className={message.feedback === "down" ? "is-selected" : ""}
+                  aria-label="Not helpful"
+                  aria-pressed={message.feedback === "down"}
+                  onClick={() => onFeedback(message.id, "down")}
+                >
+                  <span aria-hidden="true">👎</span>
+                </button>
+              </div>
+            </div>
+          </>
+        )}
       </div>
-    </div>
+    </article>
   );
 });

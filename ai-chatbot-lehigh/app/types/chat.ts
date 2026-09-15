@@ -1,4 +1,10 @@
 export type Role = "user" | "assistant";
+export type FeedbackRating = "up" | "down";
+
+export interface Source {
+  title: string;
+  url: string;
+}
 
 export interface Source {
   title: string;
@@ -11,4 +17,13 @@ export interface Message {
   content: string;
   timestamp: number;
   sources?: Source[];
+  questionId?: string;
+  feedback?: FeedbackRating;
+}
+
+export interface ChatReply {
+  content: string;
+  sources: Source[];
+  sessionId: string;
+  questionId: string;
 }
