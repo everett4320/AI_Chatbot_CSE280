@@ -1,6 +1,10 @@
 import { useState, useCallback, useRef } from "react";
-import type { Message } from "~/types/chat";
-import { sendMessage as sendApiMessage, resetSession } from "~/services/chat-api";
+import type { FeedbackRating, Message } from "~/types/chat";
+import {
+  resetChatSession,
+  sendFeedback,
+  sendMessage as sendApiMessage,
+} from "~/services/chat-api";
 
 export function useChat() {
   const [messages, setMessages] = useState<Message[]>([]);
@@ -32,9 +36,10 @@ export function useChat() {
       const assistantMessage: Message = {
         id: crypto.randomUUID(),
         role: "assistant",
-        content: reply,
-        sources,
+        content: reply.content,
         timestamp: Date.now(),
+        sources: reply.sources,
+        questionId: reply.questionId,
       };
 
       setMessages((prev) => [...prev, assistantMessage]);
@@ -47,6 +52,7 @@ export function useChat() {
   }, []);
 
   const clearChat = useCallback(() => {
+    resetChatSession();
     setMessages([]);
     setError(null);
     loadingRef.current = false;
@@ -54,5 +60,34 @@ export function useChat() {
     resetSession();
   }, []);
 
-  return { messages, isLoading, error, sendMessage, clearChat };
+  const rateMessage = useCallback(
+    async (messageId: string, rating: FeedbackRating) => {
+      const message = messagesRef.current.find((item) => item.id === messageId);
+      if (!message?.questionId) return;
+
+      setMessages((current) =>
+        current.map((item) =>
+          item.id === messageId ? { ...item, feedback: rating } : item,
+        ),
+      );
+
+      try {
+        await sendFeedback(message.questionId, rating);
+      } catch (err) {
+        setError(
+          err instanceof Error ? err.message : "Feedback could not be submitted.",
+        );
+      }
+    },
+    [],
+  );
+
+  return {
+    messages,
+    isLoading,
+    error,
+    sendMessage,
+    clearChat,
+    rateMessage,
+  };
 }

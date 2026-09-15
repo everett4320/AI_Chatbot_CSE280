@@ -5,14 +5,13 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 
 DEFAULT_ENDPOINT="https://8lyrpsdez5.execute-api.us-east-1.amazonaws.com/call"
-DEFAULT_BOT_NAME="le-chat"
 
 QUESTIONS_FILE="${QUESTIONS_FILE:-fetched_site/questions/test_questions.json}"
-CUSTOM_PROMPT_FILE="${CUSTOM_PROMPT_FILE:-fetched_site/prompts/custom_prompt.txt}"
+CUSTOM_PROMPT_FILE="${CUSTOM_PROMPT_FILE:-christopher-handoff/backend-inputs/SYSTEM_PROMPT.txt}"
 RUNS_DIR="${RUNS_DIR:-fetched_site/prompt_effectiveness_runs}"
 MODEL_ID=""
 SOURCE_URI_FILTER=""
-BOT_NAME=""
+BOT_NAME="${BOT_NAME:-}"
 ENDPOINT=""
 ONLY_CODES=""
 SECTIONS=""
@@ -57,7 +56,7 @@ Options:
   --runs-dir path               Directory for per-run records
   --model-id id                 Optional Bedrock model ID
   --source-uri-filter csv       Optional source filter (at least 2 entries if used)
-  --bot-name name               Optional bot name
+  --bot-name name               Required stable backend bot name
   --endpoint url                Optional API endpoint
   --sections 13                 Sections to run (e.g., 123, 13, 2). If omitted, interactive prompt is shown.
   --only-codes Q001,Q003        Run only selected question IDs (applies after section filtering)
@@ -65,7 +64,7 @@ Options:
   -h, --help                    Show help
 
 Quick start:
-  bash scripts/run_question_suite.sh
+  bash scripts/run_question_suite.sh --bot-name "<Christopher-assigned-Ross-bot-name>"
 USAGE
 }
 
@@ -169,9 +168,10 @@ if [[ -n "$ENDPOINT" ]]; then
   EFFECTIVE_ENDPOINT="$ENDPOINT"
 fi
 
-EFFECTIVE_BOT_NAME="$DEFAULT_BOT_NAME"
-if [[ -n "$BOT_NAME" ]]; then
-  EFFECTIVE_BOT_NAME="$BOT_NAME"
+EFFECTIVE_BOT_NAME="$(echo "$BOT_NAME" | xargs)"
+if [[ -z "$EFFECTIVE_BOT_NAME" ]]; then
+  echo "Error: --bot-name is required. Refusing to send a Ross QA suite to a default bot." >&2
+  exit 1
 fi
 
 AVAILABLE_SECTIONS_NL="$(jq -r '. as $root

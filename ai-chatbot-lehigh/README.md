@@ -1,87 +1,98 @@
-# Welcome to React Router!
+# Ross frontend
 
-A modern, production-ready template for building full-stack React applications using React Router.
+This directory contains the Ross UI. It is a React Router SSR application with
+a small Node server for the frontend.
 
-[![Open in StackBlitz](https://developer.stackblitz.com/img/open_in_stackblitz.svg)](https://stackblitz.com/github/remix-run/react-router-templates/tree/main/default)
+ITS/LTS owns the chatbot backend, retrieval system, model, and production data.
+Chris will configure the Ross clone on that platform. This repository does not
+include backend code.
 
-## Features
+## Build configuration
 
-- 🚀 Server-side rendering
-- ⚡️ Hot Module Replacement (HMR)
-- 📦 Asset bundling and optimization
-- 🔄 Data loading and mutations
-- 🔒 TypeScript by default
-- 🎉 TailwindCSS for styling
-- 📖 [React Router docs](https://reactrouter.com/)
+Set these values before building:
 
-## Getting Started
+| Variable | Purpose |
+| --- | --- |
+| `VITE_CHAT_API_URL` | Ross API endpoint supplied by Chris |
+| `VITE_CHAT_BOT_NAME` | Stable bot slug for the Ross clone |
+| `VITE_BASE_PATH` | Public mount path, such as `/ross-test/` |
 
-### Installation
+These values are compiled into the browser bundle. Do not put secrets in them.
+Changing one requires a rebuild. Setting `VITE_*` values only when starting the
+container does not change an existing build.
 
-Install the dependencies:
+The frontend sends `bot_name` as a routing value. The backend must still enforce
+its own clone and host policy.
 
-```bash
-npm install
-```
+## Build and run
 
-### Development
-
-Start the development server with HMR:
-
-```bash
-npm run dev
-```
-
-Your application will be available at `http://localhost:5173`.
-
-## Building for Production
-
-Create a production build:
+Use Node 22 and run the commands from this directory.
 
 ```bash
-npm run build
+export VITE_CHAT_API_URL="<Ross API endpoint>"
+export VITE_CHAT_BOT_NAME="<Ross bot slug>"
+export VITE_BASE_PATH="/ross-test/"
+npm ci
+npm run verify:deployment
+npm run start
 ```
 
-## Deployment
+`verify:deployment` checks the three values, runs TypeScript and contract tests,
+and creates the production build. The server listens on port 3000.
 
-### Docker Deployment
-
-To build and run using Docker:
+## Docker
 
 ```bash
-docker build -t my-app .
+docker build \
+  --build-arg VITE_CHAT_API_URL="<Ross API endpoint>" \
+  --build-arg VITE_CHAT_BOT_NAME="<Ross bot slug>" \
+  --build-arg VITE_BASE_PATH="/ross-test/" \
+  -t ross-frontend:test .
 
-# Run the container
-docker run -p 3000:3000 my-app
+docker run --rm -p 3000:3000 ross-frontend:test
 ```
 
-The containerized application can be deployed to any platform that supports Docker, including:
+## API contract
 
-- AWS ECS
-- Google Cloud Run
-- Azure Container Apps
-- Digital Ocean App Platform
-- Fly.io
-- Railway
+Questions use this JSON shape:
 
-### DIY Deployment
-
-If you're familiar with deploying Node applications, the built-in app server is production-ready.
-
-Make sure to deploy the output of `npm run build`
-
-```
-├── package.json
-├── package-lock.json (or pnpm-lock.yaml, or bun.lockb)
-├── build/
-│   ├── client/    # Static assets
-│   └── server/    # Server-side code
+```json
+{
+  "action": "question",
+  "bot_name": "<Ross bot slug>",
+  "httpMethod": "POST",
+  "userMessage": "What programs are available?",
+  "sessionId": "session-...",
+  "questionId": "question-..."
+}
 ```
 
-## Styling
+Feedback uses:
 
-This template comes with [Tailwind CSS](https://tailwindcss.com/) already configured for a simple default starting experience. You can use whatever CSS framework you prefer.
+```json
+{
+  "action": "feedback",
+  "bot_name": "<Ross bot slug>",
+  "sessionId": "session-...",
+  "questionId": "question-...",
+  "feedback": "Good"
+}
+```
 
----
+The frontend expects a response with `Response`, optional `Sources`, `sessionId`,
+and `questionId`. It also accepts `reply` for compatibility with older services.
 
-Built with ❤️ using React Router.
+## Test link check
+
+After Chris publishes a test link:
+
+- Reload the assigned public path directly.
+- Check that the launcher, chat panel, source links, feedback buttons, and
+  clear-chat action work.
+- Test a narrow phone viewport and a mobile landscape viewport.
+- Confirm the request reaches the Ross clone and returns the expected sources.
+- Run `../christopher-handoff/validation/test_questions.json`.
+
+If the page shows a configuration error, rebuild with the correct API endpoint
+and bot slug. Backend or retrieval issues belong on the ITS/LTS side; UI issues
+belong here.

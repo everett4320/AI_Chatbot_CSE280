@@ -1,46 +1,33 @@
-# AI Chatbot Integration Notes
+# Ross chatbot frontend
 
-This repository now stores:
-- `knowledge_base/`: Markdown documents for RAG content.
-- `fetched_site/`: source files pulled from `https://dev-le-chat.cc.lehigh.edu/`.
-- `scripts/fetch_site_assets.sh`: refresh script for downloading site assets.
+This repository contains the Ross frontend and the files needed to connect it
+to the shared Lehigh chatbot platform.
 
-## Captured site files
+ITS/LTS owns the chatbot backend, retrieval system, model, and production data.
+The student team owns the frontend and the Ross handoff inputs.
 
-From the reference site:
-- `fetched_site/index.html`
-- `fetched_site/dist/bundle-pretty.js`
+## For Christopher
 
-These files are used as implementation references for building a custom frontend.
+Start with [christopher-handoff/README.md](christopher-handoff/README.md).
+It points to the frontend, the Ross prompt, the source links, and the test
+questions.
 
-## API integration summary
+## Repository layout
 
-From `fetched_site/dist/bundle-pretty.js`, frontend requests are sent to:
-- `https://8lyrpsdez5.execute-api.us-east-1.amazonaws.com/call`
+| Path | Use |
+| --- | --- |
+| `ai-chatbot-lehigh/` | Ross frontend, tests, Dockerfile, and deployment notes |
+| `christopher-handoff/` | Source links, Ross prompt, API contract, and QA checklist |
+| `fetched_site/` | Snapshot of an earlier shared chatbot site and test material |
+| `scripts/` | Prompt and question-suite helpers |
+| `knowledge_base/` | Legacy working area; do not ingest `sample.md` |
 
-Main request modes:
-- `action: "question"`
-- `action: "feedback"`
+## Frontend setup
 
-See `fetched_site/README.md` for payload examples and optional parameters.
-See `fetched_site/PROMPT_CHANGE_AND_TESTING.md` for detailed prompt change/testing workflow.
-Prompt override file for testing/frontend integration:
-- `fetched_site/prompts/custom_prompt.txt` (non-empty = send `custom_prompt`, empty = backend default)
-Numbered question set for batch testing:
-- `fetched_site/questions/test_questions.json`
-- `fetched_site/questions/README.md`
-Simplest batch test command:
-- `bash scripts/run_question_suite.sh`
-  - The script prompts section selection at start (`123` = all, `13` = sections 1+3, `2` = section 2 only).
-Also works from inside `scripts/`:
-- `bash run_question_suite.sh`
-Per-run consolidated record:
-- `fetched_site/prompt_effectiveness_runs/<run_id>/run_record.json`
+The frontend needs an API endpoint, the Ross bot slug, and a public path at
+build time. See [ai-chatbot-lehigh/README.md](ai-chatbot-lehigh/README.md) for
+the commands and API contract.
 
-## Refresh captured assets
-
-Run:
-
-```bash
-./scripts/fetch_site_assets.sh
-```
+The endpoint recorded in `fetched_site/` came from an earlier test site. It is
+not the Ross deployment endpoint. Chris will provide the current endpoint and
+bot slug for the Ross clone.

@@ -6,19 +6,23 @@
     "build": "react-router build",
     "dev": "react-router dev",
     "start": "react-router-serve ./build/server/index.js",
-    "typecheck": "react-router typegen && tsc"
+    "test:contract": "vitest run --exclude \"output/**\" app/services/chat-api.contract.test.ts",
+    "typecheck": "react-router typegen && tsc",
+    "verify": "npm run typecheck && npm run test:contract && npm run build",
+    "verify:deployment": "node scripts/verify-deployment-config.mjs && npm run verify"
   },
   "dependencies": {
-    "@react-router/node": "7.13.2",
-    "@react-router/serve": "7.13.2",
+    "@react-router/node": "7.18.3",
+    "@react-router/serve": "7.18.3",
     "isbot": "^5.1.36",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
     "react-markdown": "^10.1.0",
-    "react-router": "7.13.2"
+    "react-router": "7.18.3",
+    "remark-gfm": "^4.0.1"
   },
   "devDependencies": {
-    "@react-router/dev": "7.13.2",
+    "@react-router/dev": "7.18.3",
     "@tailwindcss/vite": "^4.2.2",
     "@types/node": "^22",
     "@types/react": "^19.2.14",
@@ -26,6 +30,10 @@
     "tailwindcss": "^4.2.2",
     "typescript": "^5.9.3",
     "vite": "^7.1.7",
-    "vite-tsconfig-paths": "^5.1.4"
+    "vite-tsconfig-paths": "^5.1.4",
+    "vitest": "^4.1.11"
+  },
+  "overrides": {
+    "qs": "6.16.0"
   }
 }
