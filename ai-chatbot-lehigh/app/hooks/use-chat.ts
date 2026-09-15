@@ -25,13 +25,15 @@ export function useChat() {
       timestamp: Date.now(),
     };
 
+    const updatedMessages = [...messagesRef.current, userMessage];
+
     setError(null);
     loadingRef.current = true;
     setIsLoading(true);
-    setMessages([...messagesRef.current, userMessage]);
+    setMessages(updatedMessages);
 
     try {
-      const { reply, sources } = await sendApiMessage(trimmed);
+      const reply = await sendApiMessage(updatedMessages);
 
       const assistantMessage: Message = {
         id: crypto.randomUUID(),
@@ -57,7 +59,6 @@ export function useChat() {
     setError(null);
     loadingRef.current = false;
     setIsLoading(false);
-    resetSession();
   }, []);
 
   const rateMessage = useCallback(

@@ -14,20 +14,6 @@ export const ChatMessage = memo(function ChatMessage({
 }: ChatMessageProps) {
   const isUser = message.role === "user";
 
-  if (isUser) {
-    return (
-      <div className="flex justify-end mb-4">
-        <div className="min-w-0 max-w-[75%] px-4 py-2.5 bg-lehigh-navy text-white rounded-[8px] shadow-[0_4px_13.1px_rgba(0,0,0,0.08)]">
-          <p className="whitespace-pre-wrap wrap-anywhere text-sm leading-snug text-right">
-            {message.content}
-          </p>
-        </div>
-      </div>
-    );
-  }
-
-  const sources = message.sources ?? [];
-
   return (
     <article className={`ross-message ross-message--${message.role}`}>
       {!isUser && <span className="ross-message__avatar" aria-hidden="true" />}
