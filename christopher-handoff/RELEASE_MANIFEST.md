@@ -1,26 +1,27 @@
 # Ross deployment record
 
-Fill this in when the Ross test link is created.
+Fill this in when the Ross public link is created.
 
 | Item | Record |
 | --- | --- |
 | Branch | `codex/christopher-handoff` |
-| Commit shared with Chris | |
-| Ross bot slug | |
-| API endpoint | |
-| Test URL | |
+| Commit shared with Christopher | |
+| Fixed Ross bot name | |
+| Fixed API endpoint | |
+| Supported frontend origin | |
+| Final AWS-hosted HTTPS URL | |
 | Public path | |
-| CORS origin | |
-| Clone or collection ID | |
-| Model | |
-| Prompt SHA-256 | |
-| Source rows submitted | 5 |
+| Existing Ross mapping or collection ID | |
+| Prompt SHA-256 | `5f13fd929d0f790374b37e6a2807e7e2984654aba565cc18fa9b7a15dfe9a14d` |
+| Source rows in catalog | 5 |
+| Source rows submitted | |
 | Sources ingested | |
 | Failed sources | |
 | `backend_source_uri` mapping | |
 | QA result location | |
-| Previous version for rollback | |
+| Previous frontend version for rollback | |
 
-Before sharing the test link, make sure the prompt hash matches
-`backend-inputs/SYSTEM_PROMPT.txt`, at least one source has been ingested, and
-the frontend is using the Ross bot slug.
+Before sharing the public link, make sure the prompt hash matches
+`backend-inputs/SYSTEM_PROMPT.txt`, every included source has a recorded
+ingestion result, and the frontend uses the fixed Ross bot name and endpoint.
+This record does not authorize or request a backend or server change.

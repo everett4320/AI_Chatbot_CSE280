@@ -2,13 +2,14 @@
 
 ## Clone and configuration
 
-- [ ] Ross clone exists and its stable `bot_name` is recorded in
+- [ ] The existing Ross bot mapping and its stable `bot_name` are recorded in
       `RELEASE_MANIFEST.md`.
 - [ ] The frontend build uses that exact `VITE_CHAT_BOT_NAME`.
 - [ ] The clone-level prompt configuration (or an explicitly approved platform
       equivalent) hash matches `backend-inputs/SYSTEM_PROMPT.txt`.
-- [ ] The chosen model and any platform policy are recorded.
-- [ ] CORS permits the assigned Ross test origin.
+- [ ] The fixed model or platform version is recorded if it is visible; no
+      model change is requested.
+- [ ] The frontend is deployed at an origin supported by the fixed service.
 
 ## Knowledge-base ingestion
 
@@ -26,8 +27,8 @@
 
 - [ ] The HTTPS test URL and direct subpath reload work.
 - [ ] Browser assets load with no CORS or 404 errors.
-- [ ] A question reaches the assigned Ross clone, not another bot; retain
-      backend routing evidence or an approved clone-identity response field.
+- [ ] Christopher confirms that the fixed `bot_name` maps to Ross using the
+      existing platform record; no response-schema change is required.
 - [ ] A normal answer renders Markdown and source links.
 - [ ] Good and Bad feedback reach the expected clone.
 - [ ] Clearing the chat starts a new backend session.
@@ -48,5 +49,6 @@
 
 ## Rollback
 
-- [ ] Previous frontend artifact, clone configuration, prompt version, model,
-      and source-set version are recorded before public cutover.
+- [ ] The previous frontend artifact, prompt version, and source-set version
+      are recorded before public cutover. No backend code change is part of the
+      release.

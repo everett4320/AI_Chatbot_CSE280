@@ -1,5 +1,10 @@
 # Prompt Change and Testing Instructions
 
+> **Team QA guidance, not a backend change plan.** Christopher's service and
+> API remain fixed. The canonical prompt is applied only through the existing
+> platform workflow; request-scoped prompt options below are optional historical
+> experiments and are never required by the production frontend.
+
 This guide explains:
 - how to update prompt behavior using one file,
 - how teammates should test prompt changes consistently,

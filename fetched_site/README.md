@@ -1,5 +1,11 @@
 # Captured Site Reference
 
+> **Historical evidence only.** Do not use this folder's endpoint, `le-chat`
+> bot name, model, or prompt as Ross deployment configuration. Do not request
+> a backend change based on this snapshot. The active Christopher handoff is
+> [`../christopher-handoff/README.md`](../christopher-handoff/README.md), and
+> the frontend adapts to Christopher's fixed service.
+
 This folder stores a reference snapshot from:
 - `https://dev-le-chat.cc.lehigh.edu/`
 

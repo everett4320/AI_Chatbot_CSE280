@@ -11,6 +11,7 @@ The frontend is configured at build time with:
 - `VITE_BASE_PATH`: the public path
 
 Read `../christopher-handoff/backend-inputs/API_CONTRACT.md` before changing request or response handling.
+Treat that contract and the server behavior as fixed. Resolve integration mismatches in the frontend and its tests; never request a backend change from this repository.
 
 ## Commands
 

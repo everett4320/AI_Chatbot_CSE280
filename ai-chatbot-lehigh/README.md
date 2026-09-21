@@ -3,9 +3,10 @@
 This directory contains the Ross UI. It is a React Router SSR application with
 a small Node server for the frontend.
 
-ITS/LTS owns the chatbot backend, retrieval system, model, and production data.
-Chris will configure the Ross clone on that platform. This repository does not
-include backend code.
+Christopher and the school platform manage a fixed chatbot backend, retrieval
+system, model, API, and production environment. This repository does not
+include or change backend code. If the integration does not match, change the
+frontend adapter rather than the server.
 
 ## Build configuration
 
@@ -13,16 +14,16 @@ Set these values before building:
 
 | Variable | Purpose |
 | --- | --- |
-| `VITE_CHAT_API_URL` | Ross API endpoint supplied by Chris |
-| `VITE_CHAT_BOT_NAME` | Stable bot slug for the Ross clone |
+| `VITE_CHAT_API_URL` | Fixed Ross API endpoint supplied by Christopher |
+| `VITE_CHAT_BOT_NAME` | Existing stable routing name for Ross |
 | `VITE_BASE_PATH` | Public mount path, such as `/ross-test/` |
 
 These values are compiled into the browser bundle. Do not put secrets in them.
 Changing one requires a rebuild. Setting `VITE_*` values only when starting the
 container does not change an existing build.
 
-The frontend sends `bot_name` as a routing value. The backend must still enforce
-its own clone and host policy.
+The frontend sends `bot_name` as the fixed routing value. It assumes the
+existing service policy and does not attempt to change it.
 
 ## Build and run
 
@@ -79,20 +80,24 @@ Feedback uses:
 }
 ```
 
-The frontend expects a response with `Response`, optional `Sources`, `sessionId`,
-and `questionId`. A response that only uses a retired legacy field is rejected.
+The frontend requires `Response`. `Sources`, `sessionId`, and `questionId` are
+optional; missing IDs fall back to the client-generated values. A response that
+only uses a retired legacy field is rejected.
 
 ## Test link check
 
-After Chris publishes a test link:
+After Christopher publishes the AWS-hosted link:
 
 - Reload the assigned public path directly.
 - Check that the launcher, chat panel, source links, feedback buttons, and
   clear-chat action work.
 - Test a narrow phone viewport and a mobile landscape viewport.
 - Confirm the request reaches the Ross clone and returns the expected sources.
-- Run `../christopher-handoff/validation/test_questions.json`.
+- Follow the exact QA command in
+  [`../christopher-handoff/README.md`](../christopher-handoff/README.md); it
+  explicitly selects `christopher-handoff/validation/test_questions.json`.
 
-If the page shows a configuration error, rebuild with the correct API endpoint
-and bot slug. Backend or retrieval issues belong on the ITS/LTS side; UI issues
-belong here.
+If the page shows a configuration error, rebuild with the correct fixed API
+endpoint and bot name. Do not change the backend or retrieval service to fit
+the frontend; report the observed fixed response so the frontend adapter can be
+corrected.

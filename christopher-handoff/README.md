@@ -1,83 +1,131 @@
 # Ross handoff for Christopher
 
-This branch contains the Ross frontend and the two inputs needed to configure
-Ross in the shared chatbot platform:
+Start here. This folder is the complete handoff for connecting the team-owned
+Ross frontend to Christopher's existing chatbot platform.
 
-- `ai-chatbot-lehigh/` contains the frontend.
-- `backend-inputs/SOURCE_CATALOG.csv` contains the initial crawl list.
-- `backend-inputs/SYSTEM_PROMPT.txt` contains the Ross prompt.
+The backend, server behavior, API shape, retrieval system, model, and AWS
+environment are fixed and remain under Christopher's control. This repository
+contains no backend implementation and requests no backend or server changes.
+If an integration detail does not match, the student team will adapt the
+frontend to the fixed service.
 
-There is no backend source code in this branch. Please use the current version
-of the shared platform on your side.
+## Delivery map
 
-## What is ready
+| Item | Authoritative file | Status |
+| --- | --- | --- |
+| Frontend design and source | [`../ai-chatbot-lehigh/`](../ai-chatbot-lehigh/) | Ready to build |
+| Five URLs for the existing crawler | [`backend-inputs/SOURCE_CATALOG.csv`](backend-inputs/SOURCE_CATALOG.csv) | Ready for ingestion |
+| Ross system prompt | [`backend-inputs/SYSTEM_PROMPT.txt`](backend-inputs/SYSTEM_PROMPT.txt) | Ready for existing prompt configuration |
+| Fixed frontend/API interface | [`backend-inputs/API_CONTRACT.md`](backend-inputs/API_CONTRACT.md) | Implemented by the frontend |
+| Test questions and sign-off | [`validation/`](validation/) | Ready after a Ross URL exists |
+| Deployment record | [`RELEASE_MANIFEST.md`](RELEASE_MANIFEST.md) | Fill in during deployment |
 
-The source catalog has five public Lehigh pages. All five returned HTTP 200 on
-2026-09-14. They are ready for your ingestion workflow, but they have not been
-indexed yet. The `backend_source_uri` column is intentionally blank until your
-platform creates the corresponding source IDs.
+The `fetched_site/` and `knowledge_base/` folders are historical or working
+material. They are not deployment inputs. In particular, do not reuse the old
+shared endpoint, the `le-chat` bot name, or `knowledge_base/sample.md`.
 
-The prompt now identifies the assistant as Ross. The frontend and the QA
-scripts use the same prompt text.
+## Fastest path to a working deployment
 
-The frontend build checks passed locally. The branch includes the responsive UI
-fixes, API contract tests, deployment checks, and a GitHub Actions workflow.
+1. Check out the delivery branch.
 
-## What we need from you
+   ```bash
+   git clone --branch codex/christopher-handoff --single-branch \
+     https://github.com/everett4320/AI_Chatbot_CSE280.git
+   cd AI_Chatbot_CSE280
+   ```
 
-Please send back the following after you configure the clone:
+2. In the existing chatbot platform, select or register the Ross bot using the
+   normal fixed workflow. No server code or API behavior needs to change.
+3. Give the five URLs in
+   `christopher-handoff/backend-inputs/SOURCE_CATALOG.csv` to the existing
+   crawler. Record each resulting source ID and ingestion result.
+4. Load `christopher-handoff/backend-inputs/SYSTEM_PROMPT.txt` through the
+   existing prompt configuration workflow. Do not send this prompt from the
+   browser on each request.
+5. Copy the already assigned HTTPS API endpoint and Ross `bot_name` into the
+   frontend build. Use the frontend origin and public path already supported by
+   the fixed service.
 
-1. The Ross `bot_name` or stable bot slug.
-2. The API endpoint and the public test URL.
-3. The allowed frontend origin for CORS.
-4. The clone or collection ID, if your platform uses one.
-5. The `backend_source_uri` values created for the five source rows.
-6. Any change required by the current version of the shared backend contract.
+   ```bash
+   cd ai-chatbot-lehigh
+   export VITE_CHAT_API_URL="<fixed Ross API endpoint>"
+   export VITE_CHAT_BOT_NAME="<fixed Ross bot name>"
+   export VITE_BASE_PATH="/ross-test/"
+   npm ci
+   npm run verify:deployment
+   npm run start
+   ```
 
-## Suggested order
+   `/ross-test/` is an example. Use `/` when AWS serves the frontend at the
+   domain root. The server listens on port 3000. Docker commands are in
+   [`../ai-chatbot-lehigh/README.md`](../ai-chatbot-lehigh/README.md).
+6. Deploy this built frontend with the existing AWS process. AWS hosting and
+   the public deployment are Christopher's responsibility; this repository
+   does not create or change that infrastructure.
+7. Send the final HTTPS public URL and the recorded values below to the student
+   team. The team will complete the browser and content acceptance checks.
 
-1. Create or identify the Ross clone.
-2. Crawl or ingest the URLs in `backend-inputs/SOURCE_CATALOG.csv`.
-3. Configure `backend-inputs/SYSTEM_PROMPT.txt` for that clone.
-4. Build `ai-chatbot-lehigh/` with the API URL, bot slug, and public path.
-5. Use `validation/test_questions.json` and
-   `validation/ACCEPTANCE_CHECKLIST.md` for the test link.
+## Inputs to copy directly
 
-The frontend sends the bot slug with each question and feedback request. It
-does not send the prompt, model choice, or source catalog in production.
+### System prompt
 
-## Frontend configuration
+Use [`backend-inputs/SYSTEM_PROMPT.txt`](backend-inputs/SYSTEM_PROMPT.txt).
 
-The frontend needs these build-time values:
+SHA-256:
+`5f13fd929d0f790374b37e6a2807e7e2984654aba565cc18fa9b7a15dfe9a14d`
 
-```text
-VITE_CHAT_API_URL
-VITE_CHAT_BOT_NAME
-VITE_BASE_PATH
+### Crawl URLs
+
+The machine-readable source is
+[`backend-inputs/SOURCE_CATALOG.csv`](backend-inputs/SOURCE_CATALOG.csv).
+These five public pages all returned HTTP 200 on September 21, 2026:
+
+1. <https://engineering.lehigh.edu/academics>
+2. <https://engineering.lehigh.edu/academics/undergraduate>
+3. <https://www2.lehigh.edu/admissions/college-program-events>
+4. <https://www2.lehigh.edu/admissions/post-graduation-career-outcomes>
+5. <https://careercenter.lehigh.edu/content/meet-team>
+
+They are crawl inputs, not an already indexed knowledge base. The
+`backend_source_uri` cells stay blank until the existing crawler returns its
+source identifiers.
+
+## Values to return after deployment
+
+Please record these in `RELEASE_MANIFEST.md` and send them with the public link:
+
+1. The fixed Ross `bot_name`.
+2. The fixed API endpoint used by the frontend build.
+3. The supported frontend origin and `VITE_BASE_PATH`.
+4. The ingestion result and source ID for each of the five URLs.
+5. The final AWS-hosted HTTPS URL.
+
+These are existing configuration values and deployment results. We are not
+asking for changes to the backend, API, model, retrieval logic, CORS behavior,
+or server implementation.
+
+## Acceptance run
+
+After the Ross endpoint, bot name, and public URL are available, a tester with
+Bash, `curl`, and `jq` can record the fixed-interface responses from the
+repository root:
+
+```bash
+bash scripts/run_question_suite.sh \
+  --endpoint "<fixed Ross API endpoint>" \
+  --bot-name "<fixed Ross bot name>" \
+  --questions-file christopher-handoff/validation/test_questions.json \
+  --sections 123
 ```
 
-The exact request and response format is in `backend-inputs/API_CONTRACT.md`.
-The build instructions are in `frontend/README.md` and
-`ai-chatbot-lehigh/README.md`.
+The automated result proves transport and response shape only. Use
+[`validation/ACCEPTANCE_CHECKLIST.md`](validation/ACCEPTANCE_CHECKLIST.md) for
+manual grounding, source, scope, and UI review. A local demo reply or the
+historical screenshot in the root README is not a Ross backend test.
 
-For routine frontend, prompt, and source updates after the first setup, see
-`UPDATES.md`.
+## Maintenance
 
-## Notes on the source list
-
-Two Rossin academics URLs came from the existing frontend source references.
-Three more URLs came from a historical survey branch. Only the public URLs were
-kept. The survey file itself is not included because it contains personal data.
-
-`source_uri_filter` is not a URL-crawling field. Use it only if your platform
-needs a filter over source IDs after ingestion.
-
-## Files
-
-```text
-ai-chatbot-lehigh/                         frontend source
-christopher-handoff/backend-inputs/        prompt, source catalog, API contract
-christopher-handoff/validation/            test questions and acceptance list
-christopher-handoff/RELEASE_MANIFEST.md    deployment record
-christopher-handoff/UPDATES.md             later update workflow
-```
+- [`UPDATES.md`](UPDATES.md) explains later frontend, prompt, and source-list
+  updates without changing the backend contract.
+- [`BRANCH_CONSOLIDATION.md`](BRANCH_CONSOLIDATION.md) records how earlier
+  branch work was preserved in this delivery.

@@ -1,26 +1,26 @@
 # Updating Ross after the first setup
 
-The first setup takes the most coordination because Chris needs to create the
-Ross clone, ingest the first source set, apply the prompt, and allow the test
-origin. After that, most changes are smaller.
+The first setup takes the most coordination because Christopher needs to select
+the Ross bot in the existing platform, ingest the first source set, apply the
+prompt, and deploy the frontend through the existing AWS process. The backend,
+server behavior, and API contract stay fixed.
 
 ## Frontend-only change
 
 Examples: layout, wording, accessibility, or chat interaction changes.
 
 1. The student team pushes the frontend change to this branch.
-2. If the student team hosts the test frontend, the team rebuilds and redeploys
-   `ai-chatbot-lehigh/`.
-3. If Chris hosts the frontend, Chris pulls the branch, rebuilds it, and
-   restarts the frontend host.
-4. The team checks the updated test link.
+2. Christopher pulls the branch, rebuilds `ai-chatbot-lehigh/`, and deploys it
+   through the existing AWS process.
+3. Christopher returns the updated public link.
+4. The student team checks the link.
 
 The prompt and source catalog do not need to change for a frontend-only update.
 
 ## Prompt change
 
 1. Update `backend-inputs/SYSTEM_PROMPT.txt` and record its new hash.
-2. Chris applies the prompt to the Ross clone using the normal backend setting.
+2. Christopher applies the prompt using the existing platform setting.
 3. Run the prompt and question-suite checks again.
 
 The frontend normally does not need a rebuild for a prompt-only change.
@@ -28,20 +28,23 @@ The frontend normally does not need a rebuild for a prompt-only change.
 ## Source-link or knowledge-base change
 
 1. Add, change, or remove rows in `backend-inputs/SOURCE_CATALOG.csv`.
-2. Chris runs the corresponding ingestion, refresh, or removal job.
-3. Chris records each result and `backend_source_uri` in the catalog.
+2. Christopher runs the existing ingestion, refresh, or removal workflow.
+3. Christopher records each result and `backend_source_uri` in the catalog.
 4. Run relevant questions from `validation/test_questions.json`.
 
 The frontend normally does not need a rebuild for a source update.
 
-## Backend contract change
+## Fixed backend boundary
 
-If Chris changes the API request shape, response shape, authentication, bot
-slug, CORS policy, or public path, tell the student team first. That kind of
-change may require a frontend update and a new build.
+Do not request changes to the API request shape, response shape, authentication,
+bot routing, CORS behavior, model, retrieval system, or server implementation.
+Those systems are fixed and outside this repository. If the frontend no longer
+matches the observed interface, the student team updates the frontend adapter
+and its contract tests, then Christopher rebuilds the frontend.
 
 ## Keep one short record
 
 For each release, update `RELEASE_MANIFEST.md` with the branch commit, prompt
-hash, source-ingestion result, bot slug, test URL, and QA result. That makes it
-easy to see what changed and to return to the previous version if needed.
+hash, source-ingestion result, fixed bot name, public URL, and QA result. That
+makes it easy to see what changed and to return to the previous frontend
+version if needed.

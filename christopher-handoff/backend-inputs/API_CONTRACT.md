@@ -1,8 +1,13 @@
-# Frontend / clone API contract
+# Fixed frontend / chatbot API contract
 
-The frontend uses `POST` JSON requests to Christopher's assigned endpoint.
-The exact Ross `bot_name` must be configured at frontend build time through
-`VITE_CHAT_BOT_NAME`.
+This file documents the existing server interface that the frontend targets.
+It is not a proposal to change the backend, server, payload, or response. If an
+integration mismatch is found, update and retest the frontend adapter instead
+of asking Christopher to change the fixed service.
+
+The frontend uses `POST` JSON requests to Christopher's assigned endpoint. The
+exact existing Ross `bot_name` must be configured at frontend build time
+through `VITE_CHAT_BOT_NAME`.
 
 ## Question
 
@@ -31,7 +36,7 @@ The exact Ross `bot_name` must be configured at frontend build time through
 
 `feedback` is exactly `Good` or `Bad`.
 
-## Expected response
+## Accepted response
 
 ```json
 {
@@ -47,24 +52,25 @@ The exact Ross `bot_name` must be configured at frontend build time through
 }
 ```
 
-The frontend needs CORS access from the public test origin. It handles a JSON
-`error` field and non-2xx failures visibly.
+`Response` is the only required success field. `Sources`, `sessionId`, and
+`questionId` are optional. If the response omits either ID, the frontend keeps
+the corresponding client-generated ID. It handles a JSON `error` field and
+non-2xx failures visibly.
 
-The backend may replace the client-generated `sessionId` with a canonical
-session identifier in its response. The frontend adopts that value for later
-questions and feedback.
+If the fixed service returns a canonical `sessionId`, the frontend adopts it
+for later questions and feedback. The frontend must be hosted at an origin
+already accepted by the service's existing CORS policy.
 
-## Clone-routing evidence
+## Ross-routing confirmation
 
 The current response shape does not require a clone identity field, so the
 frontend cannot prove from JSON alone that a successful answer came from the
 Ross clone rather than another configured bot. Before acceptance, Christopher
-must provide either a stable response echo such as `bot_name`/`clone_id` or
-backend routing evidence that ties the request's `bot_name`, session, and
-question ID to the assigned Ross clone. This is a backend/platform requirement,
-not something the frontend can infer safely.
+should confirm the existing `bot_name` mapping in the platform and retain any
+routing or deployment record already available for the request's session and
+question ID. No new response field or backend behavior is requested.
 
 `custom_prompt`, `model_id`, and `source_uri_filter` are historical/test-tool
-options, not required frontend production fields. Christopher should configure
-prompt, model, and retrieval scope in the clone unless his platform explicitly
-requires a different documented approach.
+options, not frontend production fields. The production frontend must not add
+them. Apply the supplied prompt and source list only through Christopher's
+existing platform workflow.

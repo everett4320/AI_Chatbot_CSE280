@@ -1,17 +1,19 @@
 # Backend inputs
 
-Use this folder when setting up the Ross clone.
+Use this folder with Christopher's existing platform workflow. These files are
+configuration inputs; they do not require a backend, API, or server change.
 
 ## System prompt
 
 Load `SYSTEM_PROMPT.txt` as the prompt for the Ross clone. It identifies the
 assistant as Ross and keeps the existing grounding and refusal rules.
 
-The QA scripts use the same prompt file. Before the test run, record its hash
-in `../RELEASE_MANIFEST.md` so we know which version was used.
+By default, the QA scripts exercise the prompt already configured in the
+platform and do not send this file on every request. Before the test run,
+record its hash in `../RELEASE_MANIFEST.md` so we know which version was used.
 
 Do not send the prompt from the browser on every request. It belongs in the
-clone configuration.
+existing Ross prompt configuration.
 
 ## Source links
 
