@@ -1,6 +1,7 @@
 import { useState, useCallback, useRef } from "react";
 import type { FeedbackRating, Message } from "~/types/chat";
 import {
+  createId,
   resetChatSession,
   sendFeedback,
   sendMessage as sendApiMessage,
@@ -36,7 +37,7 @@ export function useChat() {
     if (!trimmed || loadingRef.current) return;
 
     const userMessage: Message = {
-      id: crypto.randomUUID(),
+      id: createId("message"),
       role: "user",
       content: trimmed,
       timestamp: Date.now(),
@@ -55,7 +56,7 @@ export function useChat() {
       if (!requestEpochRef.current.isCurrent(requestEpoch)) return;
 
       const assistantMessage: Message = {
-        id: crypto.randomUUID(),
+        id: createId("message"),
         role: "assistant",
         content: reply.content,
         timestamp: Date.now(),
