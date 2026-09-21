@@ -50,7 +50,9 @@ export interface FeedbackPayload {
   feedback: "Good" | "Bad";
 }
 
-function createId(prefix: string) {
+// crypto.randomUUID only exists in secure contexts (HTTPS or localhost), so
+// e.g. a phone testing against http://192.168.x.x takes the fallback.
+export function createId(prefix: string) {
   const value =
     typeof crypto !== "undefined" && "randomUUID" in crypto
       ? crypto.randomUUID()
@@ -101,8 +103,11 @@ export function requireBotName(botName: string | undefined) {
 function normalizeSources(sources: LehighApiResponse["Sources"]): Source[] {
   if (!Array.isArray(sources)) return [];
 
+  // The backend often cites the same page several times in one answer.
+  const seen = new Set<string>();
   return sources.flatMap((source) => {
-    if (!source.url) return [];
+    if (!source.url || seen.has(source.url)) return [];
+    seen.add(source.url);
     return [
       {
         title: source.title?.trim() || source.url,

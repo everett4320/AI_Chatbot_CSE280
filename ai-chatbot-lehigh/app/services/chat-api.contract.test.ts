@@ -3,6 +3,7 @@ import {
   buildFeedbackPayload,
   buildQuestionPayload,
   ChatTimeoutError,
+  createId,
   getSessionId,
   getSessionStorageKey,
   parseChatReply,
@@ -64,6 +65,34 @@ describe("Lehigh chatbot API contract", () => {
       sessionId: "session-from-backend",
       questionId: "question-from-backend",
     });
+  });
+
+  it("collapses sources the backend cites more than once", () => {
+    const programs = "https://engineering.lehigh.edu/academics";
+    const research = "https://engineering.lehigh.edu/research";
+    expect(
+      parseChatReply(
+        {
+          Response: "Answer",
+          Sources: [
+            { title: "Academic Programs", url: programs },
+            { title: "Research", url: research },
+            { title: "Academic Programs (again)", url: programs },
+          ],
+        },
+        { sessionId: "fallback-session", questionId: "fallback-question" },
+      ).sources,
+    ).toEqual([
+      { title: "Academic Programs", url: programs },
+      { title: "Research", url: research },
+    ]);
+  });
+
+  it("creates ids without crypto.randomUUID, which non-HTTPS pages lack", () => {
+    vi.stubGlobal("crypto", {});
+    const first = createId("message");
+    expect(first).toMatch(/^message-\S+$/);
+    expect(createId("message")).not.toBe(first);
   });
 
   it("rejects the retired reply-only response shape", () => {
