@@ -1,4 +1,4 @@
-# Christopher acceptance checklist
+# Christopher handoff acceptance checklist
 
 ## Clone and configuration
 

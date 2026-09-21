@@ -2,10 +2,10 @@
 
 The frontend is in `ai-chatbot-lehigh/`.
 
-It is an adapter for Christopher's fixed service. Do not change or ask to
-change the backend, API payload, response shape, model, retrieval behavior, or
-server. If the integration does not match the documented interface, update the
-frontend and its contract tests.
+It is an adapter for the fixed service managed by Christopher. Do not change
+or ask to change the backend, API payload, response shape, model, retrieval
+behavior, or server. If the integration does not match the documented
+interface, update the frontend and its contract tests.
 
 From that directory, set the three build-time values and run the normal checks:
 

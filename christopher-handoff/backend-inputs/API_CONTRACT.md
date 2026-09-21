@@ -5,7 +5,8 @@ It is not a proposal to change the backend, server, payload, or response. If an
 integration mismatch is found, update and retest the frontend adapter instead
 of asking Christopher to change the fixed service.
 
-The frontend uses `POST` JSON requests to Christopher's assigned endpoint. The
+The frontend uses `POST` JSON requests to the assigned endpoint on
+Christopher's platform. The
 exact existing Ross `bot_name` must be configured at frontend build time
 through `VITE_CHAT_BOT_NAME`.
 
@@ -14,7 +15,7 @@ through `VITE_CHAT_BOT_NAME`.
 ```json
 {
   "action": "question",
-  "bot_name": "<Christopher-assigned-Ross-bot-name>",
+  "bot_name": "<assigned-Ross-bot-name>",
   "httpMethod": "POST",
   "userMessage": "What undergraduate majors are offered?",
   "sessionId": "session-...",
@@ -27,7 +28,7 @@ through `VITE_CHAT_BOT_NAME`.
 ```json
 {
   "action": "feedback",
-  "bot_name": "<Christopher-assigned-Ross-bot-name>",
+  "bot_name": "<assigned-Ross-bot-name>",
   "sessionId": "session-...",
   "questionId": "question-...",
   "feedback": "Good"

@@ -4,7 +4,10 @@ Fill this in when the Ross public link is created.
 
 | Item | Record |
 | --- | --- |
-| Branch | `codex/christopher-handoff` |
+| Project | Ross AI chatbot for the P.C. Rossin College of Engineering and Applied Science |
+| Previous project name | LE-Chat |
+| Project sponsor | Chris Larkin |
+| Branch | `christopher-handoff` |
 | Commit shared with Christopher | |
 | Fixed Ross bot name | |
 | Fixed API endpoint | |

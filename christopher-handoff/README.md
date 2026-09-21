@@ -1,50 +1,64 @@
 # Ross handoff for Christopher
 
-Start here. This folder is the complete handoff for connecting the team-owned
-Ross frontend to Christopher's existing chatbot platform.
+This is the AI chatbot project for Lehigh University's P.C. Rossin College of
+Engineering and Applied Science. The project was previously called **LE-Chat**
+and is now called **Ross**. Our project sponsor is **Chris Larkin**.
 
-The backend, server behavior, API shape, retrieval system, model, and AWS
-environment are fixed and remain under Christopher's control. This repository
-contains no backend implementation and requests no backend or server changes.
-If an integration detail does not match, the student team will adapt the
-frontend to the fixed service.
+Thank you for helping us connect the Ross frontend to the existing chatbot
+platform. We have prepared the frontend, source list, system prompt, and test
+materials in this branch. Our goal is a public HTTPS link that first-year
+students can open without cloning the repository or setting up the app locally.
+
+We understand that the backend, server behavior, API shape, retrieval system,
+model, and AWS environment are fixed and managed on Christopher's side. This
+repository contains no backend implementation and requests no backend or server
+changes. Because we do not have access to that environment, some details below
+may not match the normal deployment process exactly. Please use the workflow
+that is appropriate on your side, and let us know what we should change in the
+frontend or documentation if any assumption is incorrect.
 
 ## Delivery map
 
 | Item | Authoritative file | Status |
 | --- | --- | --- |
-| Frontend design and source | [`../ai-chatbot-lehigh/`](../ai-chatbot-lehigh/) | Ready to build |
-| Five URLs for the existing crawler | [`backend-inputs/SOURCE_CATALOG.csv`](backend-inputs/SOURCE_CATALOG.csv) | Ready for ingestion |
-| Ross system prompt | [`backend-inputs/SYSTEM_PROMPT.txt`](backend-inputs/SYSTEM_PROMPT.txt) | Ready for existing prompt configuration |
+| Frontend design and source | [`../ai-chatbot-lehigh/`](../ai-chatbot-lehigh/) | Prepared for build |
+| Five URLs for the existing crawler | [`backend-inputs/SOURCE_CATALOG.csv`](backend-inputs/SOURCE_CATALOG.csv) | Prepared for ingestion |
+| Ross system prompt | [`backend-inputs/SYSTEM_PROMPT.txt`](backend-inputs/SYSTEM_PROMPT.txt) | Prepared for the existing prompt workflow |
 | Fixed frontend/API interface | [`backend-inputs/API_CONTRACT.md`](backend-inputs/API_CONTRACT.md) | Implemented by the frontend |
-| Test questions and sign-off | [`validation/`](validation/) | Ready after a Ross URL exists |
-| Deployment record | [`RELEASE_MANIFEST.md`](RELEASE_MANIFEST.md) | Fill in during deployment |
+| Test questions and sign-off | [`validation/`](validation/) | For joint validation after a public URL is available |
+| Deployment record | [`RELEASE_MANIFEST.md`](RELEASE_MANIFEST.md) | To be completed as details become available |
 
 The `fetched_site/` and `knowledge_base/` folders are historical or working
-material. They are not deployment inputs. In particular, do not reuse the old
-shared endpoint, the `le-chat` bot name, or `knowledge_base/sample.md`.
+material rather than deployment inputs. Please use the files linked in the
+table above instead of the old shared endpoint, the `le-chat` bot name, or
+`knowledge_base/sample.md`.
 
-## Fastest path to a working deployment
+## Suggested handoff flow
+
+The following steps reflect our current understanding. Please adapt them to the
+existing platform and AWS process rather than changing the backend to match
+this document.
 
 1. Check out the delivery branch.
 
    ```bash
-   git clone --branch codex/christopher-handoff --single-branch \
+   git clone --branch christopher-handoff --single-branch \
      https://github.com/everett4320/AI_Chatbot_CSE280.git
    cd AI_Chatbot_CSE280
    ```
 
-2. In the existing chatbot platform, select or register the Ross bot using the
-   normal fixed workflow. No server code or API behavior needs to change.
-3. Give the five URLs in
+2. Could you please select or register Ross through the platform's normal
+   workflow? We do not expect any server code or API behavior to change.
+3. When convenient, please give the five URLs in
    `christopher-handoff/backend-inputs/SOURCE_CATALOG.csv` to the existing
-   crawler. Record each resulting source ID and ingestion result.
-4. Load `christopher-handoff/backend-inputs/SYSTEM_PROMPT.txt` through the
-   existing prompt configuration workflow. Do not send this prompt from the
-   browser on each request.
-5. Copy the already assigned HTTPS API endpoint and Ross `bot_name` into the
-   frontend build. Use the frontend origin and public path already supported by
-   the fixed service.
+   crawler. If it returns source IDs or ingestion results, it would help our
+   validation if those could be shared or recorded.
+4. Please apply `christopher-handoff/backend-inputs/SYSTEM_PROMPT.txt` through
+   the existing prompt configuration workflow. The browser frontend does not
+   send this prompt on each request.
+5. For the frontend build, could you please use the HTTPS API endpoint, Ross
+   `bot_name`, and public path already assigned by the platform? If our variable
+   mapping is not correct, please tell us what the frontend should use instead.
 
    ```bash
    cd ai-chatbot-lehigh
@@ -59,17 +73,19 @@ shared endpoint, the `le-chat` bot name, or `knowledge_base/sample.md`.
    `/ross-test/` is an example. Use `/` when AWS serves the frontend at the
    domain root. The server listens on port 3000. Docker commands are in
    [`../ai-chatbot-lehigh/README.md`](../ai-chatbot-lehigh/README.md).
-6. Deploy this built frontend with the existing AWS process. AWS hosting and
-   the public deployment are Christopher's responsibility; this repository
-   does not create or change that infrastructure.
-7. Send the final HTTPS public URL and the recorded values below to the student
-   team. The team will complete the browser and content acceptance checks.
+6. Could you please deploy the built frontend through the existing AWS process?
+   We are hoping for a public HTTPS URL that first-year students can open
+   without GitHub or AWS credentials. This repository does not create or change
+   the AWS infrastructure.
+7. When it is ready, please send us the public URL and any relevant values below.
+   Our team will complete the browser and content acceptance checks.
 
-## Inputs to copy directly
+## Materials we prepared
 
 ### System prompt
 
-Use [`backend-inputs/SYSTEM_PROMPT.txt`](backend-inputs/SYSTEM_PROMPT.txt).
+The prompt we prepared is
+[`backend-inputs/SYSTEM_PROMPT.txt`](backend-inputs/SYSTEM_PROMPT.txt).
 
 SHA-256:
 `5f13fd929d0f790374b37e6a2807e7e2984654aba565cc18fa9b7a15dfe9a14d`
@@ -90,9 +106,10 @@ They are crawl inputs, not an already indexed knowledge base. The
 `backend_source_uri` cells stay blank until the existing crawler returns its
 source identifiers.
 
-## Values to return after deployment
+## Information that would help us after deployment
 
-Please record these in `RELEASE_MANIFEST.md` and send them with the public link:
+If available through the normal process, it would help us if you could record
+these in `RELEASE_MANIFEST.md` or send them with the public link:
 
 1. The fixed Ross `bot_name`.
 2. The fixed API endpoint used by the frontend build.
@@ -100,14 +117,14 @@ Please record these in `RELEASE_MANIFEST.md` and send them with the public link:
 4. The ingestion result and source ID for each of the five URLs.
 5. The final AWS-hosted HTTPS URL.
 
-These are existing configuration values and deployment results. We are not
-asking for changes to the backend, API, model, retrieval logic, CORS behavior,
-or server implementation.
+These are existing configuration values and deployment results, not requests
+to change the backend, API, model, retrieval logic, CORS behavior, or server
+implementation.
 
 ## Acceptance run
 
-After the Ross endpoint, bot name, and public URL are available, a tester with
-Bash, `curl`, and `jq` can record the fixed-interface responses from the
+After we receive the Ross endpoint, bot name, and public URL, our team can use
+Bash, `curl`, and `jq` to record the fixed-interface responses from the
 repository root:
 
 ```bash
@@ -122,6 +139,10 @@ The automated result proves transport and response shape only. Use
 [`validation/ACCEPTANCE_CHECKLIST.md`](validation/ACCEPTANCE_CHECKLIST.md) for
 manual grounding, source, scope, and UI review. A local demo reply or the
 historical screenshot in the root README is not a Ross backend test.
+
+If any path, variable, payload assumption, or deployment note does not fit the
+existing platform, please tell us what you need it to look like. We will update
+the frontend or handoff material on our side.
 
 ## Maintenance
 

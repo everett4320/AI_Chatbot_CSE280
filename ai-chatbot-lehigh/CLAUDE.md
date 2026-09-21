@@ -2,7 +2,7 @@
 
 ## Scope and ownership
 
-This repository owns the Ross frontend and handoff material only. Christopher and the school platform manage the fixed backend, retrieval, model, bot registration, CORS, authentication, rate limits, logging, and deployment policy. Do not request changes to those systems; adapt the frontend when an integration mismatch is found.
+This repository owns the Ross frontend and handoff material only. Christopher and the school platform manage the fixed backend, retrieval, model, bot registration, CORS, authentication, rate limits, logging, and deployment policy. Chris Larkin is the project sponsor. Do not request changes to those systems; adapt the frontend when an integration mismatch is found.
 
 Do not infer a live Ross integration from local demo behavior. The frontend needs an assigned endpoint, a stable Ross bot slug, confirmed CORS, configured prompt, and ingested sources before it can be used for a real pilot.
 

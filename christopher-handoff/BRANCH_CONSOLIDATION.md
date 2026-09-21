@@ -9,16 +9,17 @@ At publication, these branches are intended to point to the commit containing
 this record:
 
 - `main`
-- `codex/consolidate-branches`
-- `codex/christopher-handoff`
+- `consolidate-branches`
+- `christopher-handoff`
 
-`codex/christopher-handoff` is the branch to share with Christopher. `main` is
-the team default. The consolidation branch is retained as an audit trail.
+`christopher-handoff` is the branch to share with Christopher, who manages the
+platform and deployment. `main` is the team default. The consolidation branch
+is retained as an audit trail. Chris Larkin is the project sponsor.
 
 ## Work included
 
 - Everett's Figma-aligned Ross frontend is the UI baseline.
-- The original Christopher handoff contributes the prompt, five-source catalog,
+- The original sponsor handoff contributes the prompt, five-source catalog,
   API reference, deployment notes, and acceptance material.
 - Mark's timeout/responsive work and later composer, ID-fallback, source-dedup,
   Quick Start, and screenshot work are included.
@@ -28,7 +29,7 @@ the team default. The consolidation branch is retained as an audit trail.
 - Later session isolation, stale-response protection, QA portability, and
   fixed-contract checks are included.
 
-The old Christopher commits were patch-equivalent to copies already present in
+The old handoff commits were patch-equivalent to copies already present in
 the consolidated lineage. A normal merge would have replayed resolved frontend
 and API conflicts. The safe publication method is therefore to validate the
 consolidated tree and move the delivery branch to that exact tree with a
@@ -36,10 +37,10 @@ lease-protected update.
 
 ## Information preserved and excluded
 
-No file from the earlier Christopher delivery was deleted by consolidation.
+No file from the earlier sponsor delivery was deleted by consolidation.
 Legacy contributor branches remain available for history and attribution, but
 they are not deployment baselines. Survey exports and local test output are
-intentionally excluded because they are not Christopher delivery material and
+intentionally excluded because they are not sponsor delivery material and
 may contain respondent data.
 
 ## Fixed integration boundary

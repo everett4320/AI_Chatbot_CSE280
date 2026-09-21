@@ -1,7 +1,9 @@
 # Ross chatbot frontend
 
-This repository contains the Ross frontend and the files needed to connect it
-to the shared Lehigh chatbot platform.
+This repository contains the frontend and handoff materials for **Ross**, the
+AI chatbot project for Lehigh University's P.C. Rossin College of Engineering
+and Applied Science. The project was previously called **LE-Chat**; its current
+name is **Ross**. The project sponsor is **Chris Larkin**.
 
 Christopher and the school platform manage a fixed chatbot backend, retrieval
 system, model, API, and production environment. This repository does not change
@@ -14,8 +16,8 @@ Start with **[christopher-handoff/README.md](christopher-handoff/README.md)**.
 It is the single delivery entry point for the frontend, five crawl URLs, Ross
 system prompt, fixed API contract, AWS handoff boundary, and acceptance steps.
 
-The delivery branch is `codex/christopher-handoff`. The frontend must adapt to
-the existing service; no backend or server change is requested by this repo.
+The delivery branch is `christopher-handoff`. The frontend must adapt to the
+existing service; no backend or server change is requested by this repo.
 
 ## Local UI quick start
 
