@@ -670,10 +670,6 @@ button {
   opacity: 1;
 }
 
-.ross-composer__input:disabled {
-  opacity: 0.58;
-}
-
 .ross-composer__send {
   display: grid;
   width: 38px;

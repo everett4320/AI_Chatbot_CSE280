@@ -44,6 +44,9 @@ export function ChatInput({ onSend, isLoading }: ChatInputProps) {
   };
 
   const handleKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
+    // Enter during IME composition (e.g. picking a pinyin candidate) confirms
+    // the candidate, not the message. Safari reports it as keyCode 229 instead.
+    if (e.nativeEvent.isComposing || e.nativeEvent.keyCode === 229) return;
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       handleSubmit();
@@ -61,7 +64,9 @@ export function ChatInput({ onSend, isLoading }: ChatInputProps) {
           aria-label="Message input"
           placeholder="ASK A QUESTION..."
           rows={1}
-          disabled={isLoading}
+          // Not disabled while Ross is answering: disabling a focused textarea
+          // blurs it, so every reply forced a click back into the input.
+          // handleSubmit already refuses to send while isLoading.
           className="ross-composer__input"
         />
         <button
@@ -69,6 +74,8 @@ export function ChatInput({ onSend, isLoading }: ChatInputProps) {
           disabled={!input.trim() || isLoading}
           className="ross-composer__send"
           aria-label="Send message"
+          // Keep focus in the textarea when the button is clicked or tapped.
+          onMouseDown={(e) => e.preventDefault()}
         >
           <img src={paperPlaneUrl} alt="" />
         </button>
