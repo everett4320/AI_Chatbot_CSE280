@@ -87,30 +87,3 @@ npm run start
 `/ross-test/` is an example. Use `/` if AWS serves the frontend at the domain
 root. The Node server listens on port 3000. Docker instructions are in
 [`../ai-chatbot-lehigh/README.md`](../ai-chatbot-lehigh/README.md).
-
-## AWS deployment and testing
-
-Once the frontend is built, could you deploy it through your existing AWS setup
-and send us a public HTTPS link that anyone can open? We plan to test it with
-first-year students, so they should not need GitHub or AWS credentials.
-
-If convenient, please also record the bot name, endpoint, public path, and
-source IDs in [`RELEASE_MANIFEST.md`](RELEASE_MANIFEST.md). We mainly need the
-public URL; the other values help us reproduce and check the frontend setup.
-
-After deployment, our team will run:
-
-```bash
-bash scripts/run_question_suite.sh \
-  --endpoint "<Ross API endpoint>" \
-  --bot-name "<Ross bot name>" \
-  --questions-file christopher-handoff/validation/test_questions.json \
-  --sections 123
-```
-
-This script checks the request and response format. We will use
-[`validation/ACCEPTANCE_CHECKLIST.md`](validation/ACCEPTANCE_CHECKLIST.md) for
-the browser, source, and answer-quality review.
-
-Later update instructions are in [`UPDATES.md`](UPDATES.md). The branch history
-is recorded in [`BRANCH_CONSOLIDATION.md`](BRANCH_CONSOLIDATION.md).
