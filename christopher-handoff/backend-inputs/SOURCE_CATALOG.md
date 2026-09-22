@@ -8,7 +8,7 @@ ID your platform returns after ingestion. Please write that ID back to the CSV.
 Do not use the public URL as a `source_uri_filter` value unless your platform
 explicitly uses that format.
 
-The five links were checked again on 2026-09-21 and all returned HTTP 200. Two
+The five links were checked again on 2026-09-22 and all returned HTTP 200. Two
 came from the existing Ross frontend. Three came from a previous branch. The
 branch included survey data, but only the public URLs are used here.
 

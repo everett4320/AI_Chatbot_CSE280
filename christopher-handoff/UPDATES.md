@@ -1,55 +1,33 @@
-# Updating Ross after the first setup
+# Updating Ross
 
-The first setup takes the most coordination because Christopher needs to select
-the Ross bot in the existing platform, ingest the first source set, apply the
-prompt, and deploy the frontend through the existing AWS process. The backend,
-server behavior, and API contract stay fixed.
+The backend and API stay as they are. The steps below are only for keeping the
+frontend, prompt, and source list in sync after the first deployment.
 
-These steps describe our current understanding of the collaboration. Christopher
-should use the normal platform and AWS process and let us know if we need to
-change the frontend or handoff format.
+## Frontend changes
 
-## Frontend-only change
+The student team pushes the change to `christopher-handoff`. Christopher can
+then rebuild and deploy `ai-chatbot-lehigh/` through the same AWS process. Once
+he sends back the updated link, the team checks it in the browser.
 
-Examples: layout, wording, accessibility, or chat interaction changes.
+A frontend-only change does not require a prompt or source update.
 
-1. The student team pushes the frontend change to this branch.
-2. We ask Christopher to pull the branch, rebuild `ai-chatbot-lehigh/`, and
-   deploy it through the existing AWS process.
-3. Christopher sends us the updated public link when it is ready.
-4. The student team checks the link.
+## Prompt changes
 
-The prompt and source catalog do not need to change for a frontend-only update.
+The team updates `backend-inputs/SYSTEM_PROMPT.txt` and its hash. Christopher
+applies the new text through the existing prompt setting, and the team reruns
+the question set. The frontend does not normally need a rebuild.
 
-## Prompt change
+## Source changes
 
-1. Update `backend-inputs/SYSTEM_PROMPT.txt` and record its new hash.
-2. We ask Christopher to apply the prompt using the existing platform setting.
-3. Run the prompt and question-suite checks again.
+The team updates `backend-inputs/SOURCE_CATALOG.csv`. Christopher uses the
+existing ingestion workflow and shares the result when available. The team then
+runs the relevant questions from `validation/test_questions.json`.
 
-The frontend normally does not need a rebuild for a prompt-only change.
+## If the frontend no longer matches
 
-## Source-link or knowledge-base change
+The student team updates the frontend adapter and contract tests. We do not ask
+Christopher to change the server, API shape, authentication, CORS behavior,
+model, or retrieval system.
 
-1. Add, change, or remove rows in `backend-inputs/SOURCE_CATALOG.csv`.
-2. We ask Christopher to use the existing ingestion, refresh, or removal
-   workflow.
-3. Christopher shares each result and `backend_source_uri` when available.
-4. Run relevant questions from `validation/test_questions.json`.
-
-The frontend normally does not need a rebuild for a source update.
-
-## Fixed backend boundary
-
-Do not request changes to the API request shape, response shape, authentication,
-bot routing, CORS behavior, model, retrieval system, or server implementation.
-Those systems are fixed and outside this repository. If the frontend no longer
-matches the observed interface, the student team updates the frontend adapter
-and its contract tests, then Christopher rebuilds the frontend.
-
-## Keep one short record
-
-For each release, update `RELEASE_MANIFEST.md` with the branch commit, prompt
-hash, source-ingestion result, fixed bot name, public URL, and QA result. That
-makes it easy to see what changed and to return to the previous frontend
-version if needed.
+For each release, `RELEASE_MANIFEST.md` should record the commit, prompt hash,
+source result, bot name, public URL, and QA result.
