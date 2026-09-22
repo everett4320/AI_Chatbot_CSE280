@@ -167,12 +167,8 @@ export function parseChatReply(
 
 const PROGRAM_SOURCES: Source[] = [
   {
-    title: "Undergraduate Studies — Rossin College",
-    url: "https://engineering.lehigh.edu/academics/undergraduate",
-  },
-  {
-    title: "Academic Programs — Lehigh Engineering",
-    url: "https://engineering.lehigh.edu/academics",
+    title: "P.C. Rossin College of Engineering and Applied Science",
+    url: "https://engineering.lehigh.edu/",
   },
 ];
 

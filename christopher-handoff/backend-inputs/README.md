@@ -1,7 +1,7 @@
 # Ross inputs
 
 This folder has the two inputs we prepared for Ross: the system prompt and the
-five-page source list. Christopher can use the platform's normal prompt and
+four-seed source list. Christopher can use the platform's normal prompt and
 crawler workflow. If either file needs a different format, send us the expected
 format and we will update it.
 
@@ -17,10 +17,11 @@ can match a test run to the prompt version.
 
 ## Source list
 
-[`SOURCE_CATALOG.csv`](SOURCE_CATALOG.csv) contains five public Lehigh URLs for
-the crawler. The `backend_source_uri` cells are blank because those IDs are
-created during ingestion.
+[`SOURCE_CATALOG.csv`](SOURCE_CATALOG.csv) contains four public Lehigh seeds.
+The Engineering root uses host-only crawling; the other three rows are specific
+supplemental pages. The `backend_source_uri` cells are blank because those IDs
+are created during ingestion.
 
 `knowledge_base/sample.md` is a placeholder from the student repository, not a
 Ross source. [`SOURCE_CATALOG.md`](SOURCE_CATALOG.md) explains the catalog
-columns and where the five URLs came from.
+columns and where the four seeds came from.

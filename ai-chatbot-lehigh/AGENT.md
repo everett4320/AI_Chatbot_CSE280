@@ -26,6 +26,16 @@ npm run start
 ```
 
 `npm run verify` includes typechecking, contract tests, and a production build.
+`npm run start` previews the generated static files locally; it is not a
+production Node server.
+
+## Deployment rule
+
+Ross is deployed as a static SPA through Apache. Keep React Router in
+`ssr: false` mode, require `build/client/index.html`, and do not introduce a
+production Node process. Apache must fall back to the built `index.html` at the
+same path configured by `VITE_BASE_PATH`. Christopher's preferred public target
+is `https://ross.cc.lehigh.edu/`, which uses `VITE_BASE_PATH=/`.
 
 ## Runtime behavior
 
@@ -43,4 +53,4 @@ QA always requires an explicit endpoint and bot slug. By default it verifies the
 
 ## Frontend boundaries
 
-Keep the frontend responsive for narrow screens, long unbroken user text, Markdown tables, short viewports, and subpath deployments. Do not alter backend/RAG/model behavior from this repository.
+Keep the frontend responsive for narrow screens, long unbroken user text, Markdown tables, short viewports, and static root or subpath deployments. Do not alter backend/RAG/model behavior from this repository.

@@ -9,5 +9,5 @@ function normalizeBasePath(value: string | undefined) {
 
 export default {
   basename: normalizeBasePath(process.env.VITE_BASE_PATH),
-  ssr: true,
+  ssr: false,
 } satisfies Config;

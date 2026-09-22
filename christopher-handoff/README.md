@@ -17,7 +17,7 @@ frontend should send or expect and we will update it.
 
 - [`../ai-chatbot-lehigh/`](../ai-chatbot-lehigh/) contains the frontend.
 - [`backend-inputs/SOURCE_CATALOG.csv`](backend-inputs/SOURCE_CATALOG.csv)
-  contains the five source pages.
+  contains the four crawler seeds.
 - [`backend-inputs/SYSTEM_PROMPT.txt`](backend-inputs/SYSTEM_PROMPT.txt) is the
   Ross system prompt.
 - [`backend-inputs/API_CONTRACT.md`](backend-inputs/API_CONTRACT.md) documents
@@ -40,16 +40,17 @@ cd AI_Chatbot_CSE280
 
 ## Source pages and system prompt
 
-Please use the normal workflow on your platform to select or register Ross,
-crawl the five pages below, and apply the system prompt.
+Please use the normal workflow on your platform to select or register Ross and
+apply the system prompt. For the Engineering seed, use host-only crawling so it
+covers all public pages on `engineering.lehigh.edu`. The other three URLs are
+individual supplemental pages.
 
-The pages were checked on September 22, 2026, and all returned HTTP 200:
+The four seeds were checked on September 22, 2026, and all returned HTTP 200:
 
-1. <https://engineering.lehigh.edu/academics>
-2. <https://engineering.lehigh.edu/academics/undergraduate>
-3. <https://www2.lehigh.edu/admissions/college-program-events>
-4. <https://www2.lehigh.edu/admissions/post-graduation-career-outcomes>
-5. <https://careercenter.lehigh.edu/content/meet-team>
+1. <https://engineering.lehigh.edu/> — crawl the full host
+2. <https://www2.lehigh.edu/admissions/college-program-events>
+3. <https://www2.lehigh.edu/admissions/post-graduation-career-outcomes>
+4. <https://careercenter.lehigh.edu/content/meet-team>
 
 The CSV version is
 [`backend-inputs/SOURCE_CATALOG.csv`](backend-inputs/SOURCE_CATALOG.csv).
@@ -78,12 +79,13 @@ the values or format the frontend should use.
 cd ai-chatbot-lehigh
 export VITE_CHAT_API_URL="<Ross API endpoint>"
 export VITE_CHAT_BOT_NAME="<Ross bot name>"
-export VITE_BASE_PATH="/ross-test/"
+export VITE_BASE_PATH="/"
 npm ci
 npm run verify:deployment
-npm run start
 ```
 
-`/ross-test/` is an example. Use `/` if AWS serves the frontend at the domain
-root. The Node server listens on port 3000. Docker instructions are in
+This creates a static site at `build/client/`, including `index.html`. Copy that
+directory to the Apache document root for `https://ross.cc.lehigh.edu/`. No Node
+process is needed in production. Apache should fall back to `/index.html` for
+frontend routes. Full Apache and Docker notes are in
 [`../ai-chatbot-lehigh/README.md`](../ai-chatbot-lehigh/README.md).

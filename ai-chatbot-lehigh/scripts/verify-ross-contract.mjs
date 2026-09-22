@@ -7,12 +7,18 @@ const forbidden = [
   "8lyrpsdez5.execute-api.us-east-1.amazonaws.com",
   '"bot_name": "le-chat"',
   '"bot_name":"le-chat"',
+  "react-router-serve",
+  "build/server/index.js",
+  "The app is React Router SSR",
 ];
 const required = [
   "VITE_CHAT_API_URL",
   "VITE_CHAT_BOT_NAME",
   "API_CONTRACT.md",
   "npm run verify",
+  "Apache",
+  "build/client/index.html",
+  "ssr: false",
 ];
 
 const failures = [];

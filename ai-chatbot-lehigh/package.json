@@ -5,15 +5,15 @@
   "scripts": {
     "build": "react-router build",
     "dev": "react-router dev",
-    "start": "react-router-serve ./build/server/index.js",
+    "start": "vite preview --outDir build/client --host 0.0.0.0 --port 3000",
     "test:contract": "node scripts/verify-ross-contract.mjs && vitest run --exclude \"output/**\"",
     "typecheck": "react-router typegen && tsc",
-    "verify": "npm run typecheck && npm run test:contract && npm run build",
+    "verify:static": "node scripts/verify-static-build.mjs",
+    "verify": "npm run typecheck && npm run test:contract && npm run build && npm run verify:static",
     "verify:deployment": "node scripts/verify-deployment-config.mjs && npm run verify"
   },
   "dependencies": {
     "@react-router/node": "7.18.3",
-    "@react-router/serve": "7.18.3",
     "isbot": "^5.1.36",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
@@ -32,8 +32,5 @@
     "vite": "^7.1.7",
     "vite-tsconfig-paths": "^5.1.4",
     "vitest": "^4.1.11"
-  },
-  "overrides": {
-    "qs": "6.16.0"
   }
 }

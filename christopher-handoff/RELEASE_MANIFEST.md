@@ -9,6 +9,7 @@ Fill this in when the Ross public link is created.
 | Project sponsor | Chris Larkin |
 | Branch | `christopher-handoff` |
 | Commit shared with Christopher | |
+| Frontend hosting mode | Apache static SPA |
 | Fixed Ross bot name | |
 | Fixed API endpoint | |
 | Supported frontend origin | |
@@ -16,7 +17,7 @@ Fill this in when the Ross public link is created.
 | Public path | |
 | Existing Ross mapping or collection ID | |
 | Prompt SHA-256 | `5f13fd929d0f790374b37e6a2807e7e2984654aba565cc18fa9b7a15dfe9a14d` |
-| Source rows in catalog | 5 |
+| Source rows in catalog | 4 |
 | Source rows submitted | |
 | Sources ingested | |
 | Failed sources | |

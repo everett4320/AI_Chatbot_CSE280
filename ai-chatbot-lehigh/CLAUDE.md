@@ -16,7 +16,9 @@ npm run verify
 npm run verify:deployment
 ```
 
-The app is React Router SSR. Production startup is `react-router-serve ./build/server/index.js`; the build produces both client and server output.
+The app uses React Router SPA mode with `ssr: false`. A production build must
+produce `build/client/index.html`; Apache serves `build/client/` directly. There
+is no production Node process. `npm run start` is only a local static preview.
 
 ## Build-time configuration
 
@@ -27,6 +29,10 @@ The frontend reads these public build-time values:
 - `VITE_BASE_PATH`: `/` or a canonical subpath such as `/ross-test/`
 
 The deployment validator rejects missing bot names and invalid production endpoint configuration. A development build without an endpoint may show a local demo reply; that is never a model, retrieval, or clone test.
+
+The Apache document root or alias, `VITE_BASE_PATH`, React Router basename, and
+`FallbackResource` must describe the same public path. For
+`https://ross.cc.lehigh.edu/`, use `/` and fall back to `/index.html`.
 
 ## API and state contract
 

@@ -19,7 +19,7 @@ is retained as an audit trail. Chris Larkin is the project sponsor.
 ## Work included
 
 - Everett's Figma-aligned Ross frontend is the UI baseline.
-- The original sponsor handoff contributes the prompt, five-source catalog,
+- The original sponsor handoff contributes the prompt, source catalog,
   API reference, deployment notes, and acceptance material.
 - Mark's timeout/responsive work and later composer, ID-fallback, source-dedup,
   Quick Start, and screenshot work are included.

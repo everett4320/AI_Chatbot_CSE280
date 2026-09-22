@@ -8,9 +8,15 @@ ID your platform returns after ingestion. Please write that ID back to the CSV.
 Do not use the public URL as a `source_uri_filter` value unless your platform
 explicitly uses that format.
 
-The five links were checked again on 2026-09-22 and all returned HTTP 200. Two
-came from the existing Ross frontend. Three came from a previous branch. The
-branch included survey data, but only the public URLs are used here.
+`ingest_method` records the requested crawler scope. `host-only` means the full
+hostname; `exact-page` means only the listed supplemental page.
+
+The four seeds were checked again on 2026-09-22 and all returned HTTP 200. The
+Engineering seed consolidates two overlapping URLs from the earlier frontend.
+Use `host-only` mode for `https://engineering.lehigh.edu/` so all public pages
+on that host are included. Do not widen that crawl to unrelated `lehigh.edu`
+hosts. The other three rows are individual supplemental pages from a previous
+branch; no survey data is included.
 
 Before adding another source, check that it is public, current, and appropriate
 for Ross. Use `include=no` for a link that should stay out of the crawl.

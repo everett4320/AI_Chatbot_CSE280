@@ -13,7 +13,7 @@ handoff inputs.
 ## For Christopher
 
 Start with [christopher-handoff/README.md](christopher-handoff/README.md). It
-has the frontend handoff, five crawler URLs, Ross system prompt, build notes,
+has the frontend handoff, four crawler seeds, Ross system prompt, build notes,
 and test checklist.
 
 The delivery branch is `christopher-handoff`. The frontend must adapt to the
@@ -63,6 +63,10 @@ name.*
 The frontend needs an API endpoint, the Ross bot slug, and a public path at
 build time. See [ai-chatbot-lehigh/README.md](ai-chatbot-lehigh/README.md) for
 the commands and API contract.
+
+The production artifact is a static SPA in `ai-chatbot-lehigh/build/client/`.
+Christopher can serve it directly with Apache; no production Node process is
+required.
 
 The endpoint recorded in `fetched_site/` came from an earlier test site. It is
 not the Ross deployment endpoint. Christopher will provide the fixed endpoint
