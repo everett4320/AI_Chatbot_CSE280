@@ -1,9 +1,18 @@
-Knowledge Base
+# Knowledge-base working area
 
-- Put Markdown files in this folder.
-- These files are committed to Git and shared across the team.
-- The deployed chatbot can filter retrieval by `source_uri_filter` values that match source document URIs.
+This folder is a team working area, **not** an automatically deployed Ross
+knowledge base. The existing `sample.md` file is a placeholder and must not be
+sent to Christopher for ingestion.
 
-Conventions
-- Use `.md` files.
-- Prefer a top-level `# Title` as the first line.
+For the Christopher / ITS handoff, use
+[`christopher-handoff/backend-inputs/`](../christopher-handoff/backend-inputs/):
+
+- `SOURCE_CATALOG.csv` is the authoritative list of approved public sources.
+- `SYSTEM_PROMPT.txt` is the Ross clone-level prompt supplied to Christopher.
+- Christopher must record the post-ingestion `backend_source_uri` values
+  returned by the existing crawler. The production frontend does not send a
+  `source_uri_filter` and requests no retrieval-service change.
+
+When approved source documents are supplied as Markdown rather than URLs, place
+them in a separately documented source set with a matching catalog row, content
+owner, permission status, and version date. Use a top-level `# Title` first.

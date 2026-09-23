@@ -13,6 +13,7 @@ export interface Message {
   timestamp: number;
   sources?: Source[];
   questionId?: string;
+  sessionId?: string;
   feedback?: FeedbackRating;
 }
 

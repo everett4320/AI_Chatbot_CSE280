@@ -4,16 +4,15 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 
-DEFAULT_ENDPOINT="https://8lyrpsdez5.execute-api.us-east-1.amazonaws.com/call"
-DEFAULT_BOT_NAME="le-chat"
+LEGACY_SHARED_ENDPOINT="https://8lyrpsdez5.execute-api.us-east-1.amazonaws.com/call"
 
 QUESTIONS_FILE="${QUESTIONS_FILE:-fetched_site/questions/test_questions.json}"
-CUSTOM_PROMPT_FILE="${CUSTOM_PROMPT_FILE:-fetched_site/prompts/custom_prompt.txt}"
+CUSTOM_PROMPT_FILE="${CUSTOM_PROMPT_FILE-}"
 RUNS_DIR="${RUNS_DIR:-fetched_site/prompt_effectiveness_runs}"
 MODEL_ID=""
 SOURCE_URI_FILTER=""
-BOT_NAME=""
-ENDPOINT=""
+BOT_NAME="${BOT_NAME:-}"
+ENDPOINT="${ROSS_API_ENDPOINT:-}"
 ONLY_CODES=""
 SECTIONS=""
 SLEEP_SECONDS="0"
@@ -36,6 +35,35 @@ to_repo_relative() {
   fi
 }
 
+normalize_endpoint_for_comparison() {
+  local value="$1"
+  value="${value%%\?*}"
+  value="${value%%\#*}"
+  while [[ "$value" == */ ]]; do
+    value="${value%/}"
+  done
+  printf '%s\n' "$value" | tr '[:upper:]' '[:lower:]'
+}
+
+validate_endpoint() {
+  local endpoint="$1"
+  local normalized_endpoint
+
+  if [[ -z "$endpoint" ]]; then
+    echo "Error: --endpoint or ROSS_API_ENDPOINT is required for a Ross QA suite." >&2
+    exit 1
+  fi
+  normalized_endpoint="$(normalize_endpoint_for_comparison "$endpoint")"
+  if [[ "$normalized_endpoint" == "$LEGACY_SHARED_ENDPOINT" ]]; then
+    echo "Error: the historical shared endpoint is not a Ross endpoint. Supply Christopher's assigned endpoint." >&2
+    exit 1
+  fi
+  if ! [[ "$endpoint" =~ ^https?:// ]]; then
+    echo "Error: endpoint must be an absolute http(s) URL." >&2
+    exit 1
+  fi
+}
+
 sha256_text() {
   if command -v sha256sum >/dev/null 2>&1; then
     sha256sum | awk '{print $1}'
@@ -53,19 +81,21 @@ Usage:
 
 Options:
   --questions-file path         JSON file with numbered questions and sections
-  --custom-prompt-file path     Prompt file (non-empty => send custom_prompt)
+  --custom-prompt-file path     Explicit exploratory prompt override (not acceptance configuration)
   --runs-dir path               Directory for per-run records
   --model-id id                 Optional Bedrock model ID
   --source-uri-filter csv       Optional source filter (at least 2 entries if used)
-  --bot-name name               Optional bot name
-  --endpoint url                Optional API endpoint
+  --bot-name name               Required stable backend bot name
+  --endpoint url                Required Ross API endpoint (or set ROSS_API_ENDPOINT)
   --sections 13                 Sections to run (e.g., 123, 13, 2). If omitted, interactive prompt is shown.
   --only-codes Q001,Q003        Run only selected question IDs (applies after section filtering)
   --sleep-seconds N             Sleep between requests (default: 0)
   -h, --help                    Show help
 
 Quick start:
-  bash scripts/run_question_suite.sh
+  bash scripts/run_question_suite.sh \
+    --bot-name "<Christopher-assigned-Ross-bot-name>" \
+    --endpoint "<Christopher-assigned-Ross-endpoint>"
 USAGE
 }
 
@@ -129,11 +159,11 @@ if ! command -v jq >/dev/null 2>&1; then
 fi
 
 QUESTIONS_FILE_ABS="$(resolve_path "$QUESTIONS_FILE")"
-CUSTOM_PROMPT_FILE_ABS="$(resolve_path "$CUSTOM_PROMPT_FILE")"
+CUSTOM_PROMPT_FILE_ABS=""
 RUNS_DIR_ABS="$(resolve_path "$RUNS_DIR")"
 
 QUESTIONS_FILE_DISPLAY="$(to_repo_relative "$QUESTIONS_FILE_ABS")"
-CUSTOM_PROMPT_FILE_DISPLAY="$(to_repo_relative "$CUSTOM_PROMPT_FILE_ABS")"
+CUSTOM_PROMPT_FILE_DISPLAY="(backend configured prompt)"
 RUNS_DIR_DISPLAY="$(to_repo_relative "$RUNS_DIR_ABS")"
 
 if [[ ! -f "$QUESTIONS_FILE_ABS" ]]; then
@@ -151,27 +181,31 @@ if ! jq -e '[.questions[] | (.section // empty | tostring)] | all(length > 0)' "
   exit 1
 fi
 
-mkdir -p "$(dirname "$CUSTOM_PROMPT_FILE_ABS")"
-if [[ ! -f "$CUSTOM_PROMPT_FILE_ABS" ]]; then
-  : > "$CUSTOM_PROMPT_FILE_ABS"
-fi
-
-CUSTOM_PROMPT_CONTENT="$(cat "$CUSTOM_PROMPT_FILE_ABS")"
-if [[ -n "$CUSTOM_PROMPT_CONTENT" ]]; then
-  PROMPT_MODE="custom_prompt"
-else
-  PROMPT_MODE="backend_default"
+CUSTOM_PROMPT_CONTENT=""
+PROMPT_MODE="backend_configured_prompt"
+if [[ -n "$CUSTOM_PROMPT_FILE" ]]; then
+  CUSTOM_PROMPT_FILE_ABS="$(resolve_path "$CUSTOM_PROMPT_FILE")"
+  CUSTOM_PROMPT_FILE_DISPLAY="$(to_repo_relative "$CUSTOM_PROMPT_FILE_ABS")"
+  if [[ ! -f "$CUSTOM_PROMPT_FILE_ABS" ]]; then
+    echo "Error: custom prompt file not found: $CUSTOM_PROMPT_FILE_DISPLAY" >&2
+    exit 1
+  fi
+  CUSTOM_PROMPT_CONTENT="$(cat "$CUSTOM_PROMPT_FILE_ABS")"
+  if [[ -z "$CUSTOM_PROMPT_CONTENT" ]]; then
+    echo "Error: custom prompt file is empty. Omit it to test the configured Ross prompt." >&2
+    exit 1
+  fi
+  PROMPT_MODE="exploratory_custom_prompt"
 fi
 PROMPT_SHA256="$(printf '%s' "$CUSTOM_PROMPT_CONTENT" | sha256_text)"
 
-EFFECTIVE_ENDPOINT="$DEFAULT_ENDPOINT"
-if [[ -n "$ENDPOINT" ]]; then
-  EFFECTIVE_ENDPOINT="$ENDPOINT"
-fi
+EFFECTIVE_ENDPOINT="$ENDPOINT"
+validate_endpoint "$EFFECTIVE_ENDPOINT"
 
-EFFECTIVE_BOT_NAME="$DEFAULT_BOT_NAME"
-if [[ -n "$BOT_NAME" ]]; then
-  EFFECTIVE_BOT_NAME="$BOT_NAME"
+EFFECTIVE_BOT_NAME="$(echo "$BOT_NAME" | xargs)"
+if [[ -z "$EFFECTIVE_BOT_NAME" ]]; then
+  echo "Error: --bot-name is required. Refusing to send a Ross QA suite to a default bot." >&2
+  exit 1
 fi
 
 AVAILABLE_SECTIONS_NL="$(jq -r '. as $root
@@ -340,8 +374,13 @@ ran=0
 failed=0
 
 echo "Questions file:      $QUESTIONS_FILE_DISPLAY"
+echo "Endpoint:            $EFFECTIVE_ENDPOINT"
 echo "Custom prompt file:  $CUSTOM_PROMPT_FILE_DISPLAY"
 echo "Prompt mode:         $PROMPT_MODE"
+echo "Validation scope:    transport only; score answers, sources, and refusal quality manually."
+if [[ "$PROMPT_MODE" == "exploratory_custom_prompt" ]]; then
+  echo "Warning: custom_prompt is request-scoped and does not prove clone configuration."
+fi
 echo "Run output dir:      $RUN_DIR_DISPLAY"
 echo "Selected sections:   $SELECTED_SECTIONS_CSV"
 while IFS= read -r sid; do
@@ -366,7 +405,10 @@ while IFS=$'\t' read -r qid qsection qtext; do
   ran=$((ran + 1))
   echo "[$qid][Section $qsection] $qtext"
 
-  cmd=("${SCRIPT_DIR}/test_prompt_request.sh" --question "$qtext" --question-code "$qid" --custom-prompt-file "$CUSTOM_PROMPT_FILE_ABS" --bot-name "$EFFECTIVE_BOT_NAME" --endpoint "$EFFECTIVE_ENDPOINT")
+  cmd=(bash "${SCRIPT_DIR}/test_prompt_request.sh" --question "$qtext" --question-code "$qid" --bot-name "$EFFECTIVE_BOT_NAME" --endpoint "$EFFECTIVE_ENDPOINT")
+  if [[ -n "$CUSTOM_PROMPT_FILE_ABS" ]]; then
+    cmd+=(--custom-prompt-file "$CUSTOM_PROMPT_FILE_ABS")
+  fi
   if [[ -n "$MODEL_ID" ]]; then
     cmd+=(--model-id "$MODEL_ID")
   fi
@@ -383,8 +425,11 @@ while IFS=$'\t' read -r qid qsection qtext; do
 
   payload_path=$(printf '%s\n' "$cmd_output" | sed -n 's/^Payload file:[[:space:]]*//p' | head -n 1)
   response_path=$(printf '%s\n' "$cmd_output" | sed -n 's/^Response file:[[:space:]]*//p' | head -n 1)
-  question_id_out=$(printf '%s\n' "$cmd_output" | sed -n 's/^Question ID:[[:space:]]*//p' | head -n 1)
-  session_id_out=$(printf '%s\n' "$cmd_output" | sed -n 's/^Session ID:[[:space:]]*//p' | head -n 1)
+  request_question_id=$(printf '%s\n' "$cmd_output" | sed -n 's/^Question ID:[[:space:]]*//p' | head -n 1)
+  request_session_id=$(printf '%s\n' "$cmd_output" | sed -n 's/^Session ID:[[:space:]]*//p' | head -n 1)
+  response_question_id=$(printf '%s\n' "$cmd_output" | sed -n 's/^Response question ID:[[:space:]]*//p' | head -n 1)
+  response_session_id=$(printf '%s\n' "$cmd_output" | sed -n 's/^Response session ID:[[:space:]]*//p' | head -n 1)
+  http_status_out=$(printf '%s\n' "$cmd_output" | sed -n 's/^HTTP status:[[:space:]]*//p' | head -n 1)
 
   payload_file_rel=""
   response_file_rel=""
@@ -401,32 +446,38 @@ while IFS=$'\t' read -r qid qsection qtext; do
   fi
 
   response_text=""
-  error_text=""
+  error_text=$(printf '%s\n' "$cmd_output" | sed -n 's/^Error:[[:space:]]*//p' | tail -n 1)
   sources_json='[]'
 
   if [[ -n "$response_file_abs" && -f "$response_file_abs" ]] && jq . "$response_file_abs" >/dev/null 2>&1; then
     response_text=$(jq -r '.Response // ""' "$response_file_abs")
     error_text=$(jq -r '.error // ""' "$response_file_abs")
     sources_json=$(jq -c '.Sources // []' "$response_file_abs")
-    if [[ -z "$session_id_out" ]]; then
-      session_id_out=$(jq -r '.sessionId // ""' "$response_file_abs")
+    if [[ -z "$response_session_id" ]]; then
+      response_session_id=$(jq -r '.sessionId // ""' "$response_file_abs")
     fi
-    if [[ -z "$question_id_out" ]]; then
-      question_id_out=$(jq -r '.questionId // ""' "$response_file_abs")
+    if [[ -z "$response_question_id" ]]; then
+      response_question_id=$(jq -r '.questionId // ""' "$response_file_abs")
     fi
   fi
 
-  status="ok"
+  status="transport_ok"
   if [[ $cmd_exit -ne 0 ]]; then
     status="request_failed"
     if [[ -z "$error_text" ]]; then
       error_text="test_prompt_request.sh exited with code $cmd_exit"
     fi
+  elif ! [[ "$http_status_out" =~ ^2[0-9][0-9]$ ]]; then
+    status="http_error"
+    error_text="Ross endpoint returned HTTP ${http_status_out:-unknown}"
   elif [[ -n "$error_text" ]]; then
     status="api_error"
+  elif [[ -z "$response_text" ]]; then
+    status="invalid_response"
+    error_text="Ross endpoint returned no Response text."
   fi
 
-  if [[ "$status" != "ok" ]]; then
+  if [[ "$status" != "transport_ok" ]]; then
     failed=$((failed + 1))
     echo "[FAIL] $qid"
   fi
@@ -437,8 +488,11 @@ while IFS=$'\t' read -r qid qsection qtext; do
     --arg section_name "$(get_section_name "$qsection")" \
     --arg question "$qtext" \
     --arg status "$status" \
-    --arg session_id "$session_id_out" \
-    --arg question_id "$question_id_out" \
+    --arg http_status "$http_status_out" \
+    --arg request_session_id "$request_session_id" \
+    --arg request_question_id "$request_question_id" \
+    --arg response_session_id "$response_session_id" \
+    --arg response_question_id "$response_question_id" \
     --arg payload_file "$payload_file_rel" \
     --arg response_file "$response_file_rel" \
     --arg response "$response_text" \
@@ -450,8 +504,11 @@ while IFS=$'\t' read -r qid qsection qtext; do
       section_name: $section_name,
       question: $question,
       status: $status,
-      session_id: (if $session_id == "" then null else $session_id end),
-      question_id: (if $question_id == "" then null else $question_id end),
+      http_status: (if $http_status == "" then null else $http_status end),
+      request_session_id: (if $request_session_id == "" then null else $request_session_id end),
+      request_question_id: (if $request_question_id == "" then null else $request_question_id end),
+      response_session_id: (if $response_session_id == "" then null else $response_session_id end),
+      response_question_id: (if $response_question_id == "" then null else $response_question_id end),
       payload_file: (if $payload_file == "" then null else $payload_file end),
       response_file: (if $response_file == "" then null else $response_file end),
       response: (if $response == "" then null else $response end),
@@ -480,6 +537,7 @@ RUN_RECORD_FILE_DISPLAY="$(to_repo_relative "$RUN_RECORD_FILE_ABS")"
 
 jq -n \
   --arg run_id "$RUN_ID" \
+  --arg validation_scope "transport_only" \
   --arg started_at_utc "$STARTED_AT_UTC" \
   --arg ended_at_utc "$ENDED_AT_UTC" \
   --arg prompt_mode "$PROMPT_MODE" \
@@ -502,6 +560,11 @@ jq -n \
   --slurpfile results "$RESULTS_TMP" \
   '{
     run_id: $run_id,
+    validation: {
+      scope: $validation_scope,
+      automated_model_quality_scoring: false,
+      required_follow_up: "Manually score groundedness, clone identity, sources, and refusal quality against the acceptance checklist."
+    },
     started_at_utc: $started_at_utc,
     ended_at_utc: $ended_at_utc,
     prompt: {
@@ -537,7 +600,8 @@ jq -n \
 echo "Run summary:"
 echo "  Enabled in selected sections: $enabled_count"
 echo "  Executed:                    $ran"
-echo "  Failed:                      $failed"
+echo "  Transport failures:          $failed"
+echo "  Model-quality scoring:       manual review required"
 echo "  Run record:                  $RUN_RECORD_FILE_DISPLAY"
 
 if [[ $failed -gt 0 ]]; then

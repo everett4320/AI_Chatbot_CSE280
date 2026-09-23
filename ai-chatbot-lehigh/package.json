@@ -5,22 +5,24 @@
   "scripts": {
     "build": "react-router build",
     "dev": "react-router dev",
-    "start": "react-router-serve ./build/server/index.js",
-    "test:contract": "vitest run app/services/chat-api.contract.test.ts",
-    "typecheck": "react-router typegen && tsc"
+    "start": "vite preview --outDir build/client --host 0.0.0.0 --port 3000",
+    "test:contract": "node scripts/verify-ross-contract.mjs && vitest run --exclude \"output/**\"",
+    "typecheck": "react-router typegen && tsc",
+    "verify:static": "node scripts/verify-static-build.mjs",
+    "verify": "npm run typecheck && npm run test:contract && npm run build && npm run verify:static",
+    "verify:deployment": "node scripts/verify-deployment-config.mjs && npm run verify"
   },
   "dependencies": {
-    "@react-router/node": "7.13.2",
-    "@react-router/serve": "7.13.2",
+    "@react-router/node": "7.18.3",
     "isbot": "^5.1.36",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
     "react-markdown": "^10.1.0",
-    "react-router": "7.13.2",
+    "react-router": "7.18.3",
     "remark-gfm": "^4.0.1"
   },
   "devDependencies": {
-    "@react-router/dev": "7.13.2",
+    "@react-router/dev": "7.18.3",
     "@tailwindcss/vite": "^4.2.2",
     "@types/node": "^22",
     "@types/react": "^19.2.14",

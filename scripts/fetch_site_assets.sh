@@ -1,8 +1,19 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-BASE_URL="${1:-https://dev-le-chat.cc.lehigh.edu}"
-OUT_DIR="${2:-fetched_site}"
+if [[ $# -ne 2 ]]; then
+  echo "Usage: $0 <explicit-source-url> <output-directory>" >&2
+  echo "This is a legacy snapshot utility. It never chooses a chatbot endpoint or output directory by default." >&2
+  exit 1
+fi
+
+BASE_URL="$1"
+OUT_DIR="$2"
+
+if ! [[ "$BASE_URL" =~ ^https?:// ]]; then
+  echo "Error: source URL must be an absolute http(s) URL." >&2
+  exit 1
+fi
 
 mkdir -p "${OUT_DIR}/dist"
 

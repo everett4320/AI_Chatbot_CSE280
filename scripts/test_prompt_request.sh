@@ -4,11 +4,12 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 
-ENDPOINT="${ENDPOINT:-https://8lyrpsdez5.execute-api.us-east-1.amazonaws.com/call}"
-BOT_NAME="${BOT_NAME:-le-chat}"
+LEGACY_SHARED_ENDPOINT="https://8lyrpsdez5.execute-api.us-east-1.amazonaws.com/call"
+ENDPOINT="${ROSS_API_ENDPOINT:-${ENDPOINT:-}}"
+BOT_NAME="${BOT_NAME:-}"
 MODEL_ID=""
 SOURCE_URI_FILTER=""
-CUSTOM_PROMPT_FILE="${CUSTOM_PROMPT_FILE:-fetched_site/prompts/custom_prompt.txt}"
+CUSTOM_PROMPT_FILE="${CUSTOM_PROMPT_FILE-}"
 RESULTS_DIR="${RESULTS_DIR:-fetched_site/prompt_effectiveness_runs/single_requests}"
 QUESTION=""
 QUESTION_CODE=""
@@ -31,14 +32,44 @@ to_repo_relative() {
   fi
 }
 
+normalize_endpoint_for_comparison() {
+  local value="$1"
+  value="${value%%\?*}"
+  value="${value%%\#*}"
+  while [[ "$value" == */ ]]; do
+    value="${value%/}"
+  done
+  printf '%s\n' "$value" | tr '[:upper:]' '[:lower:]'
+}
+
+validate_endpoint() {
+  local endpoint="$1"
+  local normalized_endpoint
+
+  if [[ -z "$endpoint" ]]; then
+    echo "Error: --endpoint or ROSS_API_ENDPOINT is required for Ross QA." >&2
+    exit 1
+  fi
+  normalized_endpoint="$(normalize_endpoint_for_comparison "$endpoint")"
+  if [[ "$normalized_endpoint" == "$LEGACY_SHARED_ENDPOINT" ]]; then
+    echo "Error: the historical shared endpoint is not a Ross endpoint. Supply Christopher's assigned endpoint." >&2
+    exit 1
+  fi
+  if ! [[ "$endpoint" =~ ^https?:// ]]; then
+    echo "Error: endpoint must be an absolute http(s) URL." >&2
+    exit 1
+  fi
+}
+
 usage() {
   cat <<USAGE
 Usage:
-  $0 --question "..." [--question-code Q001] [--custom-prompt-file path] [--model-id id] [--source-uri-filter csv] [--bot-name name] [--endpoint url]
+  $0 --question "..." --bot-name name --endpoint url [--question-code Q001] [--custom-prompt-file path] [--model-id id] [--source-uri-filter csv]
 
 Notes:
-  - If custom prompt file is non-empty, request includes custom_prompt.
-  - If custom prompt file is empty, request uses backend default prompt.
+  - --endpoint (or ROSS_API_ENDPOINT) must be Christopher's assigned Ross endpoint.
+  - The default request uses the clone's configured backend prompt.
+  - --custom-prompt-file is an explicit exploratory override; it does not prove persistent clone configuration.
   - Outputs payload and response files under fetched_site/prompt_effectiveness_runs/single_requests/ by default.
 USAGE
 }
@@ -91,13 +122,23 @@ if [[ -z "$QUESTION" ]]; then
   exit 1
 fi
 
-CUSTOM_PROMPT_FILE_ABS="$(resolve_path "$CUSTOM_PROMPT_FILE")"
-RESULTS_DIR_ABS="$(resolve_path "$RESULTS_DIR")"
-
-mkdir -p "$(dirname "$CUSTOM_PROMPT_FILE_ABS")"
-if [[ ! -f "$CUSTOM_PROMPT_FILE_ABS" ]]; then
-  : > "$CUSTOM_PROMPT_FILE_ABS"
+BOT_NAME="$(echo "$BOT_NAME" | xargs)"
+if [[ -z "$BOT_NAME" ]]; then
+  echo "Error: --bot-name is required. Refusing to send a Ross QA request to a default bot." >&2
+  exit 1
 fi
+
+validate_endpoint "$ENDPOINT"
+
+CUSTOM_PROMPT_FILE_ABS=""
+if [[ -n "$CUSTOM_PROMPT_FILE" ]]; then
+  CUSTOM_PROMPT_FILE_ABS="$(resolve_path "$CUSTOM_PROMPT_FILE")"
+  if [[ ! -f "$CUSTOM_PROMPT_FILE_ABS" ]]; then
+    echo "Error: custom prompt file not found: $(to_repo_relative "$CUSTOM_PROMPT_FILE_ABS")" >&2
+    exit 1
+  fi
+fi
+RESULTS_DIR_ABS="$(resolve_path "$RESULTS_DIR")"
 
 SESSION_ID="session-$(date +%s)-$RANDOM"
 if [[ -n "$QUESTION_CODE" ]]; then
@@ -141,12 +182,16 @@ if [[ -n "$SOURCE_URI_FILTER" ]]; then
   payload=$(jq --arg source_uri_filter "$SOURCE_URI_FILTER" '. + {source_uri_filter:$source_uri_filter}' <<< "$payload")
 fi
 
-CUSTOM_PROMPT_CONTENT=$(cat "$CUSTOM_PROMPT_FILE_ABS")
-if [[ -n "$CUSTOM_PROMPT_CONTENT" ]]; then
+CUSTOM_PROMPT_CONTENT=""
+PROMPT_MODE="backend_configured_prompt"
+if [[ -n "$CUSTOM_PROMPT_FILE_ABS" ]]; then
+  CUSTOM_PROMPT_CONTENT=$(cat "$CUSTOM_PROMPT_FILE_ABS")
+  if [[ -z "$CUSTOM_PROMPT_CONTENT" ]]; then
+    echo "Error: custom prompt file is empty. Omit it to test the configured backend prompt." >&2
+    exit 1
+  fi
   payload=$(jq --arg custom_prompt "$CUSTOM_PROMPT_CONTENT" '. + {custom_prompt:$custom_prompt}' <<< "$payload")
-  PROMPT_MODE="custom_prompt from $(to_repo_relative "$CUSTOM_PROMPT_FILE_ABS")"
-else
-  PROMPT_MODE="backend default prompt (custom prompt file is empty)"
+  PROMPT_MODE="exploratory_custom_prompt from $(to_repo_relative "$CUSTOM_PROMPT_FILE_ABS")"
 fi
 
 mkdir -p "$RESULTS_DIR_ABS"
@@ -159,11 +204,6 @@ RESPONSE_FILE_DISPLAY="$(to_repo_relative "$RESPONSE_FILE")"
 
 printf '%s\n' "$payload" > "$PAYLOAD_FILE"
 
-curl -sS -X POST "$ENDPOINT" \
-  -H "Accept: application/json" \
-  -H "Content-Type: application/json" \
-  -d "$payload" > "$RESPONSE_FILE"
-
 echo "Endpoint:      $ENDPOINT"
 echo "Session ID:    $SESSION_ID"
 if [[ -n "$QUESTION_CODE" ]]; then
@@ -173,6 +213,50 @@ echo "Question ID:   $QUESTION_ID"
 echo "Prompt mode:   $PROMPT_MODE"
 echo "Payload file:  $PAYLOAD_FILE_DISPLAY"
 echo "Response file: $RESPONSE_FILE_DISPLAY"
+
+set +e
+HTTP_STATUS=$(curl -sS --show-error -o "$RESPONSE_FILE" -w '%{http_code}' -X POST "$ENDPOINT" \
+  -H "Accept: application/json" \
+  -H "Content-Type: application/json" \
+  -d "$payload")
+CURL_EXIT=$?
+set -e
+
+echo "HTTP status:   ${HTTP_STATUS:-000}"
+
+if [[ $CURL_EXIT -ne 0 ]]; then
+  echo "Error: HTTP request failed (curl exit $CURL_EXIT)." >&2
+  exit "$CURL_EXIT"
+fi
+
+if ! [[ "$HTTP_STATUS" =~ ^2[0-9][0-9]$ ]]; then
+  echo "Error: Ross endpoint returned HTTP $HTTP_STATUS." >&2
+  exit 1
+fi
+
+if ! jq -e '((.Response | type == "string" and length > 0) or (.error | type == "string" and length > 0))' "$RESPONSE_FILE" >/dev/null 2>&1; then
+  echo "Error: Ross endpoint returned a non-JSON or unsupported response body." >&2
+  exit 1
+fi
+
+if jq -e '(.error // "") | type == "string" and length > 0' "$RESPONSE_FILE" >/dev/null 2>&1; then
+  echo "Error: Ross endpoint returned an API error." >&2
+  exit 1
+fi
+
+RESPONSE_SESSION_ID=$(jq -r '.sessionId // ""' "$RESPONSE_FILE")
+RESPONSE_QUESTION_ID=$(jq -r '.questionId // ""' "$RESPONSE_FILE")
+if [[ -z "$RESPONSE_SESSION_ID" ]]; then
+  echo "Error: Ross endpoint response omitted sessionId." >&2
+  exit 1
+fi
+if [[ "$RESPONSE_QUESTION_ID" != "$QUESTION_ID" ]]; then
+  echo "Error: Ross endpoint response questionId did not match this request." >&2
+  exit 1
+fi
+
+echo "Response session ID:  $RESPONSE_SESSION_ID"
+echo "Response question ID: $RESPONSE_QUESTION_ID"
 
 echo
 echo "Response preview:"

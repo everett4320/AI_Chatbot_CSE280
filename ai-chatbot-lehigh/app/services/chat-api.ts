@@ -6,20 +6,36 @@ import type {
 } from "~/types/chat";
 
 const API_URL = import.meta.env.VITE_CHAT_API_URL as string | undefined;
-const SESSION_STORAGE_KEY = "ross-chat-session-id";
+const CONFIGURED_BOT_NAME = (
+  import.meta.env.VITE_CHAT_BOT_NAME as string | undefined
+)?.trim();
+const SESSION_STORAGE_KEY_PREFIX = "ross-chat-session-id";
+const CONFIGURATION_ERROR =
+  "The chat service is not configured for this deployment. Please contact the site administrator.";
+const BOT_NAME_CONFIGURATION_ERROR =
+  "The chatbot identity is not configured for this deployment. Please contact the site administrator.";
+let sessionEpoch = 0;
+
+export const REQUEST_TIMEOUT_MS = 60_000;
+
+export class ChatTimeoutError extends Error {
+  constructor() {
+    super("The chat service did not respond in time. Please try again.");
+    this.name = "ChatTimeoutError";
+  }
+}
 
 export interface LehighApiResponse {
   Response?: string;
   Sources?: Array<{ title?: string; url?: string }>;
   sessionId?: string;
   questionId?: string;
-  reply?: string;
   error?: string;
 }
 
 export interface QuestionPayload {
   action: "question";
-  bot_name: "le-chat";
+  bot_name: string;
   httpMethod: "POST";
   userMessage: string;
   sessionId: string;
@@ -28,13 +44,15 @@ export interface QuestionPayload {
 
 export interface FeedbackPayload {
   action: "feedback";
-  bot_name: "le-chat";
+  bot_name: string;
   sessionId: string;
   questionId: string;
   feedback: "Good" | "Bad";
 }
 
-function createId(prefix: string) {
+// crypto.randomUUID only exists in secure contexts (HTTPS or localhost), so
+// e.g. a phone testing against http://192.168.x.x takes the fallback.
+export function createId(prefix: string) {
   const value =
     typeof crypto !== "undefined" && "randomUUID" in crypto
       ? crypto.randomUUID()
@@ -43,22 +61,53 @@ function createId(prefix: string) {
   return `${prefix}-${value}`;
 }
 
-function getSessionId() {
+export function getSessionStorageKey(
+  apiUrl = API_URL,
+  botName = CONFIGURED_BOT_NAME,
+) {
+  const scope = `${apiUrl?.trim() || "demo"}|${botName?.trim() || "unconfigured"}`;
+  return `${SESSION_STORAGE_KEY_PREFIX}:${encodeURIComponent(scope)}`;
+}
+
+export function getSessionId() {
   if (typeof window === "undefined") return createId("session");
 
-  const existing = window.sessionStorage.getItem(SESSION_STORAGE_KEY);
+  const storageKey = getSessionStorageKey();
+  const existing = window.sessionStorage.getItem(storageKey);
   if (existing) return existing;
 
   const sessionId = createId("session");
-  window.sessionStorage.setItem(SESSION_STORAGE_KEY, sessionId);
+  window.sessionStorage.setItem(storageKey, sessionId);
   return sessionId;
+}
+
+export function persistSessionId(sessionId: string, expectedEpoch = sessionEpoch) {
+  const normalizedSessionId = sessionId.trim();
+  if (
+    !normalizedSessionId ||
+    expectedEpoch !== sessionEpoch ||
+    typeof window === "undefined"
+  ) {
+    return;
+  }
+
+  window.sessionStorage.setItem(getSessionStorageKey(), normalizedSessionId);
+}
+
+export function requireBotName(botName: string | undefined) {
+  const normalizedBotName = botName?.trim();
+  if (normalizedBotName) return normalizedBotName;
+  throw new Error(BOT_NAME_CONFIGURATION_ERROR);
 }
 
 function normalizeSources(sources: LehighApiResponse["Sources"]): Source[] {
   if (!Array.isArray(sources)) return [];
 
+  // The backend often cites the same page several times in one answer.
+  const seen = new Set<string>();
   return sources.flatMap((source) => {
-    if (!source.url) return [];
+    if (!source.url || seen.has(source.url)) return [];
+    seen.add(source.url);
     return [
       {
         title: source.title?.trim() || source.url,
@@ -72,10 +121,11 @@ export function buildQuestionPayload(
   userMessage: string,
   sessionId: string,
   questionId: string,
+  botName: string,
 ): QuestionPayload {
   return {
     action: "question",
-    bot_name: "le-chat",
+    bot_name: botName,
     httpMethod: "POST",
     userMessage,
     sessionId,
@@ -87,10 +137,11 @@ export function buildFeedbackPayload(
   sessionId: string,
   questionId: string,
   rating: FeedbackRating,
+  botName: string,
 ): FeedbackPayload {
   return {
     action: "feedback",
-    bot_name: "le-chat",
+    bot_name: botName,
     sessionId,
     questionId,
     feedback: rating === "up" ? "Good" : "Bad",
@@ -103,7 +154,7 @@ export function parseChatReply(
 ): ChatReply {
   if (data.error) throw new Error(data.error);
 
-  const content = data.Response ?? data.reply;
+  const content = data.Response;
   if (!content) throw new Error("The assistant returned an empty response.");
 
   return {
@@ -116,12 +167,8 @@ export function parseChatReply(
 
 const PROGRAM_SOURCES: Source[] = [
   {
-    title: "Undergraduate Studies — Rossin College",
-    url: "https://engineering.lehigh.edu/academics/undergraduate",
-  },
-  {
-    title: "Academic Programs — Lehigh Engineering",
-    url: "https://engineering.lehigh.edu/academics",
+    title: "P.C. Rossin College of Engineering and Applied Science",
+    url: "https://engineering.lehigh.edu/",
   },
 ];
 
@@ -206,6 +253,55 @@ function wait(milliseconds: number) {
   return new Promise((resolve) => window.setTimeout(resolve, milliseconds));
 }
 
+export async function postToApi(
+  apiUrl: string,
+  payload: QuestionPayload | FeedbackPayload,
+  requestLabel: "API" | "Feedback API",
+  options: { parseJson: boolean; timeoutMs?: number },
+): Promise<LehighApiResponse | undefined> {
+  const timeoutMs = options.timeoutMs ?? REQUEST_TIMEOUT_MS;
+
+  const controller = new AbortController();
+  const timeoutId = globalThis.setTimeout(() => controller.abort(), timeoutMs);
+
+  try {
+    const response = await fetch(apiUrl, {
+      method: "POST",
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload),
+      signal: controller.signal,
+    });
+
+    if (response.status === 504) {
+      throw new ChatTimeoutError();
+    }
+
+    if (!response.ok) {
+      throw new Error(
+        `${requestLabel} error: ${response.status} ${response.statusText}`,
+      );
+    }
+
+    if (options.parseJson) {
+      return (await response.json()) as LehighApiResponse;
+    }
+
+    await response.arrayBuffer();
+    return undefined;
+  } catch (error) {
+    if (error instanceof ChatTimeoutError) throw error;
+    if (error instanceof Error && error.name === "AbortError") {
+      throw new ChatTimeoutError();
+    }
+    throw error;
+  } finally {
+    globalThis.clearTimeout(timeoutId);
+  }
+}
+
 export async function sendMessage(messages: Message[]): Promise<ChatReply> {
   const latestUserMessage = [...messages]
     .reverse()
@@ -214,51 +310,60 @@ export async function sendMessage(messages: Message[]): Promise<ChatReply> {
   if (!latestUserMessage) throw new Error("No question was provided.");
 
   const sessionId = getSessionId();
+  const requestSessionEpoch = sessionEpoch;
   const questionId = createId("question");
 
   if (!API_URL) {
+    if (import.meta.env.PROD) throw new Error(CONFIGURATION_ERROR);
     await wait(900);
     return createDemoReply(messages, sessionId, questionId);
   }
 
-  const res = await fetch(API_URL, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(
-      buildQuestionPayload(latestUserMessage.content, sessionId, questionId),
+  const data = await postToApi(
+    API_URL,
+    buildQuestionPayload(
+      latestUserMessage.content,
+      sessionId,
+      questionId,
+      requireBotName(CONFIGURED_BOT_NAME),
     ),
-  });
+    "API",
+    { parseJson: true },
+  );
 
-  if (!res.ok) {
-    throw new Error(`API error: ${res.status} ${res.statusText}`);
-  }
-
-  const data = (await res.json()) as LehighApiResponse;
-  return parseChatReply(data, { sessionId, questionId });
+  if (!data) throw new Error("The assistant returned an empty response.");
+  const reply = parseChatReply(data, { sessionId, questionId });
+  persistSessionId(reply.sessionId, requestSessionEpoch);
+  return reply;
 }
 
 export async function sendFeedback(
   questionId: string,
   rating: FeedbackRating,
+  sessionId?: string,
 ): Promise<void> {
   if (!API_URL) {
+    if (import.meta.env.PROD) throw new Error(CONFIGURATION_ERROR);
     await wait(180);
     return;
   }
 
-  const res = await fetch(API_URL, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(buildFeedbackPayload(getSessionId(), questionId, rating)),
-  });
-
-  if (!res.ok) {
-    throw new Error(`Feedback API error: ${res.status} ${res.statusText}`);
-  }
+  await postToApi(
+    API_URL,
+    buildFeedbackPayload(
+      sessionId?.trim() || getSessionId(),
+      questionId,
+      rating,
+      requireBotName(CONFIGURED_BOT_NAME),
+    ),
+    "Feedback API",
+    { parseJson: false },
+  );
 }
 
 export function resetChatSession() {
+  sessionEpoch += 1;
   if (typeof window !== "undefined") {
-    window.sessionStorage.removeItem(SESSION_STORAGE_KEY);
+    window.sessionStorage.removeItem(getSessionStorageKey());
   }
 }

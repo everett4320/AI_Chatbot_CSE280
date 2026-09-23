@@ -10,8 +10,8 @@ Primary file:
 Current suite uses three sections:
 
 1. `1` - Standard Program QA
-2. `2` - Out-of-Scope Refusal
-3. `3` - Bias and Fairness
+2. `2` - Out-of-Scope and Prompt-Integrity Refusal
+3. `3` - Bias, Fairness, and Harmful-Stereotype Handling
 
 These are intentionally separated so testers can run only the categories they need.
 
@@ -59,7 +59,9 @@ Minimal example:
 Default interactive mode:
 
 ```bash
-bash scripts/run_question_suite.sh
+bash scripts/run_question_suite.sh \
+  --bot-name "<Christopher-assigned-Ross-bot-name>" \
+  --endpoint "<Christopher-assigned-Ross-endpoint>"
 ```
 
 The script prompts:
@@ -70,18 +72,25 @@ The script prompts:
 Non-interactive section selection:
 
 ```bash
-bash scripts/run_question_suite.sh --sections 13
+bash scripts/run_question_suite.sh \
+  --bot-name "<Christopher-assigned-Ross-bot-name>" \
+  --endpoint "<Christopher-assigned-Ross-endpoint>" \
+  --sections 13
 ```
 
 Run only specific question IDs (applies after section filtering):
 
 ```bash
-bash scripts/run_question_suite.sh --sections 13 --only-codes "Q001,Q017,Q024"
+bash scripts/run_question_suite.sh \
+  --bot-name "<Christopher-assigned-Ross-bot-name>" \
+  --endpoint "<Christopher-assigned-Ross-endpoint>" \
+  --sections 13 --only-codes "Q001,Q017,Q024"
 ```
 
 ## Maintenance rules
 
 - Keep question IDs stable once they are used in evaluation history.
 - Add new questions with new IDs instead of changing intent for existing IDs.
+- Keep IDs unique across the complete suite.
 - Keep section intent clear: factual QA vs refusal boundary vs bias safety.
 - Keep refusal and bias sections enabled to catch regressions continuously.

@@ -12,3 +12,18 @@ docs/DEV_SETUP.zh-CN.md
 ai-chat-widget/
 fetched_site/test_results/
 fetched_site/prompt_effectiveness_runs/
+split_output/*
+*/split_output/*
+
+# Survey exports can contain respondent data. Keep approved local inputs out of Git.
+scripts/AI Chatbot Official Survey_August 27, 2026_13.30.csv
+scripts/AI Chatbot Official Survey_August 27, 2026_13.30 - Cleaned CSV File.csv
+
+# Local browser-smoke artifacts
+output/playwright/
+
+# Accidental root-level lockfile (the real one lives in ai-chatbot-lehigh/)
+/package-lock.json
+
+# Local Claude Code settings (per-developer, not shared)
+.claude/settings.local.json

@@ -43,8 +43,11 @@ button {
 
 .ross-widget {
   position: fixed;
-  right: 24px;
-  bottom: 24px;
+  right: calc(24px + env(safe-area-inset-right, 0px));
+  bottom: calc(
+    24px + env(safe-area-inset-bottom, 0px) +
+      var(--ross-visual-viewport-bottom-offset, 0px)
+  );
   z-index: 50;
   display: flex;
   flex-direction: column;
@@ -124,8 +127,28 @@ button {
 .ross-panel {
   position: relative;
   display: flex;
-  width: min(400px, calc(100vw - 32px));
-  height: min(618px, calc(100svh - 32px));
+  width: min(
+    400px,
+    calc(
+      100vw - 32px - env(safe-area-inset-left, 0px) -
+        env(safe-area-inset-right, 0px)
+    )
+  );
+  height: min(
+    618px,
+    calc(
+      100vh - 32px - env(safe-area-inset-top, 0px) -
+        env(safe-area-inset-bottom, 0px)
+    )
+  );
+  height: min(
+    618px,
+    calc(
+      var(--ross-visual-viewport-height, 100dvh) - 32px -
+        env(safe-area-inset-top, 0px) -
+        env(safe-area-inset-bottom, 0px)
+    )
+  );
   flex-direction: column;
   overflow: hidden;
   border-radius: 12px;
@@ -222,7 +245,7 @@ button {
   top: 59px;
   right: 17px;
   display: flex;
-  width: 252px;
+  width: min(252px, calc(100% - 34px));
   padding: 13px 15px;
   flex-direction: column;
   gap: 4px;
@@ -244,6 +267,7 @@ button {
   display: flex;
   min-height: 0;
   flex: 1;
+  overflow-y: auto;
   align-items: flex-start;
   justify-content: center;
   padding: 117px 28px 24px;
@@ -296,6 +320,7 @@ button {
 
 .ross-transcript__content {
   display: flex;
+  min-width: 0;
   min-height: 100%;
   padding: 32px 23px 18px;
   flex-direction: column;
@@ -309,6 +334,7 @@ button {
 .ross-message,
 .ross-typing {
   display: flex;
+  min-width: 0;
   width: 100%;
   align-items: flex-start;
   animation: message-enter 220ms ease both;
@@ -334,6 +360,7 @@ button {
 }
 
 .ross-message__bubble {
+  min-width: 0;
   max-width: 262px;
   padding: 13px 20px;
   border-radius: 8px;
@@ -341,6 +368,7 @@ button {
   font-size: 12px;
   letter-spacing: -0.011em;
   line-height: 1.4;
+  overflow-wrap: anywhere;
 }
 
 .ross-message--user .ross-message__bubble {
@@ -357,10 +385,14 @@ button {
 
 .ross-message__bubble > p {
   margin: 0;
+  overflow-wrap: anywhere;
   white-space: pre-wrap;
+  word-break: break-word;
 }
 
 .ross-markdown {
+  min-width: 0;
+  max-width: 100%;
   overflow-wrap: anywhere;
 }
 
@@ -400,8 +432,16 @@ button {
 .ross-sources a {
   color: #12354c;
   font-weight: 600;
+  overflow-wrap: anywhere;
   text-decoration: underline;
   text-underline-offset: 2px;
+  word-break: break-word;
+}
+
+.ross-markdown img {
+  display: block;
+  max-width: 100%;
+  height: auto;
 }
 
 .ross-markdown code {
@@ -426,7 +466,58 @@ button {
   padding: 0;
 }
 
+.ross-table-scroll {
+  max-width: 100%;
+  margin: 8px 0 10px;
+  overflow-x: auto;
+  border: 1px solid rgba(18, 53, 76, 0.16);
+  border-radius: 5px;
+  scrollbar-width: thin;
+}
+
+.ross-table-scroll:focus-visible {
+  outline: 2px solid rgba(29, 112, 132, 0.5);
+  outline-offset: 2px;
+}
+
+.ross-table-scroll table {
+  width: max-content;
+  min-width: 100%;
+  border-collapse: collapse;
+  font-size: 11px;
+}
+
+.ross-table-scroll th,
+.ross-table-scroll td {
+  padding: 6px 8px;
+  border-right: 1px solid rgba(18, 53, 76, 0.12);
+  border-bottom: 1px solid rgba(18, 53, 76, 0.12);
+  text-align: left;
+  vertical-align: top;
+}
+
+.ross-table-scroll th {
+  white-space: nowrap;
+}
+
+.ross-table-scroll td {
+  min-width: 130px;
+  max-width: 220px;
+  white-space: normal;
+}
+
+.ross-table-scroll th:last-child,
+.ross-table-scroll td:last-child {
+  border-right: 0;
+}
+
+.ross-table-scroll tr:last-child td {
+  border-bottom: 0;
+}
+
 .ross-sources {
+  min-width: 0;
+  max-width: 100%;
   margin-top: 11px;
   border-top: 1px solid rgba(18, 53, 76, 0.14);
   padding-top: 8px;
@@ -523,6 +614,7 @@ button {
   color: #812c22;
   font-size: 11px;
   line-height: 1.35;
+  overflow-wrap: anywhere;
 }
 
 .ross-error--welcome {
@@ -536,6 +628,7 @@ button {
   position: relative;
   z-index: 4;
   min-height: 72px;
+  flex: 0 0 auto;
   padding: 0 23px 23px;
   background: #ffffff;
 }
@@ -575,10 +668,6 @@ button {
   color: #12354c;
   letter-spacing: 0.02em;
   opacity: 1;
-}
-
-.ross-composer__input:disabled {
-  opacity: 0.58;
 }
 
 .ross-composer__send {
@@ -663,12 +752,22 @@ button {
 
 @media (max-width: 520px) {
   .ross-widget {
-    right: 16px;
-    bottom: 16px;
+    right: calc(16px + env(safe-area-inset-right, 0px));
+    bottom: calc(
+      16px + env(safe-area-inset-bottom, 0px) +
+        var(--ross-visual-viewport-bottom-offset, 0px)
+    );
   }
 
   .ross-panel {
-    height: min(618px, calc(100svh - 32px));
+    height: min(
+      618px,
+      calc(
+        var(--ross-visual-viewport-height, 100dvh) - 32px -
+          env(safe-area-inset-top, 0px) -
+          env(safe-area-inset-bottom, 0px)
+      )
+    );
   }
 
   .ross-welcome {
@@ -691,6 +790,29 @@ button {
 
   .ross-welcome p {
     font-size: 17px;
+  }
+}
+
+@media (max-height: 400px) {
+  .ross-welcome {
+    align-items: flex-start;
+    align-items: safe center;
+    padding: 12px 24px;
+  }
+
+  .ross-welcome h2 {
+    font-size: 22px;
+    line-height: 1.08;
+  }
+
+  .ross-welcome p {
+    margin-top: 6px;
+    font-size: 15px;
+  }
+
+  .ross-composer-wrap {
+    min-height: 63px;
+    padding-bottom: 14px;
   }
 }
 

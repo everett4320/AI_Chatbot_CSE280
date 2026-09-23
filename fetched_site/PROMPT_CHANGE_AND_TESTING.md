@@ -1,5 +1,10 @@
 # Prompt Change and Testing Instructions
 
+> **Team QA guidance, not a backend change plan.** Christopher's service and
+> API remain fixed. The canonical prompt is applied only through the existing
+> platform workflow; request-scoped prompt options below are optional historical
+> experiments and are never required by the production frontend.
+
 This guide explains:
 - how to update prompt behavior using one file,
 - how teammates should test prompt changes consistently,
@@ -7,13 +12,14 @@ This guide explains:
 
 ## 1) Single Prompt File Rule
 
-Use only one file for custom prompt text:
-- `fetched_site/prompts/custom_prompt.txt`
+Use one canonical Ross prompt for clone configuration and controlled experiments:
+- `christopher-handoff/backend-inputs/SYSTEM_PROMPT.txt`
 - `fetched_site/prompts/README.md` (editing guidance)
 
 Behavior in scripts:
-- If `custom_prompt.txt` is non-empty: request includes `custom_prompt` with that file content.
-- If `custom_prompt.txt` is empty: request does not include `custom_prompt`, so backend default prompt is used.
+- By default, requests send no `custom_prompt` and exercise the Ross clone's configured backend prompt.
+- Use `--custom-prompt-file` only for an explicitly named, request-scoped experiment.
+- A custom-prompt result does not prove persistent clone configuration.
 
 Format note:
 - `.txt` vs `.md` extension does not inherently improve model quality.
@@ -61,13 +67,16 @@ Important:
 
 ## 4) How To Modify Prompt
 
-### 4.1 Use backend default prompt
+Do not clear or overwrite the canonical Ross prompt to test an alternative.
+Create a separate experiment file and pass it with `--custom-prompt-file`.
+The backend's default prompt is not visible in this repository.
 
-```bash
-: > fetched_site/prompts/custom_prompt.txt
-```
+### 4.1 Use the configured backend prompt
 
-### 4.2 Use a custom prompt
+Omit `--custom-prompt-file`. The acceptance checklist requires the configured
+clone prompt hash to be checked separately.
+
+### 4.2 Use a custom prompt experiment
 
 ```bash
 cat > fetched_site/prompts/custom_prompt.txt <<'EOF_PROMPT'
@@ -79,10 +88,16 @@ EOF_PROMPT
 
 ## 5) Run Tests
 
+Every real request requires an explicit `--bot-name` and `--endpoint` (or the
+matching `ROSS_API_ENDPOINT` environment variable). The historical shared
+service is not a Ross endpoint.
+
 ### 5.1 Simplest run (interactive section selection)
 
 ```bash
-bash scripts/run_question_suite.sh
+bash scripts/run_question_suite.sh \
+  --bot-name "<Christopher-assigned-Ross-bot-name>" \
+  --endpoint "<Christopher-assigned-Ross-endpoint>"
 ```
 
 At start, the script prompts for section input:
@@ -91,8 +106,8 @@ At start, the script prompts for section input:
 - `2` -> run section 2 only
 
 This command can be run from:
-- repo root: `bash scripts/run_question_suite.sh`
-- `scripts/` directory: `bash run_question_suite.sh`
+- repo root: `bash scripts/run_question_suite.sh --bot-name "<Christopher-assigned-Ross-bot-name>" --endpoint "<Christopher-assigned-Ross-endpoint>"`
+- `scripts/` directory: `bash run_question_suite.sh --bot-name "<Christopher-assigned-Ross-bot-name>" --endpoint "<Christopher-assigned-Ross-endpoint>"`
 
 Each run creates a dedicated folder:
 - `fetched_site/prompt_effectiveness_runs/<run_id>/`
@@ -102,22 +117,26 @@ Main record file for that run:
 
 This run record includes:
 - the exact prompt text used in this run,
-- prompt mode (`custom_prompt` or `backend_default`),
+- prompt mode (`backend_configured_prompt` or `exploratory_custom_prompt`),
 - selected sections for this run,
 - and all question responses for the run (including `section` and `section_name`).
+
+The automated result is transport-only. Review clone identity, grounding,
+sources, and refusal quality manually against the acceptance checklist.
 
 ### 5.2 Non-interactive section selection
 
 ```bash
-bash scripts/run_question_suite.sh \
+bash scripts/run_question_suite.sh --bot-name "<Christopher-assigned-Ross-bot-name>" \
+  --endpoint "<Christopher-assigned-Ross-endpoint>" \
   --sections 13
 ```
 
 ### 5.3 Baseline run (default prompt)
 
 ```bash
-: > fetched_site/prompts/custom_prompt.txt
-bash scripts/run_question_suite.sh \
+bash scripts/run_question_suite.sh --bot-name "<Christopher-assigned-Ross-bot-name>" \
+  --endpoint "<Christopher-assigned-Ross-endpoint>" \
   --sections 123 \
   --model-id "global.anthropic.claude-sonnet-4-5-20250929-v1:0"
 ```
@@ -129,7 +148,9 @@ cat > fetched_site/prompts/custom_prompt.txt <<'EOF_PROMPT'
 Your custom prompt text here.
 EOF_PROMPT
 
-bash scripts/run_question_suite.sh \
+bash scripts/run_question_suite.sh --bot-name "<Christopher-assigned-Ross-bot-name>" \
+  --endpoint "<Christopher-assigned-Ross-endpoint>" \
+  --custom-prompt-file fetched_site/prompts/custom_prompt.txt \
   --sections 123 \
   --model-id "global.anthropic.claude-sonnet-4-5-20250929-v1:0"
 ```
@@ -137,7 +158,8 @@ bash scripts/run_question_suite.sh \
 ### 5.5 Run only selected question IDs
 
 ```bash
-bash scripts/run_question_suite.sh \
+bash scripts/run_question_suite.sh --bot-name "<Christopher-assigned-Ross-bot-name>" \
+  --endpoint "<Christopher-assigned-Ross-endpoint>" \
   --sections 13 \
   --only-codes "Q001,Q017,Q024"
 ```
@@ -149,15 +171,16 @@ When using `--only-codes`, `run_record.json` will contain only the executed subs
 If using `--source-uri-filter`, use at least 2 comma-separated entries:
 
 ```bash
-bash scripts/run_question_suite.sh \
+bash scripts/run_question_suite.sh --bot-name "<Christopher-assigned-Ross-bot-name>" \
+  --endpoint "<Christopher-assigned-Ross-endpoint>" \
   --sections 1 \
   --source-uri-filter "policy,registrar"
 ```
 
 ## 6) Files Used In Testing
 
-- Prompt file:
-  - `fetched_site/prompts/custom_prompt.txt`
+- Optional exploratory prompt file:
+  - an explicit path passed through `--custom-prompt-file`
 - Numbered question set:
   - `fetched_site/questions/test_questions.json`
 - Test runners:

@@ -11,6 +11,8 @@ interface ChatInputProps {
   isLoading: boolean;
 }
 
+const paperPlaneUrl = `${import.meta.env.BASE_URL}figma/paper-plane.png`;
+
 export function ChatInput({ onSend, isLoading }: ChatInputProps) {
   const [input, setInput] = useState("");
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -24,6 +26,11 @@ export function ChatInput({ onSend, isLoading }: ChatInputProps) {
   }, [input]);
 
   useEffect(() => {
+    const supportsDesktopFocus = window.matchMedia(
+      "(hover: hover) and (pointer: fine)",
+    ).matches;
+    if (!supportsDesktopFocus) return;
+
     const timer = window.setTimeout(() => textareaRef.current?.focus(), 240);
     return () => window.clearTimeout(timer);
   }, []);
@@ -37,6 +44,9 @@ export function ChatInput({ onSend, isLoading }: ChatInputProps) {
   };
 
   const handleKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
+    // Enter during IME composition (e.g. picking a pinyin candidate) confirms
+    // the candidate, not the message. Safari reports it as keyCode 229 instead.
+    if (e.nativeEvent.isComposing || e.nativeEvent.keyCode === 229) return;
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       handleSubmit();
@@ -54,7 +64,9 @@ export function ChatInput({ onSend, isLoading }: ChatInputProps) {
           aria-label="Message input"
           placeholder="ASK A QUESTION..."
           rows={1}
-          disabled={isLoading}
+          // Not disabled while Ross is answering: disabling a focused textarea
+          // blurs it, so every reply forced a click back into the input.
+          // handleSubmit already refuses to send while isLoading.
           className="ross-composer__input"
         />
         <button
@@ -62,8 +74,10 @@ export function ChatInput({ onSend, isLoading }: ChatInputProps) {
           disabled={!input.trim() || isLoading}
           className="ross-composer__send"
           aria-label="Send message"
+          // Keep focus in the textarea when the button is clicked or tapped.
+          onMouseDown={(e) => e.preventDefault()}
         >
-          <img src="/figma/paper-plane.png" alt="" />
+          <img src={paperPlaneUrl} alt="" />
         </button>
       </form>
     </div>

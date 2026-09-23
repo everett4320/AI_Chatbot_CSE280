@@ -20,12 +20,6 @@ Future deployment work from this branch must follow these rules:
 
 ## Status of this branch
 
-The code currently on `everett` predates this requirement and still uses Node
-SSR. Its current `npm run build` output is not an Apache-only deployment
-artifact. Do not present this rule as proof that the Everett implementation has
-already been converted.
-
-The maintained and tested static implementation is published on
-`christopher-handoff`. Check that branch and its current CI result before a
-production deployment. This file records the rule for any future work that
-continues from `everett`.
+`everett` now includes the static SPA implementation from `main`. Its build
+produces `ai-chatbot-lehigh/build/client/index.html`; check the current CI
+result and deployment configuration before publishing a production build.

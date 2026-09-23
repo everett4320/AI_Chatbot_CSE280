@@ -1,0 +1,101 @@
+name: Frontend CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+      - everett
+      - consolidate-branches
+      - "its-*"
+      - "christopher-*"
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ai-chatbot-lehigh
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: ai-chatbot-lehigh/package-lock.json
+
+      - run: npm ci
+      - run: npm audit --audit-level=high
+      - run: npm run verify:deployment
+        env:
+          VITE_CHAT_API_URL: https://example.test/ross-api
+          VITE_CHAT_BOT_NAME: ross-ci
+          VITE_BASE_PATH: /ross-test/
+
+      - name: Verify the static artifact
+        run: |
+          test -f build/client/index.html
+          test ! -e build/server/index.js
+
+      - name: Smoke-test the static subpath build
+        env:
+          VITE_BASE_PATH: /ross-test/
+        run: |
+          npm run start > /tmp/ross-frontend.log 2>&1 &
+          server_pid=$!
+          trap 'kill "$server_pid"' EXIT
+          for attempt in {1..20}; do
+            if curl --fail --silent --show-error http://127.0.0.1:3000/ross-test/ > /dev/null; then
+              curl --fail --silent --show-error http://127.0.0.1:3000/ross-test/direct-refresh > /dev/null
+              test "$(curl --fail --silent --show-error --output /dev/null --write-out '%{content_type}' http://127.0.0.1:3000/ross-test/figma/ross-mark.svg)" = "image/svg+xml"
+              exit $?
+            fi
+            sleep 1
+          done
+          cat /tmp/ross-frontend.log
+          exit 1
+
+      - name: Build and smoke-test the root Apache image
+        run: |
+          docker build \
+            --build-arg VITE_CHAT_API_URL="https://example.test/ross-api" \
+            --build-arg VITE_CHAT_BOT_NAME="ross-ci" \
+            --build-arg VITE_BASE_PATH="/" \
+            -t ross-frontend:root-ci .
+          container_id=$(docker run --rm -d -p 3001:80 ross-frontend:root-ci)
+          trap 'docker stop "$container_id"' EXIT
+          for attempt in {1..20}; do
+            if curl --fail --silent --show-error http://127.0.0.1:3001/ > /dev/null; then
+              curl --fail --silent --show-error http://127.0.0.1:3001/direct-refresh > /dev/null
+              test "$(curl --fail --silent --show-error --output /dev/null --write-out '%{content_type}' http://127.0.0.1:3001/figma/ross-mark.svg)" = "image/svg+xml"
+              exit $?
+            fi
+            sleep 1
+          done
+          docker logs "$container_id"
+          exit 1
+
+      - name: Build and smoke-test the subpath Apache image
+        run: |
+          docker build \
+            --build-arg VITE_CHAT_API_URL="https://example.test/ross-api" \
+            --build-arg VITE_CHAT_BOT_NAME="ross-ci" \
+            --build-arg VITE_BASE_PATH="/ross-test/" \
+            -t ross-frontend:subpath-ci .
+          container_id=$(docker run --rm -d -p 3002:80 ross-frontend:subpath-ci)
+          trap 'docker stop "$container_id"' EXIT
+          for attempt in {1..20}; do
+            if curl --fail --silent --show-error http://127.0.0.1:3002/ross-test/ > /dev/null; then
+              curl --fail --location --silent --show-error http://127.0.0.1:3002/ross-test > /dev/null
+              curl --fail --silent --show-error http://127.0.0.1:3002/ross-test/direct-refresh > /dev/null
+              test "$(curl --fail --silent --show-error --output /dev/null --write-out '%{content_type}' http://127.0.0.1:3002/ross-test/figma/ross-mark.svg)" = "image/svg+xml"
+              exit $?
+            fi
+            sleep 1
+          done
+          docker logs "$container_id"
+          exit 1
