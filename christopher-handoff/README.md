@@ -4,9 +4,11 @@ Ross is the AI chatbot project for Lehigh University's P.C. Rossin College of
 Engineering and Applied Science. It was previously called LE-Chat, and Chris
 Larkin is the project sponsor.
 
-Thanks for helping us get the updated frontend connected and deployed. This
-branch contains the frontend, the source pages, our system prompt, and the test
-questions.
+Thanks for helping us connect the updated frontend to your existing AWS chatbot
+setup. Ross is intended to fit alongside the other chatbot clones on that
+platform.
+This branch contains the frontend, Ross-specific source pages and system prompt,
+and the test questions; it does not include a separate backend to deploy.
 
 We do not have access to the backend or the AWS environment, so the setup notes
 below are based on our current understanding. We do not expect any backend or
@@ -41,9 +43,14 @@ cd AI_Chatbot_CSE280
 ## Source pages and system prompt
 
 Please use the normal workflow on your platform to select or register Ross and
-apply the system prompt. For the Engineering seed, use host-only crawling so it
-covers all public pages on `engineering.lehigh.edu`. The other three URLs are
-individual supplemental pages.
+apply the system prompt. As requested in our September 22 email, use host-only
+crawling for the Engineering root seed so it covers public pages on
+`engineering.lehigh.edu`, without expanding to other Lehigh hosts. That makes
+the separate `/academics/undergraduate` seed redundant, so the earlier five-URL
+list is now four seeds. The other three are supplemental URLs; the catalog's
+exact-page scope for them is our proposal, not a confirmed crawler setting.
+Please confirm their scope before ingestion, especially if your crawler uses
+one mode for all seeds; tell us what to change in the source list.
 
 The four seeds were checked on September 22, 2026, and all returned HTTP 200:
 
@@ -69,11 +76,13 @@ The SHA-256 of the tracked prompt (Git blob bytes) is:
 We expect the prompt to be applied through the platform configuration rather
 than sent by the browser with every request.
 
-## Build the frontend
+## Build the static frontend
 
-Use the Ross endpoint, bot name, and public path from the existing deployment.
-If these variables do not match the way your platform is configured, send us
-the values or format the frontend should use.
+Running `npm run build` creates static HTML, JavaScript, CSS, and image files in
+`build/client/`; it does not require a separate Node process in production.
+Use the Ross endpoint and bot routing name from your existing platform. The
+`VITE_BASE_PATH=/` example below assumes Ross is served at the root of the
+proposed `https://ross.cc.lehigh.edu/` URL.
 
 ```bash
 cd ai-chatbot-lehigh
@@ -81,14 +90,17 @@ export VITE_CHAT_API_URL="<Ross API endpoint>"
 export VITE_CHAT_BOT_NAME="<Ross bot name>"
 export VITE_BASE_PATH="/"
 npm ci
-npm run verify:deployment
+npm run build
 ```
 
-This creates a static site at `build/client/`, including `index.html`. Copy that
-directory to the Apache document root for `https://ross.cc.lehigh.edu/`. No Node
-process is needed in production. Apache should fall back to `/index.html` for
-frontend routes. Full Apache and Docker notes are in
-[`../ai-chatbot-lehigh/README.md`](../ai-chatbot-lehigh/README.md).
+For an additional configuration, type, contract, and static-artifact check,
+`npm run verify:deployment` builds the same site. Please integrate the
+`build/client/` files through your normal AWS/Apache workflow. The root-path
+and subpath Apache examples in
+[`../ai-chatbot-lehigh/README.md`](../ai-chatbot-lehigh/README.md) are reference
+configurations, not assumptions about your server layout. If your mount path or
+fixed API integration differs, please tell us what frontend values or code you
+need us to change.
 
 ## Check the deployed Ross clone
 

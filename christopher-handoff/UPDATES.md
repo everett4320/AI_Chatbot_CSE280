@@ -6,8 +6,10 @@ frontend, prompt, and source list in sync after the first deployment.
 ## Frontend changes
 
 The student team pushes the change to `christopher-handoff`. Christopher can
-then rebuild and deploy `ai-chatbot-lehigh/` through the same AWS process. Once
-he sends back the updated link, the team checks it in the browser.
+then build the static frontend and integrate `build/client/` through his normal
+AWS/Apache process. If that process needs a different frontend format or mount
+path, the team updates its side. Once he sends back the updated link, the team
+checks it in the browser.
 
 A frontend-only change does not require a prompt or source update.
 
@@ -26,8 +28,9 @@ runs the relevant questions from `validation/test_questions.json`.
 ## If the frontend no longer matches
 
 The student team updates the frontend adapter and contract tests. We do not ask
-Christopher to change the server, API shape, authentication, CORS behavior,
-model, or retrieval system.
+Christopher to change chatbot backend service behavior, API shape,
+authentication, CORS behavior, model, or retrieval system. Static hosting
+integration follows his normal AWS/Apache process.
 
 For each release, `RELEASE_MANIFEST.md` should record the commit, prompt hash,
 source result, bot name, public URL, and QA result.
