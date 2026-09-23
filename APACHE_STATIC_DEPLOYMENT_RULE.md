@@ -4,7 +4,7 @@ Christopher confirmed that the Ross frontend should be built once and served
 as static HTML, JavaScript, CSS, and image files by Apache. Production should
 not require a Node process or `react-router-serve`.
 
-Future deployment work from this branch must follow these rules:
+Ross frontend deployments from this repository must follow these rules:
 
 - React Router must build in SPA/static mode and produce
   `build/client/index.html`.
@@ -18,8 +18,8 @@ Future deployment work from this branch must follow these rules:
   this frontend deployment rule.
 - The final Apache origin must be compatible with the fixed API's CORS policy.
 
-## Status of this branch
+## Current implementation
 
-`everett` now includes the static SPA implementation from `main`. Its build
-produces `ai-chatbot-lehigh/build/client/index.html`; check the current CI
-result and deployment configuration before publishing a production build.
+The frontend in `ai-chatbot-lehigh/` builds as a static SPA. From that
+directory, run `npm run verify:deployment` with the assigned build-time values,
+then check the current CI result before publishing `build/client/`.

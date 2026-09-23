@@ -118,8 +118,9 @@ only uses a retired legacy field is rejected.
 After Christopher publishes the AWS-hosted link:
 
 - Reload the assigned public path directly.
-- Check that the launcher, chat panel, source links, feedback buttons, and
-  clear-chat action work.
+- Check that the launcher, chat panel, source links, and feedback buttons work.
+- Check that `NEW CHAT` clears the transcript and input draft and starts a new
+  session.
 - Test a narrow phone viewport and a mobile landscape viewport.
 - Confirm the request reaches the Ross clone and returns the expected sources.
 - Follow the exact QA command in
