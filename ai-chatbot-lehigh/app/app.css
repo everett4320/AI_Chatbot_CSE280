@@ -129,21 +129,21 @@ button {
   position: relative;
   display: flex;
   width: min(
-    400px,
+    420px,
     calc(
       100vw - 32px - env(safe-area-inset-left, 0px) -
         env(safe-area-inset-right, 0px)
     )
   );
   height: min(
-    618px,
+    630px,
     calc(
       100vh - 32px - env(safe-area-inset-top, 0px) -
         env(safe-area-inset-bottom, 0px)
     )
   );
   height: min(
-    618px,
+    630px,
     calc(
       var(--ross-visual-viewport-height, 100dvh) - 32px -
         env(safe-area-inset-top, 0px) -
@@ -164,24 +164,42 @@ button {
 .ross-header {
   position: relative;
   z-index: 5;
-  display: grid;
-  height: 70px;
-  min-height: 70px;
-  grid-template-columns: 26px 40px minmax(0, 1fr) 91px 30px 28px;
+  display: flex;
+  height: 74px;
+  min-height: 74px;
   align-items: center;
-  column-gap: 6px;
-  padding: 0 13px 0 12px;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 0 17px 0 10px;
   background: #12354c;
   color: #d1e9e8;
 }
 
+.ross-header__identity,
+.ross-header__actions {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+}
+
+.ross-header__identity {
+  flex: 0 0 auto;
+  gap: 7px;
+}
+
+.ross-header__actions {
+  flex: 0 0 auto;
+  gap: 8px;
+}
+
 .ross-header h1 {
   min-width: 0;
-  margin: 0 0 1px 3px;
+  margin: 0 0 0 10px;
   font-family: "Work Sans", "Inter", sans-serif;
   font-size: 24px;
   font-weight: 600;
   line-height: 1;
+  white-space: nowrap;
 }
 
 .ross-header__new-chat {
@@ -242,6 +260,7 @@ button {
 .ross-header__back {
   width: 26px;
   height: 26px;
+  flex: 0 0 26px;
 }
 
 .ross-header__back img {
@@ -261,19 +280,20 @@ button {
 }
 
 .ross-brand-mark {
-  width: 40px;
-  height: 40px;
+  width: 45px;
+  height: 45px;
+  flex: 0 0 45px;
 }
 
 .ross-brand-mark img {
-  width: 34px;
-  height: 34px;
+  width: 39px;
+  height: 39px;
 }
 
 .ross-help-popover {
   position: absolute;
   z-index: 10;
-  top: 59px;
+  top: 66px;
   right: 17px;
   display: flex;
   width: min(252px, calc(100% - 34px));
@@ -299,9 +319,9 @@ button {
   min-height: 0;
   flex: 1;
   overflow-y: auto;
-  align-items: flex-start;
+  align-items: safe center;
   justify-content: center;
-  padding: 117px 28px 24px;
+  padding: 24px 28px 44px;
   text-align: center;
 }
 
@@ -636,7 +656,7 @@ button {
 
 .ross-error {
   display: flex;
-  margin: 0 39px;
+  margin: 0 23px 0 39px;
   padding: 11px 13px;
   flex-direction: column;
   gap: 3px;
@@ -792,7 +812,7 @@ button {
 
   .ross-panel {
     height: min(
-      618px,
+      630px,
       calc(
         var(--ross-visual-viewport-height, 100dvh) - 32px -
           env(safe-area-inset-top, 0px) -
@@ -802,7 +822,7 @@ button {
   }
 
   .ross-welcome {
-    padding-top: clamp(72px, 18svh, 117px);
+    padding: 20px 24px 40px;
   }
 
   .ross-welcome h2 {
@@ -810,21 +830,78 @@ button {
   }
 }
 
-@media (max-width: 360px) {
+@media (min-width: 361px) and (max-width: 420px) {
   .ross-header {
-    grid-template-columns: 24px 28px minmax(0, 1fr) 70px 24px 24px;
-    column-gap: 3px;
-    padding: 0 8px;
+    gap: 8px;
+    padding: 0 10px;
+  }
+
+  .ross-header__identity {
+    gap: 5px;
+  }
+
+  .ross-header__actions {
+    gap: 6px;
   }
 
   .ross-header h1 {
-    margin-left: 0;
+    margin-left: 8px;
+    font-size: 22px;
+  }
+
+  .ross-brand-mark {
+    width: 36px;
+    height: 36px;
+    flex-basis: 36px;
+  }
+
+  .ross-brand-mark img {
+    width: 32px;
+    height: 32px;
+  }
+
+  .ross-header__new-chat {
+    width: 80px;
+    height: 33px;
+    font-size: 11px;
+  }
+
+  .ross-header__help {
+    width: 28px;
+    height: 28px;
+  }
+
+  .ross-header__close {
+    width: 26px;
+    height: 28px;
+  }
+}
+
+@media (max-width: 360px) {
+  .ross-header {
+    gap: 8px;
+    padding: 0 8px;
+  }
+
+  .ross-header__identity,
+  .ross-header__actions {
+    gap: 3px;
+  }
+
+  .ross-header h1 {
     font-size: 20px;
+  }
+
+  .ross-header__back {
+    width: 24px;
+    height: 24px;
+    flex-basis: 24px;
   }
 
   .ross-brand-mark {
     width: 28px;
     height: 28px;
+    flex-basis: 28px;
   }
 
   .ross-brand-mark img {
@@ -844,11 +921,40 @@ button {
     width: 24px;
     height: 24px;
   }
+
+  .ross-transcript__content {
+    padding: 22px 14px 16px;
+    gap: 20px;
+  }
+
+  .ross-message--assistant,
+  .ross-typing {
+    gap: 8px;
+  }
+
+  .ross-message__avatar {
+    width: 26px;
+    height: 26px;
+    min-width: 26px;
+  }
+
+  .ross-message__bubble {
+    padding: 12px 14px;
+  }
+
+  .ross-message--user .ross-message__bubble {
+    max-width: 84%;
+    padding: 10px 14px;
+  }
+
+  .ross-error {
+    margin: 0 14px 0 34px;
+  }
 }
 
 @media (max-height: 650px) {
   .ross-welcome {
-    padding-top: 54px;
+    padding: 16px 24px 32px;
   }
 
   .ross-welcome h2 {
@@ -857,6 +963,73 @@ button {
 
   .ross-welcome p {
     font-size: 17px;
+  }
+}
+
+@media (max-width: 300px) {
+  .ross-header {
+    height: 104px;
+    min-height: 104px;
+    flex-direction: column;
+    align-items: stretch;
+    justify-content: center;
+    gap: 5px;
+    padding: 7px 12px;
+  }
+
+  .ross-header__identity {
+    gap: 6px;
+  }
+
+  .ross-header__actions {
+    justify-content: flex-end;
+    gap: 8px;
+  }
+
+  .ross-header h1 {
+    margin-left: 8px;
+    font-size: 22px;
+  }
+
+  .ross-brand-mark {
+    width: 34px;
+    height: 34px;
+    flex-basis: 34px;
+  }
+
+  .ross-brand-mark img {
+    width: 30px;
+    height: 30px;
+  }
+
+  .ross-header__new-chat {
+    width: 91px;
+    height: 35px;
+    border-radius: 16px;
+    font-size: 12px;
+  }
+
+  .ross-header__help {
+    width: 30px;
+    height: 29px;
+  }
+
+  .ross-header__close {
+    width: 28px;
+    height: 29px;
+  }
+
+  .ross-help-popover {
+    top: 96px;
+  }
+
+  .ross-welcome {
+    padding-right: 18px;
+    padding-left: 18px;
+  }
+
+  .ross-welcome p {
+    font-size: 16px;
   }
 }
 

@@ -57,46 +57,50 @@ export function ChatArea({
   return (
     <section className="ross-panel" aria-label="Ross, Lehigh engineering assistant">
       <header className="ross-header">
-        <button
-          type="button"
-          className="ross-header__icon ross-header__back"
-          onClick={handleBack}
-          aria-label={hasConversation ? "Start a new conversation" : "Minimize chat"}
-        >
-          <img src={`${figmaAssetBase}collapse.png`} alt="" />
-        </button>
+        <div className="ross-header__identity">
+          <button
+            type="button"
+            className="ross-header__icon ross-header__back"
+            onClick={handleBack}
+            aria-label={hasConversation ? "Start a new conversation" : "Minimize chat"}
+          >
+            <img src={`${figmaAssetBase}collapse.png`} alt="" />
+          </button>
 
-        <span className="ross-brand-mark" aria-hidden="true">
-          <img src={`${figmaAssetBase}ross-mark.svg`} alt="" />
-        </span>
-        <h1>Ross</h1>
+          <span className="ross-brand-mark" aria-hidden="true">
+            <img src={`${figmaAssetBase}ross-mark.svg`} alt="" />
+          </span>
+          <h1>Ross</h1>
+        </div>
 
-        <button
-          type="button"
-          className="ross-header__new-chat"
-          onClick={handleNewChat}
-          aria-label="Start a new chat"
-        >
-          NEW CHAT
-        </button>
+        <div className="ross-header__actions">
+          <button
+            type="button"
+            className="ross-header__new-chat"
+            onClick={handleNewChat}
+            aria-label="Start a new chat"
+          >
+            NEW CHAT
+          </button>
 
-        <button
-          type="button"
-          className="ross-header__icon ross-header__help"
-          onClick={() => setShowHelp((value) => !value)}
-          aria-label="Chat help"
-          aria-expanded={showHelp}
-        >
-          <img src={`${figmaAssetBase}help.png`} alt="" />
-        </button>
-        <button
-          type="button"
-          onClick={onClose}
-          className="ross-header__icon ross-header__close"
-          aria-label="Close chat"
-        >
-          <img src={`${figmaAssetBase}close.png`} alt="" />
-        </button>
+          <button
+            type="button"
+            className="ross-header__icon ross-header__help"
+            onClick={() => setShowHelp((value) => !value)}
+            aria-label="Chat help"
+            aria-expanded={showHelp}
+          >
+            <img src={`${figmaAssetBase}help.png`} alt="" />
+          </button>
+          <button
+            type="button"
+            onClick={onClose}
+            className="ross-header__icon ross-header__close"
+            aria-label="Close chat"
+          >
+            <img src={`${figmaAssetBase}close.png`} alt="" />
+          </button>
+        </div>
       </header>
 
       {showHelp && (
