@@ -31,7 +31,8 @@
       existing platform record; no response-schema change is required.
 - [ ] A normal answer renders Markdown and source links.
 - [ ] Good and Bad feedback reach the expected clone.
-- [ ] Clearing the chat starts a new backend session.
+- [ ] `NEW CHAT` clears the transcript and input draft and starts a new backend
+      session.
 
 ## Behavior QA
 

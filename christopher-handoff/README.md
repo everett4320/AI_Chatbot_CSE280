@@ -60,10 +60,10 @@ crawler.
 The prompt is
 [`backend-inputs/SYSTEM_PROMPT.txt`](backend-inputs/SYSTEM_PROMPT.txt).
 
-Its SHA-256 is:
+The SHA-256 of the tracked prompt (Git blob bytes) is:
 
 ```text
-5f13fd929d0f790374b37e6a2807e7e2984654aba565cc18fa9b7a15dfe9a14d
+5076887a09600f3624100148e9928aca3a550d62dc9a3292df7698a6f6688b83
 ```
 
 We expect the prompt to be applied through the platform configuration rather
@@ -89,3 +89,22 @@ directory to the Apache document root for `https://ross.cc.lehigh.edu/`. No Node
 process is needed in production. Apache should fall back to `/index.html` for
 frontend routes. Full Apache and Docker notes are in
 [`../ai-chatbot-lehigh/README.md`](../ai-chatbot-lehigh/README.md).
+
+## Check the deployed Ross clone
+
+Once the Ross endpoint and bot name are confirmed, the handoff questions can be
+run from the repository root (Bash, `curl`, and `jq` are required):
+
+```bash
+bash scripts/run_question_suite.sh \
+  --questions-file christopher-handoff/validation/test_questions.json \
+  --bot-name "<Ross bot name>" \
+  --endpoint "<Ross API endpoint>"
+```
+
+In an interactive terminal, the script asks which sections to run; without one,
+it runs all enabled sections. It saves local records under the ignored
+`fetched_site/prompt_effectiveness_runs/` directory and uses the
+backend-configured prompt. The automated result checks transport only; please use
+[`validation/ACCEPTANCE_CHECKLIST.md`](validation/ACCEPTANCE_CHECKLIST.md) to
+review clone identity, grounding, sources, and refusal quality.
