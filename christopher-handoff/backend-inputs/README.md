@@ -18,10 +18,9 @@ can match a test run to the prompt version.
 ## Source list
 
 [`SOURCE_CATALOG.csv`](SOURCE_CATALOG.csv) contains four public Lehigh seeds.
-The Engineering root uses host-only crawling as requested. The other three rows
-are supplemental pages with a proposed exact-page scope; please confirm that
-scope against the crawler's available settings before ingesting those rows.
-The `backend_source_uri` cells are blank because those IDs are created during
+The Engineering root uses host-only crawling. The other three rows are
+supplemental pages; their exact-page scope still needs confirmation. The
+`backend_source_uri` cells are blank because those IDs are created during
 ingestion.
 
 `knowledge_base/sample.md` is a placeholder from the student repository, not a

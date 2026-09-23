@@ -1,24 +1,18 @@
 # Source links
 
 Use `SOURCE_CATALOG.csv` as the Ross source list. It opens in Excel and can be
-read by an ingestion script after the proposed supplemental scopes are
-confirmed.
+read by an ingestion script.
 
 `canonical_url` is the public page to crawl. `backend_source_uri` is the source
-ID your platform returns after ingestion. If those IDs are available, please
-share them so we can record them in the CSV.
+ID your platform returns after ingestion. Please write that ID back to the CSV.
 Do not use the public URL as a `source_uri_filter` value unless your platform
 explicitly uses that format.
 
-`ingest_method` records the intended crawler scope. `host-only` means the full
-hostname; `exact-page` means only the listed supplemental page. Host-only for
-the Engineering root was requested in the September 22 email. Exact-page for
-the other three rows is a proposal, not a confirmed platform setting; please
-tell us if the crawler cannot use a different mode per seed.
-
-`include=yes` means the URL is intended for Ross after its crawl scope is
-confirmed. Rows marked `scope_pending_confirmation` are not ready for ingestion;
-please confirm or revise their scope first, and we will update the catalog.
+`ingest_method` records the crawler scope. We requested `host-only`
+for the Engineering root. The other three rows are marked
+`scope_pending_confirmation` until their exact-page scope is confirmed.
+`include=yes` means we want the URL included once its scope is settled; those
+three rows should not be ingested before then.
 
 The four seeds were checked again on 2026-09-22 and all returned HTTP 200. The
 Engineering seed consolidates two overlapping URLs from the earlier frontend.

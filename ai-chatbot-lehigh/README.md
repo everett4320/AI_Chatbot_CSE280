@@ -7,7 +7,7 @@ Node process.
 Christopher and the school platform manage a fixed chatbot backend, retrieval
 system, model, API, and production environment. This repository does not
 include or change backend code. If the integration does not match, change the
-frontend adapter rather than the fixed chatbot backend service.
+frontend adapter rather than the chatbot service.
 
 ## Build configuration
 
@@ -17,7 +17,7 @@ Set these values before building:
 | --- | --- |
 | `VITE_CHAT_API_URL` | Fixed Ross API endpoint supplied by Christopher |
 | `VITE_CHAT_BOT_NAME` | Existing stable routing name for Ross |
-| `VITE_BASE_PATH` | Public mount path; `/` when Ross is served at the domain root |
+| `VITE_BASE_PATH` | Public mount path, such as `/ross-test/` |
 
 These values are compiled into the browser bundle. Do not put secrets in them.
 Changing one requires a rebuild. Setting `VITE_*` values only when starting the
@@ -39,23 +39,21 @@ npm run build
 ```
 
 `npm run build` creates `build/client/index.html` with its JS, CSS, and image
-assets. `npm run verify:deployment` is an additional preflight: it checks the
-three build values, runs TypeScript and contract tests, and builds the same
-static artifact.
+assets. `npm run verify:deployment` checks the build values, runs the tests,
+and builds the same files.
 
 `npm run start` is only a local preview of the static build on port 3000. It is
 not needed in production.
 
 ## Apache
 
-Christopher can serve `build/client/` through his existing AWS/Apache process.
-If Ross is mounted at the root of the proposed `https://ross.cc.lehigh.edu/`
-site, build with `VITE_BASE_PATH=/`. The following is a reference example, not
-the confirmed path or layout of his server. The SPA needs an `index.html`
-fallback for direct browser refreshes:
+For `https://ross.cc.lehigh.edu/`, use `VITE_BASE_PATH=/` if Ross is served at
+the domain root. Serve `build/client/` through the existing Apache setup. This
+example uses `/var/www/ross`; use the actual directory on your server. The SPA
+needs an `index.html` fallback for direct browser refreshes:
 
 ```apache
-<Directory "/path/to/ross-static-files">
+<Directory "/var/www/ross">
     Require all granted
     Options -Indexes
     DirectoryIndex index.html
@@ -63,18 +61,18 @@ fallback for direct browser refreshes:
 </Directory>
 ```
 
-If his site mounts Ross below a path such as `/ross-test/`, build with
-`VITE_BASE_PATH=/ross-test/` and align the static-file mount and fallback path
-(for example, `FallbackResource /ross-test/index.html`). The build value and
-actual Apache mount path must match.
+If Ross is mounted below a path such as `/ross-test/`, build with
+`VITE_BASE_PATH=/ross-test/`, place the files at that path, and use
+`FallbackResource /ross-test/index.html`. The build value, Apache mount path,
+and fallback path must match.
 
 The browser calls `VITE_CHAT_API_URL` directly. The final Apache origin must
 already be allowed by the fixed API's CORS policy.
 
 ## Docker
 
-The Docker image is a local/CI Apache smoke-test option, not a requirement for
-Christopher's AWS workflow. Its final image does not contain a Node process.
+The Docker image also serves the static build with Apache. It does not contain
+a production Node process.
 
 ```bash
 docker build \
