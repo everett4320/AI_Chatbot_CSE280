@@ -84,6 +84,7 @@ button {
 
 .ross-launcher:focus-visible,
 .ross-header__icon:focus-visible,
+.ross-header__new-chat:focus-visible,
 .ross-composer__send:focus-visible {
   outline: 3px solid rgba(29, 112, 132, 0.5);
   outline-offset: 3px;
@@ -98,8 +99,8 @@ button {
 }
 
 .ross-launcher__diamond {
-  width: 31px;
-  height: 31px;
+  width: 34px;
+  height: 34px;
 }
 
 .ross-launcher__diamond img,
@@ -109,8 +110,8 @@ button {
 }
 
 .ross-launcher__diamond img {
-  width: 20px;
-  height: 18px;
+  width: 31px;
+  height: 31px;
 }
 
 .ross-launcher__status {
@@ -166,20 +167,51 @@ button {
   display: grid;
   height: 70px;
   min-height: 70px;
-  grid-template-columns: 28px 45px 1fr 30px 28px;
+  grid-template-columns: 26px 40px minmax(0, 1fr) 91px 30px 28px;
   align-items: center;
-  column-gap: 7px;
+  column-gap: 6px;
   padding: 0 13px 0 12px;
   background: #12354c;
   color: #d1e9e8;
 }
 
 .ross-header h1 {
+  min-width: 0;
   margin: 0 0 1px 3px;
   font-family: "Work Sans", "Inter", sans-serif;
   font-size: 24px;
   font-weight: 600;
   line-height: 1;
+}
+
+.ross-header__new-chat {
+  display: grid;
+  width: 91px;
+  height: 35px;
+  padding: 0;
+  place-items: center;
+  border: 2px solid #d1e9e8;
+  border-radius: 16px;
+  background: transparent;
+  color: #ffffff;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1;
+  white-space: nowrap;
+  transition: background 160ms ease, transform 160ms ease;
+}
+
+.ross-header__new-chat:hover {
+  background: rgba(209, 233, 232, 0.16);
+}
+
+.ross-header__new-chat:focus-visible {
+  outline-color: #ffffff;
+}
+
+.ross-header__new-chat:active {
+  transform: scale(0.97);
 }
 
 .ross-header__icon {
@@ -229,14 +261,13 @@ button {
 }
 
 .ross-brand-mark {
-  width: 32px;
-  height: 32px;
-  margin-left: 4px;
+  width: 40px;
+  height: 40px;
 }
 
 .ross-brand-mark img {
-  width: 20px;
-  height: 18px;
+  width: 34px;
+  height: 34px;
 }
 
 .ross-help-popover {
@@ -776,6 +807,42 @@ button {
 
   .ross-welcome h2 {
     font-size: clamp(27px, 8vw, 32px);
+  }
+}
+
+@media (max-width: 360px) {
+  .ross-header {
+    grid-template-columns: 24px 28px minmax(0, 1fr) 70px 24px 24px;
+    column-gap: 3px;
+    padding: 0 8px;
+  }
+
+  .ross-header h1 {
+    margin-left: 0;
+    font-size: 20px;
+  }
+
+  .ross-brand-mark {
+    width: 28px;
+    height: 28px;
+  }
+
+  .ross-brand-mark img {
+    width: 25px;
+    height: 25px;
+  }
+
+  .ross-header__new-chat {
+    width: 70px;
+    height: 31px;
+    border-radius: 15px;
+    font-size: 10px;
+  }
+
+  .ross-header__help,
+  .ross-header__close {
+    width: 24px;
+    height: 24px;
   }
 }
 

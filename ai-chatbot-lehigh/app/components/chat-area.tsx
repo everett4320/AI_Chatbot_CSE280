@@ -10,6 +10,7 @@ interface ChatAreaProps {
   messages: Message[];
   isLoading: boolean;
   error: string | null;
+  chatRevision: number;
   onSend: (content: string) => void;
   onClose: () => void;
   onRestart: () => void;
@@ -20,6 +21,7 @@ export function ChatArea({
   messages,
   isLoading,
   error,
+  chatRevision,
   onSend,
   onClose,
   onRestart,
@@ -42,8 +44,13 @@ export function ChatArea({
     }
   }, [messages, isLoading]);
 
+  const handleNewChat = () => {
+    onRestart();
+    setShowHelp(false);
+  };
+
   const handleBack = () => {
-    if (hasConversation) onRestart();
+    if (hasConversation) handleNewChat();
     else onClose();
   };
 
@@ -63,6 +70,15 @@ export function ChatArea({
           <img src={`${figmaAssetBase}ross-mark.svg`} alt="" />
         </span>
         <h1>Ross</h1>
+
+        <button
+          type="button"
+          className="ross-header__new-chat"
+          onClick={handleNewChat}
+          aria-label="Start a new chat"
+        >
+          NEW CHAT
+        </button>
 
         <button
           type="button"
@@ -130,7 +146,7 @@ export function ChatArea({
         </div>
       )}
 
-      <ChatInput onSend={onSend} isLoading={isLoading} />
+      <ChatInput key={chatRevision} onSend={onSend} isLoading={isLoading} />
     </section>
   );
 }

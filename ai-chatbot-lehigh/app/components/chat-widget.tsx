@@ -10,6 +10,7 @@ export function ChatWidget() {
     messages,
     isLoading,
     error,
+    chatRevision,
     sendMessage,
     clearChat,
     rateMessage,
@@ -58,6 +59,7 @@ export function ChatWidget() {
           messages={messages}
           isLoading={isLoading}
           error={error}
+          chatRevision={chatRevision}
           onSend={sendMessage}
           onClose={() => setIsOpen(false)}
           onRestart={clearChat}
