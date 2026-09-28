@@ -460,8 +460,10 @@ button {
   background: #d1e9e8;
 }
 
+/* Same icon-to-frame ratio as .ross-brand-mark (39px in 45px); the logo has
+   its own padding, so it still sits well inside the circle. */
 .ross-message__avatar img {
-  width: 16px;
+  width: 86%;
 }
 
 .ross-message__bubble {
