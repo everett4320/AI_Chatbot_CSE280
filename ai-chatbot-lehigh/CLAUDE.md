@@ -2,7 +2,7 @@
 
 ## Scope and ownership
 
-This repository owns the Ross frontend and handoff material only. Christopher and the school platform own the backend, retrieval, model, clone registration, CORS, authentication, rate limits, logging, and deployment policy.
+This repository owns the Ross frontend and handoff material only. Christopher and the school platform manage the fixed backend, retrieval, model, bot registration, CORS, authentication, rate limits, logging, and deployment policy. Chris Larkin is the project sponsor. Do not request changes to those systems; adapt the frontend when an integration mismatch is found.
 
 Do not infer a live Ross integration from local demo behavior. The frontend needs an assigned endpoint, a stable Ross bot slug, confirmed CORS, configured prompt, and ingested sources before it can be used for a real pilot.
 
@@ -16,7 +16,9 @@ npm run verify
 npm run verify:deployment
 ```
 
-The app is React Router SSR. Production startup is `react-router-serve ./build/server/index.js`; the build produces both client and server output.
+The app uses React Router SPA mode with `ssr: false`. A production build must
+produce `build/client/index.html`; Apache serves `build/client/` directly. There
+is no production Node process. `npm run start` is only a local static preview.
 
 ## Build-time configuration
 
@@ -28,6 +30,10 @@ The frontend reads these public build-time values:
 
 The deployment validator rejects missing bot names and invalid production endpoint configuration. A development build without an endpoint may show a local demo reply; that is never a model, retrieval, or clone test.
 
+The Apache document root or alias, `VITE_BASE_PATH`, React Router basename, and
+`FallbackResource` must describe the same public path. For
+`https://ross.cc.lehigh.edu/`, use `/` and fall back to `/index.html`.
+
 ## API and state contract
 
 The source of truth is `../christopher-handoff/backend-inputs/API_CONTRACT.md`.
@@ -38,10 +44,10 @@ Sessions are scoped by endpoint and bot slug in tab `sessionStorage`. When the b
 
 ## QA boundaries
 
-Use an explicit assigned endpoint for QA:
+From `ai-chatbot-lehigh/`, use the explicit assigned endpoint for QA:
 
 ```bash
-bash scripts/run_question_suite.sh \
+bash ../scripts/run_question_suite.sh \
   --bot-name "<Ross bot slug>" \
   --endpoint "<Ross endpoint>"
 ```
@@ -52,4 +58,4 @@ The default suite tests the clone's configured backend prompt. Passing `--custom
 
 ## Change discipline
 
-Keep `chat-api.ts`, `use-chat.ts`, `chat.ts`, the contract tests, and these instructions consistent whenever the API or session behavior changes. Preserve responsive message wrapping, bounded Markdown tables, visual-viewport behavior, and subpath asset handling.
+Keep `chat-api.ts`, `use-chat.ts`, `chat.ts`, the contract tests, and these instructions consistent with the fixed interface. Preserve responsive message wrapping, bounded Markdown tables, visual-viewport behavior, and subpath asset handling.

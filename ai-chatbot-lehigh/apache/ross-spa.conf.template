@@ -1,0 +1,13 @@
+<Directory "/usr/local/apache2/htdocs">
+    Options -Indexes
+    AllowOverride None
+    Require all granted
+</Directory>
+
+<Directory "__DOCUMENT_ROOT__">
+    Options -Indexes
+    AllowOverride None
+    Require all granted
+    DirectoryIndex index.html
+    FallbackResource __FALLBACK__
+</Directory>

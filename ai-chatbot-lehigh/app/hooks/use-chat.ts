@@ -27,6 +27,7 @@ export function useChat() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [chatRevision, setChatRevision] = useState(0);
   const loadingRef = useRef(false);
   const messagesRef = useRef(messages);
   const requestEpochRef = useRef(new ChatRequestEpoch());
@@ -83,6 +84,7 @@ export function useChat() {
     setError(null);
     loadingRef.current = false;
     setIsLoading(false);
+    setChatRevision((revision) => revision + 1);
   }, []);
 
   const rateMessage = useCallback(
@@ -113,6 +115,7 @@ export function useChat() {
     messages,
     isLoading,
     error,
+    chatRevision,
     sendMessage,
     clearChat,
     rateMessage,

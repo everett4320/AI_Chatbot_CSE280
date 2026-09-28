@@ -23,6 +23,7 @@ jobs:
 
       - run: npm ci
       - run: npm run verify
+      - run: test -f build/client/index.html
 
   qa-script-contract:
     runs-on: ubuntu-latest

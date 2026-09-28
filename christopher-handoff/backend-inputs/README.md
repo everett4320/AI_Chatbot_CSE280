@@ -1,25 +1,28 @@
-# Backend inputs
+# Ross inputs
 
-Use this folder when setting up the Ross clone.
+This folder has the two inputs we prepared for Ross: the system prompt and the
+four-seed source list. Christopher can use the platform's normal prompt and
+crawler workflow. If either file needs a different format, send us the expected
+format and we will update it.
 
 ## System prompt
 
-Load `SYSTEM_PROMPT.txt` as the prompt for the Ross clone. It identifies the
-assistant as Ross and keeps the existing grounding and refusal rules.
+[`SYSTEM_PROMPT.txt`](SYSTEM_PROMPT.txt) identifies the assistant as Ross and
+sets the grounding and refusal rules. The frontend does not send this prompt in
+browser requests. The QA scripts normally test whichever prompt is configured
+on the platform.
 
-The QA scripts use the same prompt file. Before the test run, record its hash
-in `../RELEASE_MANIFEST.md` so we know which version was used.
+Its hash is recorded in [`../RELEASE_MANIFEST.md`](../RELEASE_MANIFEST.md) so we
+can match a test run to the prompt version.
 
-Do not send the prompt from the browser on every request. It belongs in the
-clone configuration.
+## Source list
 
-## Source links
+[`SOURCE_CATALOG.csv`](SOURCE_CATALOG.csv) contains four public Lehigh seeds.
+The Engineering root uses host-only crawling. The other three rows are
+supplemental pages; their exact-page scope still needs confirmation. The
+`backend_source_uri` cells are blank because those IDs are created during
+ingestion.
 
-`SOURCE_CATALOG.csv` is the input for the ingestion job. It has five public
-Lehigh URLs. The `backend_source_uri` column is blank because those IDs only
-exist after ingestion.
-
-Do not ingest `knowledge_base/sample.md`. It is a placeholder from the student
-repo, not Ross content.
-
-`SOURCE_CATALOG.md` explains the columns and the provenance of the five links.
+`knowledge_base/sample.md` is a placeholder from the student repository, not a
+Ross source. [`SOURCE_CATALOG.md`](SOURCE_CATALOG.md) explains the catalog
+columns and where the four seeds came from.

@@ -1,12 +1,25 @@
 # Ross chatbot frontend
 
-This repository contains the Ross frontend and the files needed to connect it
-to the shared Lehigh chatbot platform.
+This repository contains the frontend and handoff materials for Ross, the
+AI chatbot project for Lehigh University's P.C. Rossin College of Engineering
+and Applied Science. The project was previously called LE-Chat. Its current
+name is Ross, and the project sponsor is Chris Larkin.
 
-ITS/LTS owns the chatbot backend, retrieval system, model, and production data.
-The student team owns the frontend and the Ross handoff inputs.
+Christopher and the school platform manage a fixed chatbot backend, retrieval
+system, model, API, and production environment. This repository does not change
+those systems. The student team provides the frontend design and the Ross
+handoff inputs.
 
-## Quick start
+## For Christopher
+
+Start with [christopher-handoff/README.md](christopher-handoff/README.md). It
+has the frontend handoff, four crawler seeds, Ross system prompt, build notes,
+and test checklist.
+
+The delivery branch is `christopher-handoff`. The frontend must adapt to the
+existing service; no backend or server change is requested by this repo.
+
+## Local UI quick start
 
 To run the frontend locally, use Node 22:
 
@@ -21,23 +34,19 @@ Open <http://localhost:6173> and click the Ross button in the bottom-right
 corner.
 
 With the empty `.env` from the example, the dev server answers with built-in
-demo replies and sends no requests. To reach a real backend, set
+demo replies and sends no requests. This checks the UI only. To reach the fixed
+Ross service, set
 `VITE_CHAT_API_URL` and `VITE_CHAT_BOT_NAME` in `.env` and restart
-`npm run dev`. Chris supplies both values for the Ross clone.
+`npm run dev`. Christopher supplies the existing assigned values.
 
 Before opening a pull request, run `npm run verify`. It runs the type check,
 the contract tests, and a production build.
 
 <img src="docs/images/ross-hi.png" alt="Ross chat panel after sending hi" width="400">
 
-*A local dev build after sending "hi", connected to the earlier shared test
-backend rather than the Ross clone.*
-
-## For Christopher
-
-Start with [christopher-handoff/README.md](christopher-handoff/README.md).
-It points to the frontend, the Ross prompt, the source links, and the test
-questions.
+*Historical UI screenshot only: this local build was connected to an earlier
+shared test service, not the Ross deployment. Do not copy its endpoint or bot
+name.*
 
 ## Repository layout
 
@@ -55,6 +64,10 @@ The frontend needs an API endpoint, the Ross bot slug, and a public path at
 build time. See [ai-chatbot-lehigh/README.md](ai-chatbot-lehigh/README.md) for
 the commands and API contract.
 
+The production artifact is a static SPA in `ai-chatbot-lehigh/build/client/`.
+Christopher can serve it directly with Apache; no production Node process is
+required.
+
 The endpoint recorded in `fetched_site/` came from an earlier test site. It is
-not the Ross deployment endpoint. Chris will provide the current endpoint and
-bot slug for the Ross clone.
+not the Ross deployment endpoint. Christopher will provide the fixed endpoint
+and bot name already assigned to Ross.

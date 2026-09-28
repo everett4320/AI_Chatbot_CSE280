@@ -10,7 +10,8 @@ For the Christopher / ITS handoff, use
 - `SOURCE_CATALOG.csv` is the authoritative list of approved public sources.
 - `SYSTEM_PROMPT.txt` is the Ross clone-level prompt supplied to Christopher.
 - Christopher must record the post-ingestion `backend_source_uri` values
-  before any `source_uri_filter` can be configured accurately.
+  returned by the existing crawler. The production frontend does not send a
+  `source_uri_filter` and requests no retrieval-service change.
 
 When approved source documents are supplied as Markdown rather than URLs, place
 them in a separately documented source set with a matching catalog row, content

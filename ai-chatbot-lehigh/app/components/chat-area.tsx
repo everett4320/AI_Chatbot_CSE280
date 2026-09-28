@@ -26,6 +26,7 @@ interface ChatAreaProps {
   messages: Message[];
   isLoading: boolean;
   error: string | null;
+  chatRevision: number;
   onSend: (content: string) => void;
   onClose: () => void;
   onRestart: () => void;
@@ -36,6 +37,7 @@ export function ChatArea({
   messages,
   isLoading,
   error,
+  chatRevision,
   onSend,
   onClose,
   onRestart,
@@ -58,6 +60,11 @@ export function ChatArea({
     }
   }, [messages, isLoading]);
 
+  const handleNewChat = () => {
+    onRestart();
+    setShowHelp(false);
+  };
+
   // Esc only closes Ross when focus is inside the panel. Ross is embedded in a
   // host page, so it must not swallow Esc aimed at the page's own controls.
   const handleKeyDown = (event: KeyboardEvent<HTMLElement>) => {
@@ -68,7 +75,7 @@ export function ChatArea({
   };
 
   const handleBack = () => {
-    if (hasConversation) onRestart();
+    if (hasConversation) handleNewChat();
     else onClose();
   };
 
@@ -82,37 +89,50 @@ export function ChatArea({
       tabIndex={-1}
     >
       <header className="ross-header">
-        <button
-          type="button"
-          className="ross-header__icon ross-header__back"
-          onClick={handleBack}
-          aria-label={hasConversation ? "Start a new conversation" : "Minimize chat"}
-        >
-          <img src={`${figmaAssetBase}collapse.png`} alt="" />
-        </button>
+        <div className="ross-header__identity">
+          <button
+            type="button"
+            className="ross-header__icon ross-header__back"
+            onClick={handleBack}
+            aria-label={hasConversation ? "Start a new conversation" : "Minimize chat"}
+          >
+            <img src={`${figmaAssetBase}collapse.png`} alt="" />
+          </button>
 
-        <span className="ross-brand-mark" aria-hidden="true">
-          <img src={`${figmaAssetBase}ross-mark.svg`} alt="" />
-        </span>
-        <h1>Ross</h1>
+          <span className="ross-brand-mark" aria-hidden="true">
+            <img src={`${figmaAssetBase}ross-mark.svg`} alt="" />
+          </span>
+          <h1>Ross</h1>
+        </div>
 
-        <button
-          type="button"
-          className="ross-header__icon ross-header__help"
-          onClick={() => setShowHelp((value) => !value)}
-          aria-label="Chat help"
-          aria-expanded={showHelp}
-        >
-          <img src={`${figmaAssetBase}help.png`} alt="" />
-        </button>
-        <button
-          type="button"
-          onClick={onClose}
-          className="ross-header__icon ross-header__close"
-          aria-label="Close chat"
-        >
-          <img src={`${figmaAssetBase}close.png`} alt="" />
-        </button>
+        <div className="ross-header__actions">
+          <button
+            type="button"
+            className="ross-header__new-chat"
+            onClick={handleNewChat}
+            aria-label="Start a new chat"
+          >
+            NEW CHAT
+          </button>
+
+          <button
+            type="button"
+            className="ross-header__icon ross-header__help"
+            onClick={() => setShowHelp((value) => !value)}
+            aria-label="Chat help"
+            aria-expanded={showHelp}
+          >
+            <img src={`${figmaAssetBase}help.png`} alt="" />
+          </button>
+          <button
+            type="button"
+            onClick={onClose}
+            className="ross-header__icon ross-header__close"
+            aria-label="Close chat"
+          >
+            <img src={`${figmaAssetBase}close.png`} alt="" />
+          </button>
+        </div>
       </header>
 
       {showHelp && (
@@ -179,7 +199,7 @@ export function ChatArea({
         </div>
       )}
 
-      <ChatInput onSend={onSend} isLoading={isLoading} />
+      <ChatInput key={chatRevision} onSend={onSend} isLoading={isLoading} />
     </section>
   );
 }
