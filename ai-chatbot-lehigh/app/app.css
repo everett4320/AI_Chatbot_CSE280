@@ -351,12 +351,18 @@ button {
 }
 
 .ross-message__avatar {
+  display: grid;
+  place-items: center;
   width: 29px;
   height: 29px;
   min-width: 29px;
   margin-top: 4px;
   border-radius: 50%;
   background: #d1e9e8;
+}
+
+.ross-message__avatar img {
+  width: 16px;
 }
 
 .ross-message__bubble {
