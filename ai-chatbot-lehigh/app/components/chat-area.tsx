@@ -6,6 +6,22 @@ import { TypingIndicator } from "~/components/typing-indicator";
 
 const figmaAssetBase = `${import.meta.env.BASE_URL}figma/`;
 
+// The five topics College of Engineering faculty and staff said they are asked
+// about most often (survey question C1-5, 42 respondents), in frequency order:
+// program requirements 25, career outcomes 25, research 21, student experience
+// 16, graduate pathways / 4+1 12.
+const STARTER_QUESTIONS = [
+  "What are the degree requirements for an engineering major?",
+  "What jobs do Lehigh engineering graduates get?",
+  "How can I get involved in undergraduate research?",
+  "What engineering clubs and student projects can I join?",
+  "How does the 4+1 master\u2019s program work?",
+];
+
+// Hidden until the wording is final. Set to true to show them on the welcome
+// screen; the list above is the only thing that should need editing.
+const SHOW_STARTER_QUESTIONS = false;
+
 interface ChatAreaProps {
   messages: Message[];
   isLoading: boolean;
@@ -111,6 +127,23 @@ export function ChatArea({
           <div className="ross-welcome__copy">
             <h2>Hello, I’m Ross, your guide to Lehigh College of Engineering</h2>
             <p>How can I assist you today?</p>
+
+            {SHOW_STARTER_QUESTIONS && (
+              <ul className="ross-starters" aria-label="Suggested questions">
+                {STARTER_QUESTIONS.map((question) => (
+                  <li key={question}>
+                    <button
+                      type="button"
+                      className="ross-starter"
+                      onClick={() => onSend(question)}
+                      disabled={isLoading}
+                    >
+                      {question}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
           </div>
         </div>
       ) : (
