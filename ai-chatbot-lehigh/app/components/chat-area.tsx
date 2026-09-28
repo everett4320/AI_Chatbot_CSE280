@@ -1,4 +1,4 @@
-import { useRef, useEffect, useState } from "react";
+import { useRef, useEffect, useState, type KeyboardEvent } from "react";
 import type { FeedbackRating, Message } from "~/types/chat";
 import { ChatMessage } from "~/components/chat-message";
 import { ChatInput } from "~/components/chat-input";
@@ -42,13 +42,29 @@ export function ChatArea({
     }
   }, [messages, isLoading]);
 
+  // Esc only closes Ross when focus is inside the panel. Ross is embedded in a
+  // host page, so it must not swallow Esc aimed at the page's own controls.
+  const handleKeyDown = (event: KeyboardEvent<HTMLElement>) => {
+    // Esc during IME composition dismisses the candidate window, not the panel.
+    if (event.key !== "Escape" || event.nativeEvent.isComposing) return;
+    event.stopPropagation();
+    onClose();
+  };
+
   const handleBack = () => {
     if (hasConversation) onRestart();
     else onClose();
   };
 
   return (
-    <section className="ross-panel" aria-label="Ross, Lehigh engineering assistant">
+    <section
+      className="ross-panel"
+      aria-label="Ross, Lehigh engineering assistant"
+      onKeyDown={handleKeyDown}
+      // Lets a click on a non-interactive part of the panel keep focus inside
+      // it, so Esc still reaches this handler.
+      tabIndex={-1}
+    >
       <header className="ross-header">
         <button
           type="button"
