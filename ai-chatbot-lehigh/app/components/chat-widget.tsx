@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useChat } from "~/hooks/use-chat";
 import { ChatArea } from "~/components/chat-area";
 
@@ -6,6 +6,10 @@ const rossMarkUrl = `${import.meta.env.BASE_URL}figma/ross-mark.svg`;
 
 export function ChatWidget() {
   const [isOpen, setIsOpen] = useState(false);
+  const launcherRef = useRef<HTMLButtonElement>(null);
+  // Only pull focus back to the launcher after a close we caused, never on the
+  // first render (the widget starts closed and must not steal focus).
+  const restoreFocusRef = useRef(false);
   const {
     messages,
     isLoading,
@@ -15,6 +19,21 @@ export function ChatWidget() {
     clearChat,
     rateMessage,
   } = useChat();
+
+  // Esc is handled inside ChatArea, on the panel element, so the widget never
+  // reacts to keystrokes aimed at the host page.
+  const closePanel = () => {
+    restoreFocusRef.current = true;
+    setIsOpen(false);
+  };
+
+  // The launcher is unmounted while the panel is open, so focus has to wait
+  // until React has put it back.
+  useEffect(() => {
+    if (isOpen || !restoreFocusRef.current) return;
+    restoreFocusRef.current = false;
+    launcherRef.current?.focus();
+  }, [isOpen]);
 
   useEffect(() => {
     const viewport = window.visualViewport;
@@ -61,7 +80,7 @@ export function ChatWidget() {
           error={error}
           chatRevision={chatRevision}
           onSend={sendMessage}
-          onClose={() => setIsOpen(false)}
+          onClose={closePanel}
           onRestart={clearChat}
           onFeedback={rateMessage}
         />
@@ -69,6 +88,7 @@ export function ChatWidget() {
 
       {!isOpen && (
         <button
+          ref={launcherRef}
           onClick={() => setIsOpen(true)}
           className="ross-launcher"
           aria-label="Open Ross chat"
