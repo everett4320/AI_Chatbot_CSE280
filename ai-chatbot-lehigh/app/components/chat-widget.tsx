@@ -73,10 +73,7 @@ export function ChatWidget() {
           className="ross-launcher"
           aria-label="Open Ross chat"
         >
-          <span className="ross-launcher__diamond" aria-hidden="true">
-            <img src={rossMarkUrl} alt="" />
-          </span>
-          <span className="ross-launcher__status" aria-hidden="true" />
+          <img src={rossMarkUrl} alt="" />
         </button>
       )}
     </div>

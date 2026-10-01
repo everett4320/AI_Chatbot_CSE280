@@ -49,27 +49,15 @@ export function ChatArea({
     setShowHelp(false);
   };
 
-  const handleBack = () => {
-    if (hasConversation) handleNewChat();
-    else onClose();
-  };
-
   return (
     <section className="ross-panel" aria-label="Ross, Lehigh engineering assistant">
       <header className="ross-header">
         <div className="ross-header__identity">
-          <button
-            type="button"
-            className="ross-header__icon ross-header__back"
-            onClick={handleBack}
-            aria-label={hasConversation ? "Start a new conversation" : "Minimize chat"}
-          >
-            <img src={`${figmaAssetBase}collapse.png`} alt="" />
-          </button>
-
-          <span className="ross-brand-mark" aria-hidden="true">
-            <img src={`${figmaAssetBase}ross-mark.svg`} alt="" />
-          </span>
+          <span
+            className="ross-brand-mark"
+            style={{ maskImage: `url(${figmaAssetBase}ross-mark.svg)` }}
+            aria-hidden="true"
+          />
           <h1>Ross</h1>
         </div>
 

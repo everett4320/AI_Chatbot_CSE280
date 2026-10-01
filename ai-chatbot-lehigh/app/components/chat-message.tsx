@@ -1,6 +1,7 @@
 import { memo } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import { RossAvatar } from "~/components/ross-avatar";
 import type { FeedbackRating, Message } from "~/types/chat";
 
 interface ChatMessageProps {
@@ -16,7 +17,7 @@ export const ChatMessage = memo(function ChatMessage({
 
   return (
     <article className={`ross-message ross-message--${message.role}`}>
-      {!isUser && <span className="ross-message__avatar" aria-hidden="true" />}
+      {!isUser && <RossAvatar />}
       <div className="ross-message__bubble">
         {isUser ? (
           <p>{message.content}</p>

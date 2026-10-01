@@ -64,15 +64,11 @@ button {
   place-items: center;
   border: 0;
   border-radius: 999px;
-  background: #12354c;
-  box-shadow:
-    0 14px 32px rgba(18, 53, 76, 0.24),
-    0 3px 8px rgba(18, 53, 76, 0.18);
+  background: #d1e9e8;
   cursor: pointer;
   opacity: 1;
   transform: scale(1);
   transition: transform 180ms ease, opacity 160ms ease, box-shadow 180ms ease;
-  animation: launcher-breathe 3.2s ease-in-out infinite;
 }
 
 .ross-launcher:hover {
@@ -90,39 +86,10 @@ button {
   outline-offset: 3px;
 }
 
-.ross-launcher__diamond,
-.ross-brand-mark {
-  display: grid;
-  place-items: center;
-  background: #d1e9e8;
-  transform: rotate(45deg);
-}
-
-.ross-launcher__diamond {
-  width: 34px;
-  height: 34px;
-}
-
-.ross-launcher__diamond img,
-.ross-brand-mark img {
+.ross-launcher img {
   display: block;
-  transform: rotate(-45deg);
-}
-
-.ross-launcher__diamond img {
-  width: 31px;
-  height: 31px;
-}
-
-.ross-launcher__status {
-  position: absolute;
-  right: 2px;
-  bottom: 3px;
-  width: 14px;
-  height: 14px;
-  border: 3px solid #ffffff;
-  border-radius: 50%;
-  background: #5bbf95;
+  width: 86%;
+  height: 86%;
 }
 
 .ross-panel {
@@ -170,7 +137,7 @@ button {
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  padding: 0 17px 0 10px;
+  padding: 0 17px 0 20px;
   background: #12354c;
   color: #d1e9e8;
 }
@@ -204,7 +171,7 @@ button {
 
 .ross-header__new-chat {
   display: grid;
-  width: 91px;
+  width: 100px;
   height: 35px;
   padding: 0;
   place-items: center;
@@ -213,7 +180,7 @@ button {
   background: transparent;
   color: #ffffff;
   cursor: pointer;
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 600;
   line-height: 1;
   white-space: nowrap;
@@ -257,18 +224,6 @@ button {
   object-fit: contain;
 }
 
-.ross-header__back {
-  width: 26px;
-  height: 26px;
-  flex: 0 0 26px;
-}
-
-.ross-header__back img {
-  width: 22px;
-  height: 18px;
-  transform: rotate(90deg);
-}
-
 .ross-header__help {
   width: 30px;
   height: 29px;
@@ -280,14 +235,14 @@ button {
 }
 
 .ross-brand-mark {
+  display: block;
   width: 45px;
   height: 45px;
   flex: 0 0 45px;
-}
-
-.ross-brand-mark img {
-  width: 39px;
-  height: 39px;
+  background: #d1e9e8;
+  mask-size: 140% 140%;
+  mask-position: center;
+  mask-repeat: no-repeat;
 }
 
 .ross-help-popover {
@@ -305,13 +260,13 @@ button {
   background: #ffffff;
   box-shadow: 0 12px 32px rgba(18, 53, 76, 0.18);
   color: #12354c;
-  font-size: 12px;
+  font-size: 14px;
   line-height: 1.4;
   animation: message-enter 180ms ease both;
 }
 
 .ross-help-popover strong {
-  font-size: 13px;
+  font-size: 15px;
 }
 
 .ross-welcome {
@@ -402,23 +357,29 @@ button {
 }
 
 .ross-message__avatar {
-  width: 29px;
-  height: 29px;
-  min-width: 29px;
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  min-width: 38px;
   margin-top: 4px;
   border-radius: 50%;
   background: #d1e9e8;
 }
 
+.ross-message__avatar img {
+  width: 86%;
+}
+
 .ross-message__bubble {
   min-width: 0;
-  max-width: 262px;
+  max-width: calc(100% - 48px);
   padding: 13px 20px;
   border-radius: 8px;
   box-shadow: 0 4px 13.1px rgba(0, 0, 0, 0.08);
-  font-size: 12px;
+  font-size: 16px;
   letter-spacing: -0.011em;
-  line-height: 1.4;
+  line-height: 1.5;
   overflow-wrap: anywhere;
 }
 
@@ -460,7 +421,7 @@ button {
 .ross-markdown h3,
 .ross-markdown h4 {
   margin: 12px 0 5px;
-  font-size: 12px;
+  font-size: 1.1em;
   font-weight: 700;
   line-height: 1.35;
 }
@@ -535,7 +496,7 @@ button {
   width: max-content;
   min-width: 100%;
   border-collapse: collapse;
-  font-size: 11px;
+  font-size: 14px;
 }
 
 .ross-table-scroll th,
@@ -596,7 +557,7 @@ button {
   justify-content: space-between;
   border-top: 1px solid rgba(18, 53, 76, 0.14);
   color: rgba(18, 53, 76, 0.78);
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 600;
 }
 
@@ -656,14 +617,14 @@ button {
 
 .ross-error {
   display: flex;
-  margin: 0 23px 0 39px;
+  margin: 0 23px 0 48px;
   padding: 11px 13px;
   flex-direction: column;
   gap: 3px;
   border-radius: 8px;
   background: #fff2ef;
   color: #812c22;
-  font-size: 11px;
+  font-size: 14px;
   line-height: 1.35;
   overflow-wrap: anywhere;
 }
@@ -711,7 +672,7 @@ button {
   outline: 0;
   background: transparent;
   color: #12354c;
-  font-size: 12px;
+  font-size: 16px;
   line-height: 1.5;
 }
 
@@ -787,20 +748,6 @@ button {
   }
 }
 
-@keyframes launcher-breathe {
-  0%,
-  100% {
-    box-shadow:
-      0 14px 32px rgba(18, 53, 76, 0.24),
-      0 0 0 0 rgba(209, 233, 232, 0.5);
-  }
-  50% {
-    box-shadow:
-      0 14px 32px rgba(18, 53, 76, 0.24),
-      0 0 0 10px rgba(209, 233, 232, 0);
-  }
-}
-
 @media (max-width: 520px) {
   .ross-widget {
     right: calc(16px + env(safe-area-inset-right, 0px));
@@ -855,15 +802,9 @@ button {
     flex-basis: 36px;
   }
 
-  .ross-brand-mark img {
-    width: 32px;
-    height: 32px;
-  }
-
   .ross-header__new-chat {
-    width: 80px;
+    width: 100px;
     height: 33px;
-    font-size: 11px;
   }
 
   .ross-header__help {
@@ -892,28 +833,16 @@ button {
     font-size: 20px;
   }
 
-  .ross-header__back {
-    width: 24px;
-    height: 24px;
-    flex-basis: 24px;
-  }
-
   .ross-brand-mark {
     width: 28px;
     height: 28px;
     flex-basis: 28px;
   }
 
-  .ross-brand-mark img {
-    width: 25px;
-    height: 25px;
-  }
-
   .ross-header__new-chat {
-    width: 70px;
+    width: 91px;
     height: 31px;
     border-radius: 15px;
-    font-size: 10px;
   }
 
   .ross-header__help,
@@ -933,12 +862,13 @@ button {
   }
 
   .ross-message__avatar {
-    width: 26px;
-    height: 26px;
-    min-width: 26px;
+    width: 33px;
+    height: 33px;
+    min-width: 33px;
   }
 
   .ross-message__bubble {
+    max-width: calc(100% - 41px);
     padding: 12px 14px;
   }
 
@@ -948,7 +878,7 @@ button {
   }
 
   .ross-error {
-    margin: 0 14px 0 34px;
+    margin: 0 14px 0 41px;
   }
 }
 
@@ -997,16 +927,10 @@ button {
     flex-basis: 34px;
   }
 
-  .ross-brand-mark img {
-    width: 30px;
-    height: 30px;
-  }
-
   .ross-header__new-chat {
-    width: 91px;
+    width: 100px;
     height: 35px;
     border-radius: 16px;
-    font-size: 12px;
   }
 
   .ross-header__help {
