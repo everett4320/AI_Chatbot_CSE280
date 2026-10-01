@@ -1,117 +1,78 @@
 # Ross handoff for Christopher
 
-Ross is the AI chatbot project for Lehigh University's P.C. Rossin College of
-Engineering and Applied Science. It was previously called LE-Chat, and Chris
-Larkin is the project sponsor.
+This branch has the Ross frontend, system prompt, and source list for the
+P.C. Rossin College of Engineering and Applied Science. Chris Larkin is the
+project sponsor.
 
-Thanks for helping us get the updated frontend connected and deployed. This
-branch contains the frontend, the source pages, our system prompt, and the test
-questions.
+For this update, we've removed the back button, made the text easier to read,
+and adjusted the logo and chat icons. We've also revised the system prompt.
+The source list hasn't changed. [UPDATES.md](UPDATES.md) has a short summary.
 
-We do not have access to the backend or the AWS environment, so the setup notes
-below are based on our current understanding. We do not expect any backend or
-API changes. If something does not match your platform, tell us what the
-frontend should send or expect and we will update it.
+## Updating the frontend
 
-For the October 1 update, start with [`UPDATES.md`](UPDATES.md). It lists the
-two changes, the deployment steps, and the current prompt-configuration check.
-
-## Files in this handoff
-
-- [`../ai-chatbot-lehigh/`](../ai-chatbot-lehigh/) contains the frontend.
-- [`backend-inputs/SOURCE_CATALOG.csv`](backend-inputs/SOURCE_CATALOG.csv)
-  contains the four crawler seeds.
-- [`backend-inputs/SYSTEM_PROMPT.txt`](backend-inputs/SYSTEM_PROMPT.txt) is the
-  Ross system prompt.
-- [`backend-inputs/API_CONTRACT.md`](backend-inputs/API_CONTRACT.md) documents
-  the interface currently used by the frontend.
-- [`validation/`](validation/) contains the test questions and checklist.
-- [`RELEASE_MANIFEST.md`](RELEASE_MANIFEST.md) can be used to record the final
-  deployment details.
-
-Use the prompt and source catalog in this handoff, rather than copying inputs
-or configuration from `fetched_site/` or `knowledge_base/`. Keep the endpoint
-and bot name confirmed for the existing deployment; the UI name Ross does not
-determine its routing value. `knowledge_base/sample.md` is not a Ross source.
-
-## Check out the branch
+Use Node 22 and the API settings from the existing deployment:
 
 ```bash
-git clone --branch christopher-handoff --single-branch \
-  https://github.com/everett4320/AI_Chatbot_CSE280.git
-cd AI_Chatbot_CSE280
-```
-
-## Source pages and system prompt
-
-Please use the normal workflow on your platform to select or register Ross and
-apply the system prompt. For the Engineering seed, use host-only crawling so it
-covers all public pages on `engineering.lehigh.edu`. The other three URLs are
-individual supplemental pages. We removed the separate
-`/academics/undergraduate` seed because the host-only crawl covers it. The
-scope for the three supplemental pages still needs confirmation.
-
-The four seeds were checked on September 22, 2026, and all returned HTTP 200:
-
-1. <https://engineering.lehigh.edu/> — crawl the full host
-2. <https://www2.lehigh.edu/admissions/college-program-events>
-3. <https://www2.lehigh.edu/admissions/post-graduation-career-outcomes>
-4. <https://careercenter.lehigh.edu/content/meet-team>
-
-The CSV version is
-[`backend-inputs/SOURCE_CATALOG.csv`](backend-inputs/SOURCE_CATALOG.csv).
-The `backend_source_uri` cells are blank because those IDs are created by the
-crawler.
-
-The prompt is
-[`backend-inputs/SYSTEM_PROMPT.txt`](backend-inputs/SYSTEM_PROMPT.txt).
-
-The SHA-256 of the tracked prompt (Git blob bytes) is:
-
-```text
-f46c20bd968c767cbf5623b2ab95746c8bfcc787e2a24bcc558b6f8507092815
-```
-
-We expect the prompt to be applied through the platform configuration rather
-than sent by the browser with every request.
-
-## Build the frontend
-
-Use the Ross endpoint, bot name, and public path from the existing deployment.
-If these variables do not match the way your platform is configured, send us
-the values or format the frontend should use.
-
-```bash
+git fetch origin
+git switch christopher-handoff
+git pull --ff-only origin christopher-handoff
 cd ai-chatbot-lehigh
-export VITE_CHAT_API_URL="<Ross API endpoint>"
-export VITE_CHAT_BOT_NAME="<Ross bot name>"
+
+export VITE_CHAT_API_URL="<existing API endpoint>"
+export VITE_CHAT_BOT_NAME="<existing bot name>"
 export VITE_BASE_PATH="/"
 npm ci
-npm run build
+npm run verify:deployment
 ```
 
-This creates the static site in `build/client/`. Please use your usual Apache
-setup to serve those files at `https://ross.cc.lehigh.edu/`; no separate Node
-process is needed. We use `npm run verify:deployment` to run our checks before
-a release. If the frontend needs a different path or API setting for your site,
-please tell us. Full Apache and Docker notes are in
-[`../ai-chatbot-lehigh/README.md`](../ai-chatbot-lehigh/README.md).
+This runs our checks and builds the static site in `build/client/`. Publish the
+complete contents of that directory through your usual Apache process at
+<https://ross.cc.lehigh.edu/>. Keep the existing `/index.html` fallback for
+page refreshes. No Node process needs to run on the production server.
 
-## Check the deployed Ross clone
+The three `VITE_*` values are included in the build, so changing one means
+rebuilding the frontend. Keep the existing bot name even if it differs from
+the name shown in the chat. More Apache and Docker details are in the
+[frontend README](../ai-chatbot-lehigh/README.md).
 
-Once the Ross endpoint and bot name are confirmed, the handoff questions can be
-run from the repository root (Bash, `curl`, and `jq` are required):
+## Applying the prompt
+
+The updated text is in
+[backend-inputs/SYSTEM_PROMPT.txt](backend-inputs/SYSTEM_PROMPT.txt). Please use
+this file when updating the prompt. Its version hash is recorded in
+[RELEASE_MANIFEST.md](RELEASE_MANIFEST.md).
+
+There's one detail we'd like to check before the frontend update: the current
+site sends the old prompt as `custom_prompt` with each question. This version
+leaves that field out and expects the service to use its configured prompt.
+Can the existing platform apply the new text that way? If the frontend needs
+to send it with each request, tell us and we'll adjust it.
+
+The [API notes](backend-inputs/API_CONTRACT.md) describe the requests the
+frontend currently sends. If your setup expects something different, send us
+the format and we'll update our side.
+
+## Sources and testing
+
+The four source URLs are in
+[backend-inputs/SOURCE_CATALOG.csv](backend-inputs/SOURCE_CATALOG.csv). The
+Engineering root covers the full `engineering.lehigh.edu` host; the other
+three URLs are individual supplemental pages. Their exact-page scope still
+needs confirmation. If these sources are already ingested, this update
+shouldn't need another crawl. `knowledge_base/sample.md` is a placeholder and
+shouldn't be ingested.
+
+Once the update is live, we'll check the interface and run the existing
+52-question set. From the repository root, the test command is:
 
 ```bash
 bash scripts/run_question_suite.sh \
   --questions-file christopher-handoff/validation/test_questions.json \
-  --bot-name "<Ross bot name>" \
-  --endpoint "<Ross API endpoint>"
+  --bot-name "<existing bot name>" \
+  --endpoint "<existing API endpoint>"
 ```
 
-In an interactive terminal, the script asks which sections to run; without one,
-it runs all enabled sections. It saves local records under the ignored
-`fetched_site/prompt_effectiveness_runs/` directory and uses the
-backend-configured prompt. The automated result checks transport only; please use
-[`validation/ACCEPTANCE_CHECKLIST.md`](validation/ACCEPTANCE_CHECKLIST.md) to
-review clone identity, grounding, sources, and refusal quality.
+The script checks whether requests and responses work. We'll also read the
+answers to check their sources and the new refusal rules, using the
+[acceptance checklist](validation/ACCEPTANCE_CHECKLIST.md). Please send us the
+updated link and the prompt version you applied when it's ready.

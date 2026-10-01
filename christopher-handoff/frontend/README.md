@@ -1,28 +1,21 @@
-# Frontend build
+# Building the frontend
 
-The frontend is in `ai-chatbot-lehigh/`.
-
-It is an adapter for the fixed service managed by Christopher. Do not change
-or ask to change the backend, API payload, response shape, model, or retrieval
-behavior. If the integration does not match the documented
-interface, update the frontend and its contract tests.
-
-From that directory, set the three build-time values and build the static site:
+The app is in [`ai-chatbot-lehigh/`](../../ai-chatbot-lehigh/). Use Node 22 and
+the API endpoint, bot name, and path from the existing deployment:
 
 ```bash
-export VITE_CHAT_API_URL="<fixed Ross API endpoint>"
-export VITE_CHAT_BOT_NAME="<fixed Ross bot name>"
+export VITE_CHAT_API_URL="<existing API endpoint>"
+export VITE_CHAT_BOT_NAME="<existing bot name>"
 export VITE_BASE_PATH="/"
 npm ci
-npm run build
+npm run verify:deployment
 ```
 
-`VITE_CHAT_BOT_NAME` must match the existing Ross routing value. The frontend
-sends it with every question and feedback request.
+Run these commands from `ai-chatbot-lehigh/`. They check the configuration,
+run the tests, and build the static files in `build/client/`. Publish the
+complete contents of that directory with Apache. There's no production Node
+process; `npm run start` is just a local preview.
 
-`npm run build` creates the static site in `build/client/`. We use
-`npm run verify:deployment` for additional checks. Please serve the files with
-your usual Apache setup; no Node process is needed in production.
-`npm run start` is only a local preview.
-
-The full build and deployment notes are in `ai-chatbot-lehigh/README.md`.
+The [frontend README](../../ai-chatbot-lehigh/README.md) has Apache and Docker
+examples. Please also check the prompt question in
+[UPDATES.md](../UPDATES.md) before publishing this version.

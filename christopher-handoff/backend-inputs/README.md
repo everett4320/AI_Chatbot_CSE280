@@ -1,30 +1,17 @@
-# Ross inputs
+# Prompt and source pages
 
-This folder has the two inputs we prepared for Ross: the system prompt and the
-four-seed source list. Christopher can use the platform's normal prompt and
-crawler workflow. If either file needs a different format, send us the expected
-format and we will update it.
+[SYSTEM_PROMPT.txt](SYSTEM_PROMPT.txt) is the latest prompt for Ross. Its hash
+is in [RELEASE_MANIFEST.md](../RELEASE_MANIFEST.md), so we can keep track of
+which version was applied. Before updating the frontend, please check how the
+platform uses the prompt; the question is explained in
+[UPDATES.md](../UPDATES.md).
 
-## System prompt
+[SOURCE_CATALOG.csv](SOURCE_CATALOG.csv) lists the four Lehigh source URLs.
+The Engineering root covers the full host. The other three are supplemental
+pages; their exact-page crawl scope still needs confirmation. The source ID
+column is blank because those IDs come from the crawler.
 
-[`SYSTEM_PROMPT.txt`](SYSTEM_PROMPT.txt) contains the updated grounding,
-refusal, sensitive-topic, crisis-response, and tone rules. It is synchronized
-with the team's updated prompt. The frontend does not send this text in
-browser requests. The QA scripts normally test whichever prompt is configured
-on the platform; Christopher should confirm that the existing deployment uses
-this prompt when the browser omits `custom_prompt`.
-
-Its hash is recorded in [`../RELEASE_MANIFEST.md`](../RELEASE_MANIFEST.md) so we
-can match a test run to the prompt version.
-
-## Source list
-
-[`SOURCE_CATALOG.csv`](SOURCE_CATALOG.csv) contains four public Lehigh seeds.
-The Engineering root uses host-only crawling. The other three rows are
-supplemental pages; their exact-page scope still needs confirmation. The
-`backend_source_uri` cells are blank because those IDs are created during
-ingestion.
-
-`knowledge_base/sample.md` is a placeholder from the student repository, not a
-Ross source. [`SOURCE_CATALOG.md`](SOURCE_CATALOG.md) explains the catalog
-columns and where the four seeds came from.
+The source list hasn't changed for this release. If the pages are already
+in the knowledge base, there's no need to ingest them again for this update.
+`knowledge_base/sample.md` is a placeholder, so please leave it out.
+[SOURCE_CATALOG.md](SOURCE_CATALOG.md) explains the CSV columns.
