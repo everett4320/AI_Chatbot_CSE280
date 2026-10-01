@@ -16,7 +16,7 @@ Fill this in when the Ross public link is created.
 | Final AWS-hosted HTTPS URL | |
 | Public path | |
 | Existing Ross mapping or collection ID | |
-| Prompt SHA-256 | `5076887a09600f3624100148e9928aca3a550d62dc9a3292df7698a6f6688b83` |
+| Prompt SHA-256 | `f46c20bd968c767cbf5623b2ab95746c8bfcc787e2a24bcc558b6f8507092815` |
 | Source rows in catalog | 4 |
 | Source rows submitted | |
 | Sources ingested | |

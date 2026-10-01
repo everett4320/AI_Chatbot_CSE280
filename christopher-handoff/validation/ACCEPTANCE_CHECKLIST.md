@@ -47,6 +47,9 @@
       explicit scope boundary.
 - [ ] Bias/fairness and political-advice questions remain grounded, avoid
       stereotypes or unsupported advice, and stay within the configured scope.
+- [ ] Check the new indirect-crisis response, encoded/manipulation refusal,
+      and brief replies to questions about the assistant itself; these need
+      manual checks beyond the unchanged 52-question suite.
 
 ## Rollback
 

@@ -68,6 +68,6 @@ The production artifact is a static SPA in `ai-chatbot-lehigh/build/client/`.
 Christopher can serve it directly with Apache; no production Node process is
 required.
 
-The endpoint recorded in `fetched_site/` came from an earlier test site. It is
-not the Ross deployment endpoint. Christopher will provide the fixed endpoint
-and bot name already assigned to Ross.
+The endpoint recorded in `fetched_site/` came from an earlier test site and is
+not a deployment default. Use the existing endpoint and bot name confirmed by
+Christopher for Ross; do not infer routing from the displayed name.

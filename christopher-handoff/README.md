@@ -13,6 +13,9 @@ below are based on our current understanding. We do not expect any backend or
 API changes. If something does not match your platform, tell us what the
 frontend should send or expect and we will update it.
 
+For the October 1 update, start with [`UPDATES.md`](UPDATES.md). It lists the
+two changes, the deployment steps, and the current prompt-configuration check.
+
 ## Files in this handoff
 
 - [`../ai-chatbot-lehigh/`](../ai-chatbot-lehigh/) contains the frontend.
@@ -26,9 +29,10 @@ frontend should send or expect and we will update it.
 - [`RELEASE_MANIFEST.md`](RELEASE_MANIFEST.md) can be used to record the final
   deployment details.
 
-The `fetched_site/` and `knowledge_base/` folders are older project material.
-They are not inputs for this deployment. In particular, please do not use the
-old shared endpoint, the `le-chat` bot name, or `knowledge_base/sample.md`.
+Use the prompt and source catalog in this handoff, rather than copying inputs
+or configuration from `fetched_site/` or `knowledge_base/`. Keep the endpoint
+and bot name confirmed for the existing deployment; the UI name Ross does not
+determine its routing value. `knowledge_base/sample.md` is not a Ross source.
 
 ## Check out the branch
 
@@ -65,7 +69,7 @@ The prompt is
 The SHA-256 of the tracked prompt (Git blob bytes) is:
 
 ```text
-5076887a09600f3624100148e9928aca3a550d62dc9a3292df7698a6f6688b83
+f46c20bd968c767cbf5623b2ab95746c8bfcc787e2a24bcc558b6f8507092815
 ```
 
 We expect the prompt to be applied through the platform configuration rather

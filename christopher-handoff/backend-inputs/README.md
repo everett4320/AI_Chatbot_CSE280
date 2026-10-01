@@ -7,10 +7,12 @@ format and we will update it.
 
 ## System prompt
 
-[`SYSTEM_PROMPT.txt`](SYSTEM_PROMPT.txt) identifies the assistant as Ross and
-sets the grounding and refusal rules. The frontend does not send this prompt in
+[`SYSTEM_PROMPT.txt`](SYSTEM_PROMPT.txt) contains the updated grounding,
+refusal, sensitive-topic, crisis-response, and tone rules. It is synchronized
+with the team's updated prompt. The frontend does not send this text in
 browser requests. The QA scripts normally test whichever prompt is configured
-on the platform.
+on the platform; Christopher should confirm that the existing deployment uses
+this prompt when the browser omits `custom_prompt`.
 
 Its hash is recorded in [`../RELEASE_MANIFEST.md`](../RELEASE_MANIFEST.md) so we
 can match a test run to the prompt version.
