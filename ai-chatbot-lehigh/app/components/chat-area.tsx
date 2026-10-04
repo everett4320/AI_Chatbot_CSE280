@@ -101,7 +101,7 @@ export function ChatArea({
       {!hasConversation ? (
         <div className="ross-welcome">
           <div className="ross-welcome__copy">
-            <h2>Hello, I’m Ross, your guide to Lehigh College of Engineering</h2>
+            <h2>Hi, I’m Ross, your guide to the Rossin College of Engineering here at Lehigh.</h2>
             <p>How can I assist you today?</p>
           </div>
         </div>

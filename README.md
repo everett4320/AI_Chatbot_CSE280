@@ -9,7 +9,7 @@ handing over to Christopher for deployment.
 
 The delivery branch is `christopher-handoff`. Start with the
 [handoff README](christopher-handoff/README.md) for setup, or the
-[October 1 update notes](christopher-handoff/UPDATES.md) if Ross is already
+[update notes](christopher-handoff/UPDATES.md) if Ross is already
 deployed. The handoff includes the system prompt, four source URLs, and a
 checklist for testing the deployed chatbot.
 

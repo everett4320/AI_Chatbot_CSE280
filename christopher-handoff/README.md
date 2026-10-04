@@ -5,8 +5,10 @@ P.C. Rossin College of Engineering and Applied Science. Chris Larkin is the
 project sponsor.
 
 For this update, we've removed the back button, made the text easier to read,
-and adjusted the logo and chat icons. We've also revised the system prompt.
-The source list hasn't changed. [UPDATES.md](UPDATES.md) has a short summary.
+and adjusted the logo and chat icons. The welcome message now introduces Ross
+as a guide to the Rossin College of Engineering at Lehigh. We've also revised
+the system prompt. The source list hasn't changed. [UPDATES.md](UPDATES.md)
+has a short summary.
 
 ## Updating the frontend
 

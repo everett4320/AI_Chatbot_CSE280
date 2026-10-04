@@ -1,11 +1,13 @@
-# Ross update for October 1, 2026
+# Ross update for October 4, 2026
 
 We've updated the frontend and system prompt on `christopher-handoff`.
 
 The frontend changes are mostly visual. The back button is gone, messages and
 the input box use larger text, and the logo and chat icons are larger and
 simpler. Mark's message-avatar change is included; the hidden starter
-questions and Escape-key changes aren't part of this update.
+questions and Escape-key changes aren't part of this update. The welcome
+message now says, "Hi, I'm Ross, your guide to the Rossin College of Engineering
+here at Lehigh."
 
 The revised prompt gives clearer instructions for questions outside the
 Rossin College's scope, sensitive topics, crisis responses, and attempts to
