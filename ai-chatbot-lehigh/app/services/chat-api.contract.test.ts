@@ -10,6 +10,7 @@ import {
   persistSessionId,
   postToApi,
   requireBotName,
+  sourceKey,
 } from "./chat-api";
 
 afterEach(() => {
@@ -86,6 +87,43 @@ describe("Lehigh chatbot API contract", () => {
       { title: "Academic Programs", url: programs },
       { title: "Research", url: research },
     ]);
+  });
+
+  it("collapses the same page cited under its legacy path, a trailing slash, or a fragment", () => {
+    const canonical =
+      "https://engineering.lehigh.edu/cse/academics/computer-science-ms-meng/computer-science-ms-meng-degree-requirements";
+    const legacy =
+      "https://engineering.lehigh.edu/cse/cse-academics/computer-science-ms-meng/computer-science-ms-meng-degree-requirements";
+    const other = "https://engineering.lehigh.edu/cse/academics/computer-science-phd";
+
+    expect(
+      parseChatReply(
+        {
+          Response: "Answer",
+          Sources: [
+            { title: "CS M.S. requirements", url: canonical },
+            { title: "CS M.S. requirements (legacy)", url: legacy },
+            { title: "CS M.S. requirements (slash)", url: `${canonical}/` },
+            { title: "CS M.S. requirements (fragment)", url: `${canonical}#core` },
+            { title: "CS Ph.D.", url: other },
+          ],
+        },
+        { sessionId: "fallback-session", questionId: "fallback-question" },
+      ).sources,
+    ).toEqual([
+      { title: "CS M.S. requirements", url: canonical },
+      { title: "CS Ph.D.", url: other },
+    ]);
+  });
+
+  it("keeps different pages and different query strings apart", () => {
+    expect(sourceKey("https://engineering.lehigh.edu/cse/academics/a")).not.toBe(
+      sourceKey("https://engineering.lehigh.edu/cse/academics/b"),
+    );
+    expect(sourceKey("https://engineering.lehigh.edu/page?id=1")).not.toBe(
+      sourceKey("https://engineering.lehigh.edu/page?id=2"),
+    );
+    expect(sourceKey("not a url")).toBe("not a url");
   });
 
   it("creates ids without crypto.randomUUID, which non-HTTPS pages lack", () => {

@@ -100,14 +100,31 @@ export function requireBotName(botName: string | undefined) {
   throw new Error(BOT_NAME_CONFIGURATION_ERROR);
 }
 
+// Some pages are ingested under two paths, for example
+// /cse/cse-academics/... and /cse/academics/..., so the backend can cite one
+// page twice with different URLs. This key treats those as the same page.
+export function sourceKey(url: string): string {
+  try {
+    const parsed = new URL(url);
+    const path = parsed.pathname
+      .replace(/^\/cse\/cse-academics(?=\/|$)/i, "/cse/academics")
+      .replace(/\/+$/, "");
+    return `${parsed.host.toLowerCase()}${path.toLowerCase()}${parsed.search}`;
+  } catch {
+    return url.trim();
+  }
+}
+
 function normalizeSources(sources: LehighApiResponse["Sources"]): Source[] {
   if (!Array.isArray(sources)) return [];
 
   // The backend often cites the same page several times in one answer.
   const seen = new Set<string>();
   return sources.flatMap((source) => {
-    if (!source.url || seen.has(source.url)) return [];
-    seen.add(source.url);
+    if (!source.url) return [];
+    const key = sourceKey(source.url);
+    if (seen.has(key)) return [];
+    seen.add(key);
     return [
       {
         title: source.title?.trim() || source.url,
