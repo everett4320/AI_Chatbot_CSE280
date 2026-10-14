@@ -89,11 +89,11 @@ jobs:
 
       - name: Build and smoke-test the root Apache image
         run: |
-          docker build \
+          docker build -f Dockerfile \
             --build-arg VITE_CHAT_API_URL="https://example.test/ross-api" \
             --build-arg VITE_CHAT_BOT_NAME="ross-ci" \
             --build-arg VITE_BASE_PATH="/" \
-            -t ross-frontend:root-ci .
+            -t ross-frontend:root-ci ..
           container_id=$(docker run --rm -d -p 3001:80 ross-frontend:root-ci)
           trap 'docker stop "$container_id"' EXIT
           for attempt in {1..20}; do
@@ -109,11 +109,11 @@ jobs:
 
       - name: Build and smoke-test the subpath Apache image
         run: |
-          docker build \
+          docker build -f Dockerfile \
             --build-arg VITE_CHAT_API_URL="https://example.test/ross-api" \
             --build-arg VITE_CHAT_BOT_NAME="ross-ci" \
             --build-arg VITE_BASE_PATH="/ross-test/" \
-            -t ross-frontend:subpath-ci .
+            -t ross-frontend:subpath-ci ..
           container_id=$(docker run --rm -d -p 3002:80 ross-frontend:subpath-ci)
           trap 'docker stop "$container_id"' EXIT
           for attempt in {1..20}; do

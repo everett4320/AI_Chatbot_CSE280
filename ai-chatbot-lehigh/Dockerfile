@@ -1,7 +1,7 @@
 FROM node:22-alpine AS build-env
 
-WORKDIR /app
-COPY package.json package-lock.json ./
+WORKDIR /app/ai-chatbot-lehigh
+COPY ai-chatbot-lehigh/package.json ai-chatbot-lehigh/package-lock.json ./
 RUN npm ci
 
 ARG VITE_CHAT_API_URL
@@ -11,19 +11,20 @@ ENV VITE_CHAT_API_URL=$VITE_CHAT_API_URL
 ENV VITE_CHAT_BOT_NAME=$VITE_CHAT_BOT_NAME
 ENV VITE_BASE_PATH=$VITE_BASE_PATH
 
-COPY . .
+COPY ai-chatbot-lehigh/ ./
+COPY christopher-handoff/backend-inputs/SYSTEM_PROMPT.txt /app/christopher-handoff/backend-inputs/SYSTEM_PROMPT.txt
 RUN test "$VITE_BASE_PATH" = "/" || \
   (case "$VITE_BASE_PATH" in /*/) exit 0 ;; *) echo "VITE_BASE_PATH must start and end with /" >&2; exit 1 ;; esac)
 RUN npm run verify:deployment
-RUN test -f /app/build/client/index.html
+RUN test -f /app/ai-chatbot-lehigh/build/client/index.html
 
 FROM httpd:2.4-alpine
 
 ARG VITE_BASE_PATH=/
 ENV APP_BASE_PATH=$VITE_BASE_PATH
 
-COPY --from=build-env /app/build/client /tmp/ross-client
-COPY apache/ross-spa.conf.template /tmp/ross-spa.conf.template
+COPY --from=build-env /app/ai-chatbot-lehigh/build/client /tmp/ross-client
+COPY ai-chatbot-lehigh/apache/ross-spa.conf.template /tmp/ross-spa.conf.template
 
 RUN set -eux; \
   rm -rf /usr/local/apache2/htdocs/*; \

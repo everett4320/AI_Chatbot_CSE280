@@ -66,11 +66,11 @@ origin where the frontend is hosted.
 The Docker image builds the same site and serves it with Apache:
 
 ```bash
-docker build \
+docker build -f Dockerfile \
   --build-arg VITE_CHAT_API_URL="<Ross API endpoint>" \
   --build-arg VITE_CHAT_BOT_NAME="<Ross bot slug>" \
   --build-arg VITE_BASE_PATH="/" \
-  -t ross-frontend:test .
+  -t ross-frontend:test ..
 
 docker run --rm -p 3000:80 ross-frontend:test
 ```
@@ -83,9 +83,11 @@ request and response examples. Answers require a `Response` field; `Sources`,
 `sessionId`, and `questionId` are optional. If an ID is omitted, the frontend
 keeps the one it generated.
 
-The frontend does not send `custom_prompt`. See the
-[handoff update notes](../christopher-handoff/UPDATES.md) for applying the new
-system prompt and checking how the current platform uses it.
+The build embeds the full text of
+[`SYSTEM_PROMPT.txt`](../christopher-handoff/backend-inputs/SYSTEM_PROMPT.txt).
+Questions send it as `custom_prompt`, with `action: "question"` and `bot_name`
+from `VITE_CHAT_BOT_NAME`. Rebuild and redeploy after editing the prompt file;
+generated JavaScript assets need no manual prompt edits.
 
 ## After deployment
 
