@@ -1,3 +1,4 @@
+import systemPrompt from "../../../christopher-handoff/backend-inputs/SYSTEM_PROMPT.txt?raw";
 import type {
   ChatReply,
   FeedbackRating,
@@ -36,6 +37,7 @@ export interface LehighApiResponse {
 export interface QuestionPayload {
   action: "question";
   bot_name: string;
+  custom_prompt: string;
   httpMethod: "POST";
   userMessage: string;
   sessionId: string;
@@ -126,6 +128,7 @@ export function buildQuestionPayload(
   return {
     action: "question",
     bot_name: botName,
+    custom_prompt: systemPrompt,
     httpMethod: "POST",
     userMessage,
     sessionId,

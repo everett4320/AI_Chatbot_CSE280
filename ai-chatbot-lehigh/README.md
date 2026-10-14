@@ -73,16 +73,22 @@ The Docker image also serves the static build with Apache. It does not contain
 a production Node process.
 
 ```bash
-docker build \
+docker build -f Dockerfile \
   --build-arg VITE_CHAT_API_URL="<Ross API endpoint>" \
   --build-arg VITE_CHAT_BOT_NAME="<Ross bot slug>" \
   --build-arg VITE_BASE_PATH="/" \
-  -t ross-frontend:test .
+  -t ross-frontend:test ..
 
 docker run --rm -p 3000:80 ross-frontend:test
 ```
 
 ## API contract
+
+`npm run build` embeds the full text of
+[`SYSTEM_PROMPT.txt`](../christopher-handoff/backend-inputs/SYSTEM_PROMPT.txt).
+Questions send it as `custom_prompt`, with `action: "question"` and `bot_name`
+from `VITE_CHAT_BOT_NAME`. Rebuild and redeploy after editing the prompt file;
+generated JavaScript assets need no manual prompt edits.
 
 Questions use this JSON shape:
 
@@ -90,6 +96,7 @@ Questions use this JSON shape:
 {
   "action": "question",
   "bot_name": "<Ross bot slug>",
+  "custom_prompt": "<full contents of SYSTEM_PROMPT.txt>",
   "httpMethod": "POST",
   "userMessage": "What programs are available?",
   "sessionId": "session-...",

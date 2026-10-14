@@ -40,8 +40,8 @@ cd AI_Chatbot_CSE280
 
 ## Source pages and system prompt
 
-Please use the normal workflow on your platform to select or register Ross and
-apply the system prompt. For the Engineering seed, use host-only crawling so it
+Please use the normal workflow on your platform to select or register Ross.
+For the Engineering seed, use host-only crawling so it
 covers all public pages on `engineering.lehigh.edu`. The other three URLs are
 individual supplemental pages.
 
@@ -66,8 +66,11 @@ Its SHA-256 is:
 5f13fd929d0f790374b37e6a2807e7e2984654aba565cc18fa9b7a15dfe9a14d
 ```
 
-We expect the prompt to be applied through the platform configuration rather
-than sent by the browser with every request.
+`npm run build` reads `backend-inputs/SYSTEM_PROMPT.txt` and embeds its full
+text in the frontend. Every question sends it as `custom_prompt`, with
+`action: "question"` and `bot_name` from `VITE_CHAT_BOT_NAME`. After editing
+the prompt file, rebuild and publish the complete `build/client/` output;
+generated JavaScript assets need no manual prompt edits.
 
 ## Build the frontend
 
