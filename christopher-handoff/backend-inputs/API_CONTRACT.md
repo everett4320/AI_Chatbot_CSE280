@@ -10,6 +10,7 @@ The exact Ross `bot_name` must be configured at frontend build time through
 {
   "action": "question",
   "bot_name": "<Christopher-assigned-Ross-bot-name>",
+  "custom_prompt": "<contents of backend-inputs/SYSTEM_PROMPT.txt>",
   "httpMethod": "POST",
   "userMessage": "What undergraduate majors are offered?",
   "sessionId": "session-...",
@@ -64,7 +65,7 @@ backend routing evidence that ties the request's `bot_name`, session, and
 question ID to the assigned Ross clone. This is a backend/platform requirement,
 not something the frontend can infer safely.
 
-`custom_prompt`, `model_id`, and `source_uri_filter` are historical/test-tool
-options, not required frontend production fields. Christopher should configure
-prompt, model, and retrieval scope in the clone unless his platform explicitly
-requires a different documented approach.
+The build reads `SYSTEM_PROMPT.txt` and sends its full text as `custom_prompt`
+with each question, as requested by Christopher. Feedback does not include it.
+Rebuild after changing the file. `model_id` and `source_uri_filter` remain
+historical/test-tool options rather than frontend production fields.

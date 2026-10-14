@@ -5,8 +5,8 @@
 - [ ] Ross clone exists and its stable `bot_name` is recorded in
       `RELEASE_MANIFEST.md`.
 - [ ] The frontend build uses that exact `VITE_CHAT_BOT_NAME`.
-- [ ] The clone-level prompt configuration (or an explicitly approved platform
-      equivalent) hash matches `backend-inputs/SYSTEM_PROMPT.txt`.
+- [ ] Question requests send `custom_prompt` matching
+      `backend-inputs/SYSTEM_PROMPT.txt` from the frontend build.
 - [ ] The chosen model and any platform policy are recorded.
 - [ ] CORS permits the assigned Ross test origin.
 

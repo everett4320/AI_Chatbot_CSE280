@@ -43,8 +43,9 @@ Please send back the following after you configure the clone:
 5. Use `validation/test_questions.json` and
    `validation/ACCEPTANCE_CHECKLIST.md` for the test link.
 
-The frontend sends the bot slug with each question and feedback request. It
-does not send the prompt, model choice, or source catalog in production.
+The frontend sends the bot slug with each question and feedback request.
+`npm run build` embeds `backend-inputs/SYSTEM_PROMPT.txt`, and each question
+sends that text as `custom_prompt`. Rebuild after editing the prompt.
 
 ## Frontend configuration
 

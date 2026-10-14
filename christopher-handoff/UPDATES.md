@@ -20,10 +20,12 @@ The prompt and source catalog do not need to change for a frontend-only update.
 ## Prompt change
 
 1. Update `backend-inputs/SYSTEM_PROMPT.txt` and record its new hash.
-2. Chris applies the prompt to the Ross clone using the normal backend setting.
+2. Rebuild and redeploy the frontend so questions send the updated text as
+   `custom_prompt`.
 3. Run the prompt and question-suite checks again.
 
-The frontend normally does not need a rebuild for a prompt-only change.
+`npm run build` reads the prompt file; no manual edits to built JavaScript are
+needed.
 
 ## Source-link or knowledge-base change
 

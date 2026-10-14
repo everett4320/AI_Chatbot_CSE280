@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   buildFeedbackPayload,
@@ -11,6 +12,11 @@ import {
   requireBotName,
 } from "./chat-api";
 
+const systemPrompt = readFileSync(
+  new URL("../../../christopher-handoff/backend-inputs/SYSTEM_PROMPT.txt", import.meta.url),
+  "utf8",
+);
+
 afterEach(() => {
   vi.useRealTimers();
   vi.unstubAllGlobals();
@@ -19,7 +25,7 @@ afterEach(() => {
 });
 
 describe("Lehigh chatbot API contract", () => {
-  it("builds the existing question payload without backend changes", () => {
+  it("builds the question payload with the exact handoff prompt", () => {
     expect(
       buildQuestionPayload(
         "What programs are there?",
@@ -30,6 +36,7 @@ describe("Lehigh chatbot API contract", () => {
     ).toEqual({
       action: "question",
       bot_name: "ross-test",
+      custom_prompt: systemPrompt,
       httpMethod: "POST",
       userMessage: "What programs are there?",
       sessionId: "session-abc1234",
@@ -135,7 +142,7 @@ describe("Lehigh chatbot API contract", () => {
       },
     });
 
-    const requests: Array<{ sessionId: string }> = [];
+    const requests: Array<Record<string, unknown>> = [];
     vi.stubGlobal(
       "fetch",
       vi.fn(async (_url: string, init?: RequestInit) => {
@@ -161,6 +168,14 @@ describe("Lehigh chatbot API contract", () => {
     await api.sendFeedback("backend-question", "up", "backend-canonical-session");
 
     expect(requests).toHaveLength(3);
+    for (const request of requests.slice(0, 2)) {
+      expect(request).toMatchObject({
+        action: "question",
+        bot_name: "ross-test",
+        custom_prompt: systemPrompt,
+      });
+    }
+    expect(requests[2]).not.toHaveProperty("custom_prompt");
     expect(requests[1].sessionId).toBe("backend-canonical-session");
     expect(requests[2].sessionId).toBe("backend-canonical-session");
   });

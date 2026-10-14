@@ -15,4 +15,7 @@ npm run verify:deployment
 `VITE_CHAT_BOT_NAME` must match the clone configured in the backend. The
 frontend sends it with every question and feedback request.
 
+The build embeds `../backend-inputs/SYSTEM_PROMPT.txt` in question requests as
+`custom_prompt`. Rebuild after changing that file.
+
 The full build and deployment notes are in `ai-chatbot-lehigh/README.md`.

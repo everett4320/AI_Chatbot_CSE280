@@ -21,6 +21,10 @@ These values are compiled into the browser bundle. Do not put secrets in them.
 Changing one requires a rebuild. Setting `VITE_*` values only when starting the
 container does not change an existing build.
 
+The build also embeds `../christopher-handoff/backend-inputs/SYSTEM_PROMPT.txt`
+as `custom_prompt` in each question request. Edit that file and rebuild to
+update the prompt; the generated JavaScript needs no manual edits.
+
 The frontend sends `bot_name` as a routing value. The backend must still enforce
 its own clone and host policy.
 
@@ -43,11 +47,11 @@ and creates the production build. The server listens on port 3000.
 ## Docker
 
 ```bash
-docker build \
+docker build -f Dockerfile \
   --build-arg VITE_CHAT_API_URL="<Ross API endpoint>" \
   --build-arg VITE_CHAT_BOT_NAME="<Ross bot slug>" \
   --build-arg VITE_BASE_PATH="/ross-test/" \
-  -t ross-frontend:test .
+  -t ross-frontend:test ..
 
 docker run --rm -p 3000:3000 ross-frontend:test
 ```
@@ -60,6 +64,7 @@ Questions use this JSON shape:
 {
   "action": "question",
   "bot_name": "<Ross bot slug>",
+  "custom_prompt": "<contents of backend-inputs/SYSTEM_PROMPT.txt>",
   "httpMethod": "POST",
   "userMessage": "What programs are available?",
   "sessionId": "session-...",
