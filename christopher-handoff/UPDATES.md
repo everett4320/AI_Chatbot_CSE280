@@ -13,7 +13,7 @@ override the chatbot's rules. We kept the team's revised text and changed only
 the opening name from LE-Chat to Ross. The file to use is
 [backend-inputs/SYSTEM_PROMPT.txt](backend-inputs/SYSTEM_PROMPT.txt).
 
-The source list, test questions, and dependencies haven't changed. The October
+The source list, test questions, and direct dependencies haven't changed. The October
 13 follow-up adds build-time prompt embedding to the API adapter.
 
 ## What needs updating
