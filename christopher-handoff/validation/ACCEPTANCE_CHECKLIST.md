@@ -5,8 +5,8 @@
 - [ ] The existing Ross bot mapping and its stable `bot_name` are recorded in
       `RELEASE_MANIFEST.md`.
 - [ ] The frontend build uses that exact `VITE_CHAT_BOT_NAME`.
-- [ ] The clone-level prompt configuration (or an explicitly approved platform
-      equivalent) hash matches `backend-inputs/SYSTEM_PROMPT.txt`.
+- [ ] Question requests send `action: "question"`, the configured `bot_name`,
+      and `custom_prompt` matching `backend-inputs/SYSTEM_PROMPT.txt`.
 - [ ] The fixed model or platform version is recorded if it is visible; no
       model change is requested.
 - [ ] The frontend is deployed at an origin supported by the fixed service.

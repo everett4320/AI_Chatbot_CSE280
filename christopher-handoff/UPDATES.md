@@ -1,4 +1,4 @@
-# Ross update for October 1, 2026
+# Ross update for October 1, 2026 (updated October 13)
 
 We've updated the frontend and system prompt on `christopher-handoff`.
 
@@ -13,31 +13,32 @@ override the chatbot's rules. We kept the team's revised text and changed only
 the opening name from LE-Chat to Ross. The file to use is
 [backend-inputs/SYSTEM_PROMPT.txt](backend-inputs/SYSTEM_PROMPT.txt).
 
-The source list, test questions, dependencies, and API adapter haven't changed.
+The source list, test questions, and dependencies haven't changed. The October
+13 follow-up adds build-time prompt embedding to the API adapter.
 
 ## What needs updating
 
 1. Pull the latest `christopher-handoff` branch.
-2. Replace the prompt using the platform's existing prompt settings.
-3. Rebuild the frontend with Node 22 and the existing API endpoint, bot name,
+2. Rebuild the frontend with Node 22 and the existing API endpoint, bot name,
    and site path. The [README](README.md) has the commands.
-4. Publish the complete `ai-chatbot-lehigh/build/client/` output through the
+3. Publish the complete `ai-chatbot-lehigh/build/client/` output through the
    usual Apache process. Keep the previous frontend and prompt available for
    rollback.
-5. Send us the updated link and the prompt version you used. We'll check the
+4. Send us the updated link and the prompt version you used. We'll check the
    public site and run the question tests.
 
 The four source URLs haven't changed. If they're already ingested, there's
 no need to crawl them again for this update.
 
-## One prompt detail to check first
+## Build-time prompt
 
-The current site sends the old prompt as `custom_prompt` with every question.
-The new frontend leaves that field out. Please confirm that the existing
-platform will use the new prompt without it. If the prompt still needs to be
-sent by the browser, we'll update the frontend before it's published.
+`npm run build` now reads `backend-inputs/SYSTEM_PROMPT.txt` and embeds its
+full text in the frontend. Every question sends it as `custom_prompt`, with
+`action: "question"` and `bot_name` from `VITE_CHAT_BOT_NAME`. Rebuild after
+editing the prompt file; generated JavaScript assets no longer need manual
+prompt edits.
 
-The build and CI checks passed, including the Apache root and subpath tests.
+The October 1 build and CI checks passed, including the Apache root and subpath tests.
 We still need to test the real chat after deployment. The
 [acceptance checklist](validation/ACCEPTANCE_CHECKLIST.md) covers that review,
 and [RELEASE_MANIFEST.md](RELEASE_MANIFEST.md) records the prompt hash and
