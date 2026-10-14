@@ -3,7 +3,7 @@
 The frontend is in `ai-chatbot-lehigh/`.
 
 It is an adapter for the fixed service managed by Christopher. Do not change
-or ask to change the backend, API payload, response shape, model, or retrieval
+or ask to change the backend, response shape, model, or retrieval
 behavior. If the integration does not match the documented
 interface, update the frontend and its contract tests.
 
@@ -18,7 +18,10 @@ npm run build
 ```
 
 `VITE_CHAT_BOT_NAME` must match the existing Ross routing value. The frontend
-sends it with every question and feedback request.
+sends it with every question and feedback request. The build also embeds the
+full text of [`SYSTEM_PROMPT.txt`](../backend-inputs/SYSTEM_PROMPT.txt), which
+questions send as `custom_prompt`. Rebuild and redeploy after editing it;
+generated JavaScript assets need no manual prompt edits.
 
 `npm run build` creates the static site in `build/client/`. We use
 `npm run verify:deployment` for additional checks. Please serve the files with

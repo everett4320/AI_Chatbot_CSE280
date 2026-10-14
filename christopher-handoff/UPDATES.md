@@ -14,8 +14,9 @@ A frontend-only change does not require a prompt or source update.
 ## Prompt changes
 
 The team updates `backend-inputs/SYSTEM_PROMPT.txt` and its hash. Christopher
-applies the new text through the existing prompt setting, and the team reruns
-the question set. The frontend does not normally need a rebuild.
+rebuilds and redeploys the frontend, which embeds the full file and sends it as
+`custom_prompt` with every question. The team then reruns the question set.
+Generated JavaScript assets need no manual prompt edits.
 
 ## Source changes
 
