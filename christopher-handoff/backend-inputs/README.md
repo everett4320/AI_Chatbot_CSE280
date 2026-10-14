@@ -1,15 +1,16 @@
 # Ross inputs
 
 This folder has the two inputs we prepared for Ross: the system prompt and the
-four-seed source list. Christopher can use the platform's normal prompt and
+four-seed source list. Christopher can use the platform's normal
 crawler workflow. If either file needs a different format, send us the expected
 format and we will update it.
 
 ## System prompt
 
 [`SYSTEM_PROMPT.txt`](SYSTEM_PROMPT.txt) identifies the assistant as Ross and
-sets the grounding and refusal rules. The frontend does not send this prompt in
-browser requests. The QA scripts normally test whichever prompt is configured
+sets the grounding and refusal rules. The frontend build embeds its full text
+and sends it as `custom_prompt` with every question. Rebuild and redeploy after
+editing this file. The QA scripts normally test whichever prompt is configured
 on the platform.
 
 Its hash is recorded in [`../RELEASE_MANIFEST.md`](../RELEASE_MANIFEST.md) so we
