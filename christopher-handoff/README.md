@@ -104,13 +104,15 @@ run from the repository root (Bash, `curl`, and `jq` are required):
 ```bash
 bash scripts/run_question_suite.sh \
   --questions-file christopher-handoff/validation/test_questions.json \
+  --custom-prompt-file christopher-handoff/backend-inputs/SYSTEM_PROMPT.txt \
   --bot-name "<Ross bot name>" \
   --endpoint "<Ross API endpoint>"
 ```
 
 In an interactive terminal, the script asks which sections to run; without one,
 it runs all enabled sections. It saves local records under the ignored
-`fetched_site/prompt_effectiveness_runs/` directory and uses the
-backend-configured prompt. The automated result checks transport only; please use
+`fetched_site/prompt_effectiveness_runs/` directory and sends the same
+prompt file used by the frontend build. The automated result checks transport
+only; please use
 [`validation/ACCEPTANCE_CHECKLIST.md`](validation/ACCEPTANCE_CHECKLIST.md) to
 review clone identity, grounding, sources, and refusal quality.
