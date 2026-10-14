@@ -70,11 +70,13 @@ Once the update is live, we'll check the interface and run the existing
 ```bash
 bash scripts/run_question_suite.sh \
   --questions-file christopher-handoff/validation/test_questions.json \
+  --custom-prompt-file christopher-handoff/backend-inputs/SYSTEM_PROMPT.txt \
   --bot-name "<existing bot name>" \
   --endpoint "<existing API endpoint>"
 ```
 
-The script checks whether requests and responses work. We'll also read the
+This sends the same prompt as the frontend. The script checks whether requests
+and responses work. We'll also read the
 answers to check their sources and the new refusal rules, using the
 [acceptance checklist](validation/ACCEPTANCE_CHECKLIST.md). Please send us the
 updated link and the prompt version you applied when it's ready.
