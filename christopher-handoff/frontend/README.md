@@ -16,6 +16,8 @@ run the tests, and build the static files in `build/client/`. Publish the
 complete contents of that directory with Apache. There's no production Node
 process; `npm run start` is just a local preview.
 
+The build embeds [SYSTEM_PROMPT.txt](../backend-inputs/SYSTEM_PROMPT.txt) and
+sends its full text as `custom_prompt` with each question. Rebuild after
+editing that file.
 The [frontend README](../../ai-chatbot-lehigh/README.md) has Apache and Docker
-examples. Please also check the prompt question in
-[UPDATES.md](../UPDATES.md) before publishing this version.
+examples.

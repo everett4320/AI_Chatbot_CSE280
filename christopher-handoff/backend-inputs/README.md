@@ -2,9 +2,9 @@
 
 [SYSTEM_PROMPT.txt](SYSTEM_PROMPT.txt) is the latest prompt for Ross. Its hash
 is in [RELEASE_MANIFEST.md](../RELEASE_MANIFEST.md), so we can keep track of
-which version was applied. Before updating the frontend, please check how the
-platform uses the prompt; the question is explained in
-[UPDATES.md](../UPDATES.md).
+which version was applied. The frontend build embeds this file and sends its
+full text as `custom_prompt` with each question. Rebuild and redeploy after
+editing it; see [UPDATES.md](../UPDATES.md).
 
 [SOURCE_CATALOG.csv](SOURCE_CATALOG.csv) lists the four Lehigh source URLs.
 The Engineering root covers the full host. The other three are supplemental

@@ -16,12 +16,16 @@ through `VITE_CHAT_BOT_NAME`.
 {
   "action": "question",
   "bot_name": "<assigned-Ross-bot-name>",
+  "custom_prompt": "<full contents of SYSTEM_PROMPT.txt>",
   "httpMethod": "POST",
   "userMessage": "What undergraduate majors are offered?",
   "sessionId": "session-...",
   "questionId": "question-..."
 }
 ```
+
+`npm run build` embeds the full text of `SYSTEM_PROMPT.txt` as
+`custom_prompt`. Rebuild the frontend after changing that file.
 
 ## Feedback
 
@@ -71,7 +75,6 @@ should confirm the existing `bot_name` mapping in the platform and retain any
 routing or deployment record already available for the request's session and
 question ID. No new response field or backend behavior is requested.
 
-`custom_prompt`, `model_id`, and `source_uri_filter` are historical/test-tool
-options, not frontend production fields. The production frontend must not add
-them. Apply the supplied prompt and source list only through Christopher's
-existing platform workflow.
+`model_id` and `source_uri_filter` remain historical/test-tool options and are
+not sent by the production frontend. Apply the source list through
+Christopher's existing platform workflow.

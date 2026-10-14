@@ -39,16 +39,16 @@ the name shown in the chat. More Apache and Docker details are in the
 
 ## Applying the prompt
 
-The updated text is in
-[backend-inputs/SYSTEM_PROMPT.txt](backend-inputs/SYSTEM_PROMPT.txt). Please use
-this file when updating the prompt. Its version hash is recorded in
+`npm run build` reads
+[backend-inputs/SYSTEM_PROMPT.txt](backend-inputs/SYSTEM_PROMPT.txt) and embeds
+its full text in the frontend. Every question sends that text as
+`custom_prompt`, with `action: "question"` and the `bot_name` from
+`VITE_CHAT_BOT_NAME`. Its version hash is recorded in
 [RELEASE_MANIFEST.md](RELEASE_MANIFEST.md).
 
-There's one detail we'd like to check before the frontend update: the current
-site sends the old prompt as `custom_prompt` with each question. This version
-leaves that field out and expects the service to use its configured prompt.
-Can the existing platform apply the new text that way? If the frontend needs
-to send it with each request, tell us and we'll adjust it.
+After changing the prompt file, rebuild and publish the complete
+`build/client/` output. No manual edit to a generated JavaScript asset is
+needed.
 
 The [API notes](backend-inputs/API_CONTRACT.md) describe the requests the
 frontend currently sends. If your setup expects something different, send us
