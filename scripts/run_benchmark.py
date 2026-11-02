@@ -49,7 +49,8 @@ def load_questions(questions_path: Path) -> list[dict[str, str]]:
     Args:
         questions_path (Path): CSV with `id` and `question` columns. Any other
             columns, such as `category` or `expected_response`, are kept so the
-            dashboard can show them.
+            dashboard can show them. Column names are normalized, so "Expected
+            response" from a spreadsheet export becomes `expected_response`.
 
     Returns:
         list[dict[str, str]]: One dict per question in file order, with values
@@ -62,7 +63,11 @@ def load_questions(questions_path: Path) -> list[dict[str, str]]:
     # utf-8-sig drops the byte order mark that Excel adds to exported CSV files.
     with questions_path.open(encoding="utf-8-sig", newline="") as f:
         reader = csv.DictReader(f)
-        missing_columns = REQUIRED_COLUMNS.difference(reader.fieldnames or [])
+        reader.fieldnames = [
+            re.sub(r"[^a-z0-9]+", "_", column.lower()).strip("_")
+            for column in reader.fieldnames or []
+        ]
+        missing_columns = REQUIRED_COLUMNS.difference(reader.fieldnames)
         if missing_columns:
             raise ValueError(
                 f"{questions_path} is missing columns: {', '.join(sorted(missing_columns))}"

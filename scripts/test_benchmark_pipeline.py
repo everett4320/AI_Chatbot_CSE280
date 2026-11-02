@@ -84,6 +84,15 @@ class BenchmarkPipelineTest(unittest.TestCase):
         questions = run_benchmark.load_questions(self.write_csv("id,question\nQ1,Hello\n", "utf-8-sig"))
         self.assertEqual(questions[0]["id"], "Q1")
 
+    def test_load_questions_accepts_spreadsheet_column_names(self):
+        questions = run_benchmark.load_questions(
+            self.write_csv("ID,Question,Expected response,Edge case?\nQ1,Hello,Greets,Yes\n")
+        )
+        self.assertEqual(
+            questions,
+            [{"id": "Q1", "question": "Hello", "expected_response": "Greets", "edge_case": "Yes"}],
+        )
+
     def test_load_questions_rejects_bad_files(self):
         bad_files = {
             "missing column": "id,text\nQ1,Hello\n",
