@@ -396,7 +396,12 @@ def parse_arguments(argv: list[str] | None) -> argparse.Namespace:
         help="Send no custom_prompt, which tests the prompt configured in the backend.",
     )
     parser.add_argument("--runs-dir", type=Path, default=DEFAULT_RUNS_DIR)
-    parser.add_argument("--timeout-seconds", type=float, default=120)
+    parser.add_argument(
+        "--timeout-seconds",
+        type=float,
+        default=60,
+        help="Seconds to wait for a reply. The default matches the frontend, which gives up at 60.",
+    )
     parser.add_argument("--sleep-seconds", type=float, default=0, help="Pause between questions.")
     return parser.parse_args(argv)
 
