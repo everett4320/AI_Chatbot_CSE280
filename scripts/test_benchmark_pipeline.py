@@ -122,6 +122,11 @@ class BenchmarkPipelineTest(unittest.TestCase):
             with self.subTest(endpoint), self.assertRaises(ValueError):
                 run_benchmark.validate_endpoint(endpoint)
 
+    def test_legacy_endpoint_needs_explicit_permission(self):
+        run_benchmark.validate_endpoint(run_benchmark.LEGACY_SHARED_ENDPOINT, allow_legacy_endpoint=True)
+        self.assertTrue(run_benchmark.is_legacy_endpoint(run_benchmark.LEGACY_SHARED_ENDPOINT.upper() + "/"))
+        self.assertFalse(run_benchmark.is_legacy_endpoint(self.endpoint))
+
     def test_split_into_turns(self):
         self.assertEqual(run_benchmark.split_into_turns("How do I apply?"), ["How do I apply?"])
         self.assertEqual(
