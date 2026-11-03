@@ -7,6 +7,7 @@ import json
 import re
 import tempfile
 import threading
+import time
 import unittest
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -15,6 +16,7 @@ import build_benchmark_dashboard
 import run_benchmark
 
 CANONICAL_SESSION_ID = "session-from-backend"
+SLOW_REPLY_SECONDS = 0.3
 
 
 class FakeChatHandler(BaseHTTPRequestHandler):
@@ -24,6 +26,14 @@ class FakeChatHandler(BaseHTTPRequestHandler):
         payload = json.loads(self.rfile.read(int(self.headers["Content-Length"])))
         self.server.received_payloads.append(payload)
         message = payload["userMessage"]
+        if "slow" in message:
+            # Count how many slow requests are open at once to detect concurrent sending.
+            with self.server.counter_lock:
+                self.server.open_requests += 1
+                self.server.peak_open_requests = max(self.server.peak_open_requests, self.server.open_requests)
+            time.sleep(SLOW_REPLY_SECONDS)
+            with self.server.counter_lock:
+                self.server.open_requests -= 1
         status_code = 200
         body = json.dumps(
             {
@@ -56,6 +66,9 @@ class BenchmarkPipelineTest(unittest.TestCase):
     def setUp(self):
         self.server = ThreadingHTTPServer(("127.0.0.1", 0), FakeChatHandler)
         self.server.received_payloads = []
+        self.server.counter_lock = threading.Lock()
+        self.server.open_requests = 0
+        self.server.peak_open_requests = 0
         threading.Thread(target=self.server.serve_forever, daemon=True).start()
         self.addCleanup(self.server.server_close)
         self.addCleanup(self.server.shutdown)
@@ -124,6 +137,21 @@ class BenchmarkPipelineTest(unittest.TestCase):
                     ["--endpoint", endpoint, "--bot-name", "ross-test", "--runs-dir", str(runs_dir)]
                 )
         self.assertFalse(runs_dir.exists())
+
+    def test_main_rejects_concurrency_outside_one_to_sixteen(self):
+        runs_dir = self.temporary_path / "runs"
+        for concurrency in ["0", "17"]:
+            with self.subTest(concurrency), self.assertRaises(SystemExit):
+                run_benchmark.main(
+                    [
+                        "--endpoint", self.endpoint,
+                        "--bot-name", "ross-test",
+                        "--runs-dir", str(runs_dir),
+                        "--concurrency", concurrency,
+                    ]
+                )
+        self.assertFalse(runs_dir.exists())
+        self.assertEqual(self.server.received_payloads, [])
 
     def test_split_into_turns(self):
         self.assertEqual(run_benchmark.split_into_turns("How do I apply?"), ["How do I apply?"])
@@ -209,11 +237,13 @@ class BenchmarkPipelineTest(unittest.TestCase):
         ).group(1)
         self.assertEqual(json.loads(embedded)["results"][0]["reply"], reply)
 
-    def run_main(self, questions_text):
+    def run_main(self, questions_text, extra_arguments=()):
         """Run the whole benchmark against the fake server, using temporary input files.
 
         Args:
             questions_text (str): Contents of the question CSV.
+            extra_arguments (tuple[str, ...]): More command-line options, such as
+                ("--concurrency", "1"). Empty by default.
 
         Returns:
             tuple[int, Path, dict]: The exit code, the run directory and the saved run record.
@@ -229,6 +259,7 @@ class BenchmarkPipelineTest(unittest.TestCase):
                 "--questions-file", str(questions_path),
                 "--prompt-file", str(prompt_path),
                 "--runs-dir", str(runs_dir),
+                *extra_arguments,
             ]
         )
         run_dir = next(runs_dir.iterdir())
@@ -252,6 +283,20 @@ class BenchmarkPipelineTest(unittest.TestCase):
         self.assertEqual(
             [result["status"] for result in run_record["results"]], ["http_error", "transport_ok"]
         )
+
+    def test_questions_are_sent_together_and_saved_in_file_order(self):
+        # The fast last question finishes first, but the record must keep the CSV order.
+        questions_text = "id,question\nQ1,slow one\nQ2,slow two\nQ3,slow three\nQ4,hello\n"
+        exit_code, unused_run_dir, run_record = self.run_main(questions_text, ("--concurrency", "4"))
+        self.assertEqual(exit_code, 0)
+        self.assertGreater(self.server.peak_open_requests, 1)
+        self.assertEqual([result["id"] for result in run_record["results"]], ["Q1", "Q2", "Q3", "Q4"])
+        session_ids = [payload["sessionId"] for payload in self.server.received_payloads]
+        self.assertEqual(len(set(session_ids)), 4)
+
+    def test_concurrency_of_one_sends_questions_one_by_one(self):
+        self.run_main("id,question\nQ1,slow one\nQ2,slow two\nQ3,slow three\n", ("--concurrency", "1"))
+        self.assertEqual(self.server.peak_open_requests, 1)
 
 
 if __name__ == "__main__":

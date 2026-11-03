@@ -5,6 +5,9 @@ own session, saves the replies in a new run directory, and writes a standalone
 HTML dashboard next to them. A question written as "T1: ... T2: ..." is sent as
 consecutive messages in one session.
 
+Up to 16 questions are sent at the same time. The messages of one multi-turn
+question are still sent one after another, because each depends on the last.
+
 Requests match what the production frontend sends, including the system prompt
 as `custom_prompt`, so a run measures what students would see.
 
@@ -12,6 +15,7 @@ Usage:
     python3 scripts/run_benchmark.py --endpoint URL --bot-name NAME
     python3 scripts/run_benchmark.py --endpoint URL --bot-name NAME --tier quick
     python3 scripts/run_benchmark.py --endpoint URL --bot-name NAME --only-ids EC-10,AM-04
+    python3 scripts/run_benchmark.py --endpoint URL --bot-name NAME --concurrency 1
 """
 
 import argparse
@@ -27,6 +31,8 @@ import sys
 import time
 import urllib.error
 import urllib.request
+import uuid
+from concurrent.futures import FIRST_COMPLETED, ThreadPoolExecutor, wait
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -36,6 +42,7 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_QUESTIONS_FILE = REPO_ROOT / "fetched_site/questions/ross_benchmark.csv"
 DEFAULT_PROMPT_FILE = REPO_ROOT / "christopher-handoff/backend-inputs/SYSTEM_PROMPT.txt"
 DEFAULT_RUNS_DIR = REPO_ROOT / "fetched_site/prompt_effectiveness_runs"
+MAX_CONCURRENT_REQUESTS = 16
 REQUIRED_COLUMNS = {"id", "question"}
 TURN_MARKER = re.compile(r"\bT\d+:\s*")
 ERROR_SNIPPET_LENGTH = 300
@@ -241,6 +248,9 @@ def ask_question(
 ) -> dict:
     """Send every message of one question in a single new session.
 
+    Several questions can be asked at once from different threads, because each
+    call uses its own session and shares no state with the others.
+
     Args:
         question (dict[str, str]): One row from the question CSV.
         endpoint (str): Chat API URL.
@@ -254,11 +264,13 @@ def ask_question(
         (total across turns) and `turns` (one record per message sent). A failed
         message ends the question, so `status` and `error` describe the last turn.
     """
-    session_id = f"session-{int(time.time())}-{random.randrange(100000)}"
+    # Random UUIDs, as the frontend uses, keep questions that start in the same
+    # second from sharing a session.
+    session_id = f"session-{uuid.uuid4()}"
     safe_code = re.sub(r"[^A-Za-z0-9_-]", "", question["id"]) or "question"
     turns = []
     for message in split_into_turns(question["question"]):
-        question_id = f"{safe_code}-{int(time.time())}-{random.randrange(100000)}"
+        question_id = f"{safe_code}-{uuid.uuid4()}"
         payload = {
             "action": "question",
             "bot_name": bot_name,
@@ -362,12 +374,25 @@ def parse_arguments(argv: list[str] | None) -> argparse.Namespace:
         default=60,
         help="Seconds to wait for a reply. The default matches the frontend, which gives up at 60.",
     )
-    parser.add_argument("--sleep-seconds", type=float, default=0, help="Pause between questions.")
+    parser.add_argument(
+        "--concurrency",
+        type=int,
+        default=MAX_CONCURRENT_REQUESTS,
+        help=(
+            f"Questions sent at the same time, 1 to {MAX_CONCURRENT_REQUESTS} "
+            f"(default {MAX_CONCURRENT_REQUESTS}). Use 1 to send them one by one."
+        ),
+    )
     return parser.parse_args(argv)
 
 
 def main(argv: list[str] | None = None) -> int:
     """Run the benchmark from start to finish.
+
+    Questions are sent on up to `--concurrency` threads. The run record is saved
+    after every finished question and keeps the CSV order. Ctrl-C skips the
+    questions not yet sent, waits for the ones in progress (at most the request
+    timeout per message), and still builds the dashboard.
 
     Args:
         argv (list[str] | None): Command-line arguments. None reads `sys.argv`.
@@ -381,6 +406,8 @@ def main(argv: list[str] | None = None) -> int:
     arguments = parse_arguments(argv)
     if not arguments.bot_name:
         raise SystemExit("Error: --bot-name or BOT_NAME is required.")
+    if not 1 <= arguments.concurrency <= MAX_CONCURRENT_REQUESTS:
+        raise SystemExit(f"Error: --concurrency must be between 1 and {MAX_CONCURRENT_REQUESTS}.")
     custom_prompt = None
     try:
         if not re.match(r"https?://", arguments.endpoint or ""):
@@ -424,24 +451,49 @@ def main(argv: list[str] | None = None) -> int:
     }
     write_run_record(run_record_path, run_record)
 
-    print(f"Sending {len(selected)} questions to {arguments.endpoint}")
+    print(
+        f"Sending {len(selected)} questions to {arguments.endpoint}, "
+        f"up to {arguments.concurrency} at a time"
+    )
+    results_by_position = {}
     interrupted = False
-    try:
-        for position, question in enumerate(selected, start=1):
-            result = ask_question(
-                question, arguments.endpoint, arguments.bot_name, custom_prompt, arguments.timeout_seconds
-            )
-            run_record["results"].append(result)
-            write_run_record(run_record_path, run_record)
-            print(
-                f"[{position}/{len(selected)}] {result['id']} {result['status']} "
-                f"{result['latency_seconds']:.1f}s"
-            )
-            if arguments.sleep_seconds and position < len(selected):
-                time.sleep(arguments.sleep_seconds)
-    except KeyboardInterrupt:
-        interrupted = True
-        print("Stopped. Building the dashboard from the questions finished so far.")
+    with ThreadPoolExecutor(max_workers=arguments.concurrency) as executor:
+        future_positions = {
+            executor.submit(
+                ask_question,
+                question,
+                arguments.endpoint,
+                arguments.bot_name,
+                custom_prompt,
+                arguments.timeout_seconds,
+            ): position
+            for position, question in enumerate(selected)
+        }
+        pending = set(future_positions)
+        while pending:
+            try:
+                finished, pending = wait(pending, return_when=FIRST_COMPLETED)
+            except KeyboardInterrupt:
+                # Requests already sent cannot be recalled, so their replies are still saved.
+                interrupted = True
+                print("Stopping. Questions not yet sent are skipped; waiting for the ones in progress.")
+                for future in pending:
+                    future.cancel()
+                continue
+            for future in finished:
+                if future.cancelled():
+                    continue
+                result = future.result()
+                results_by_position[future_positions[future]] = result
+                # Questions finish out of order, so rebuild the list in CSV order.
+                run_record["results"] = [
+                    results_by_position[position] for position in sorted(results_by_position)
+                ]
+                write_run_record(run_record_path, run_record)
+                print(
+                    f"[{len(results_by_position)}/{len(selected)}] {result['id']} {result['status']} "
+                    f"{result['latency_seconds']:.1f}s"
+                )
 
     if not interrupted:
         run_record["ended_at_utc"] = datetime.now(timezone.utc).strftime(UTC_TIMESTAMP_FORMAT)
