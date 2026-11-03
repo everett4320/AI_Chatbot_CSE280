@@ -17,7 +17,6 @@
     --border: rgba(11, 11, 11, 0.10);
     --hover-wash: rgba(11, 11, 11, 0.04);
     --link: #1c5cab;
-    --series-1: #2a78d6;
     --score-pass: #0ca30c;
     --score-partial: #fab219;
     --score-fail: #d03b3b;
@@ -36,7 +35,6 @@
       --border: rgba(255, 255, 255, 0.10);
       --hover-wash: rgba(255, 255, 255, 0.05);
       --link: #86b6ef;
-      --series-1: #3987e5;
       --score-unscored: #383835;
     }
   }
@@ -51,7 +49,6 @@
     --border: rgba(255, 255, 255, 0.10);
     --hover-wash: rgba(255, 255, 255, 0.05);
     --link: #86b6ef;
-    --series-1: #3987e5;
     --score-unscored: #383835;
   }
 
@@ -119,11 +116,10 @@
   }
   .stat-row {
     display: grid;
-    grid-template-columns: repeat(6, minmax(0, 1fr));
+    grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: 12px;
   }
-  @media (max-width: 1040px) { .stat-row { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
-  @media (max-width: 520px) { .stat-row { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  @media (max-width: 640px) { .stat-row { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
   .stat-label { color: var(--text-secondary); font-size: 13px; }
   .stat-value { margin-top: 4px; font-size: 26px; line-height: 1.2; font-weight: 600; }
   .stat-note { margin-top: 2px; color: var(--text-secondary); font-size: 12px; }
@@ -134,7 +130,6 @@
     gap: 12px;
     margin-top: 12px;
   }
-  .chart-wide { grid-column: 1 / -1; }
   .chart-caption { margin: 2px 0 12px; color: var(--text-secondary); font-size: 12px; }
   .legend { display: flex; flex-wrap: wrap; gap: 4px 14px; margin-bottom: 10px; font-size: 12px; color: var(--text-secondary); }
   .legend-item { display: inline-flex; align-items: center; gap: 6px; }
@@ -155,12 +150,6 @@
   .stack-segment:last-child > div { border-radius: 0 4px 4px 0; }
   .stack-segment:hover > div, .stack-segment:focus-visible > div { filter: brightness(1.12); }
   .stack-result { font-size: 12px; color: var(--text-secondary); font-variant-numeric: tabular-nums; }
-
-  .latency-chart svg { display: block; width: 100%; }
-  .latency-chart text { font-size: 11px; fill: var(--text-muted); font-variant-numeric: tabular-nums; }
-  .latency-chart .direct-label { fill: var(--text-secondary); }
-  .latency-hit { fill: transparent; cursor: pointer; outline: none; }
-  .latency-hit:hover, .latency-hit:focus-visible { fill: var(--hover-wash); }
 
   .tooltip {
     position: fixed;
@@ -200,7 +189,6 @@
   }
   th button:hover { background: var(--hover-wash); }
   td { padding: 9px 12px; border-bottom: 1px solid var(--gridline); vertical-align: top; }
-  .numeric { text-align: right; font-variant-numeric: tabular-nums; }
   .question-row { cursor: pointer; }
   .question-row:hover { background: var(--hover-wash); }
   .id-toggle {
@@ -243,6 +231,7 @@
   .turn-question { margin-bottom: 8px; font-weight: 600; }
   .reply-text { white-space: pre-wrap; overflow-wrap: anywhere; }
   .error-text { color: var(--text-primary); overflow-wrap: anywhere; }
+  .error-text .status { align-items: flex-start; white-space: normal; }
   .source-list { margin: 10px 0 0; padding-left: 18px; font-size: 13px; overflow-wrap: anywhere; }
   .side-block + .side-block { margin-top: 14px; }
   .side-block p { margin: 0; }
@@ -323,12 +312,6 @@
       <div class="legend" id="quality-legend"></div>
       <div id="quality-chart"></div>
     </figure>
-    <figure class="card chart-wide" style="margin:0">
-      <h2>Reply time per question</h2>
-      <p class="chart-caption">Seconds, slowest first. Multi-turn questions show the total across turns. Select a bar to open that question.</p>
-      <div class="legend" id="latency-legend"></div>
-      <div class="latency-chart" id="latency-chart"></div>
-    </figure>
   </section>
 
   <section class="card table-card" aria-label="Questions">
@@ -346,7 +329,6 @@
   const results = record.results;
   const config = record.config || {};
   const STORAGE_KEY = `ross-benchmark-scores:${record.run_id}`;
-  const SVG_NAMESPACE = 'http://www.w3.org/2000/svg';
 
   const SCORE_OPTIONS = [
     { value: 'pass', label: 'Pass', icon: '✓', color: 'var(--score-pass)' },
@@ -377,8 +359,6 @@
     { key: 'category', label: 'Category', narrowHidden: true, getSortValue: (result) => result.category || '' },
     { key: 'tier', label: 'Tier', narrowHidden: true, getSortValue: (result) => result.tier || '' },
     { key: 'reply', label: 'Reply', getSortValue: (result) => replyLabel(result) },
-    { key: 'time', label: 'Time', numeric: true, getSortValue: (result) => result.latency_seconds },
-    { key: 'sources', label: 'Sources', numeric: true, narrowHidden: true, getSortValue: (result) => sourceCount(result) },
     { key: 'score', label: 'Score', getSortValue: (result) => ALL_SCORE_OPTIONS.indexOf(scoreOption(result)) },
   ];
 
@@ -410,22 +390,10 @@
     return REPLY_LABELS[result.status] || result.status;
   }
 
-  function sourceCount(result) {
-    return result.turns.reduce((total, turn) => total + (turn.sources || []).length, 0);
-  }
-
   function makeElement(tag, properties = {}, children = []) {
     const element = document.createElement(tag);
     Object.assign(element, properties);
     element.append(...children);
-    return element;
-  }
-
-  function makeSvgElement(tag, attributes = {}) {
-    const element = document.createElementNS(SVG_NAMESPACE, tag);
-    for (const [name, value] of Object.entries(attributes)) {
-      element.setAttribute(name, value);
-    }
     return element;
   }
 
@@ -447,19 +415,6 @@
       return makeElement('span', { className: 'status', textContent: 'Replied' });
     }
     return makeStatus(replyLabel(result), { icon: '!', color: 'var(--score-fail)' });
-  }
-
-  function formatSeconds(seconds) {
-    if (seconds === null || seconds === undefined) {
-      return '–';
-    }
-    return `${seconds < 10 ? seconds.toFixed(1) : Math.round(seconds)}s`;
-  }
-
-  function median(values) {
-    const sorted = [...values].sort((first, second) => first - second);
-    const middle = Math.floor(sorted.length / 2);
-    return sorted.length % 2 ? sorted[middle] : (sorted[middle - 1] + sorted[middle]) / 2;
   }
 
   function visibleResults() {
@@ -527,15 +482,11 @@
     const counts = countScores(items);
     const graded = counts.pass + counts.partial + counts.fail;
     const scoredCount = items.length - counts.unscored;
-    const latencies = items.map((result) => result.latency_seconds).filter((value) => value !== null && value !== undefined);
-    const withSources = items.filter((result) => sourceCount(result) > 0).length;
     document.getElementById('stats').replaceChildren(
       renderStat('Questions', String(items.length), items.length === results.length ? `of ${record.total_questions} planned` : `of ${results.length} in this run`),
       renderStat('Replied', String(replied), failed ? `${failed} failed` : 'none failed'),
       renderStat('Scored', String(scoredCount), `of ${items.length} questions`),
       renderStat('Pass rate', graded ? `${Math.round((counts.pass / graded) * 100)}%` : '–', graded ? `${counts.pass} of ${graded} graded, N/A left out` : 'nothing graded yet'),
-      renderStat('Median reply time', latencies.length ? formatSeconds(median(latencies)) : '–', latencies.length ? `slowest ${formatSeconds(Math.max(...latencies))}` : 'no timings'),
-      renderStat('Replies citing sources', String(withSources), `of ${replied} replies`),
     );
   }
 
@@ -608,97 +559,6 @@
       .sort((first, second) => second.items.length - first.items.length);
   }
 
-  function niceTickStep(maximum) {
-    const roughStep = maximum / 4;
-    const magnitude = 10 ** Math.floor(Math.log10(roughStep));
-    const multiplier = [1, 2, 5, 10].find((candidate) => candidate * magnitude >= roughStep);
-    return multiplier * magnitude;
-  }
-
-  function renderLatencyChart(items) {
-    const container = document.getElementById('latency-chart');
-    const timed = items
-      .filter((result) => result.latency_seconds !== null && result.latency_seconds !== undefined)
-      .sort((first, second) => second.latency_seconds - first.latency_seconds);
-    const hasFailure = timed.some((result) => result.status !== 'transport_ok');
-    const legend = document.getElementById('latency-legend');
-    legend.replaceChildren(...(hasFailure ? [
-      { label: 'Replied', color: 'var(--series-1)' },
-      { label: 'No usable reply', color: 'var(--score-fail)' },
-    ] : []).map((entry) => {
-      const swatch = makeElement('span', { className: 'legend-swatch' });
-      swatch.style.background = entry.color;
-      return makeElement('span', { className: 'legend-item' }, [swatch, entry.label]);
-    }));
-    if (!timed.length || !container.clientWidth) {
-      container.replaceChildren(makeElement('div', { className: 'empty-message', textContent: 'No questions match these filters.' }));
-      return;
-    }
-
-    const width = container.clientWidth;
-    const height = 220;
-    const margin = { top: 22, right: 8, bottom: 8, left: 36 };
-    const plotWidth = width - margin.left - margin.right;
-    const plotHeight = height - margin.top - margin.bottom;
-    const baselineY = margin.top + plotHeight;
-    const tickStep = niceTickStep(Math.max(timed[0].latency_seconds, 0.001));
-    const axisMaximum = Math.ceil(timed[0].latency_seconds / tickStep) * tickStep || tickStep;
-    const yPosition = (value) => baselineY - (value / axisMaximum) * plotHeight;
-    const band = plotWidth / timed.length;
-    const barWidth = Math.min(24, Math.max(band - 2, 1));
-
-    const svg = makeSvgElement('svg', { viewBox: `0 0 ${width} ${height}`, height, role: 'group', 'aria-label': 'Reply time per question, slowest first' });
-    for (let tick = 0; tick <= axisMaximum + tickStep / 2; tick += tickStep) {
-      const y = yPosition(tick);
-      svg.append(makeSvgElement('line', { x1: margin.left, x2: width - margin.right, y1: y, y2: y, stroke: tick === 0 ? 'var(--baseline)' : 'var(--gridline)', 'stroke-width': 1 }));
-      const tickLabel = makeSvgElement('text', { x: margin.left - 6, y: y + 4, 'text-anchor': 'end' });
-      tickLabel.textContent = `${Number(tick.toFixed(3))}s`;
-      svg.append(tickLabel);
-    }
-
-    timed.forEach((result, index) => {
-      const x = margin.left + index * band + (band - barWidth) / 2;
-      const y = yPosition(result.latency_seconds);
-      const radius = Math.min(4, barWidth / 2, baselineY - y);
-      const color = result.status === 'transport_ok' ? 'var(--series-1)' : 'var(--score-fail)';
-      svg.append(makeSvgElement('path', {
-        fill: color,
-        d: `M${x} ${baselineY}V${y + radius}Q${x} ${y} ${x + radius} ${y}H${x + barWidth - radius}Q${x + barWidth} ${y} ${x + barWidth} ${y + radius}V${baselineY}Z`,
-      }));
-      const hitArea = makeSvgElement('rect', {
-        class: 'latency-hit',
-        x: margin.left + index * band,
-        y: margin.top,
-        width: band,
-        height: plotHeight,
-        tabindex: 0,
-        role: 'button',
-        'aria-label': `${result.id}: ${formatSeconds(result.latency_seconds)}, ${replyLabel(result)}`,
-      });
-      attachTooltip(hitArea, formatSeconds(result.latency_seconds), `${result.id} · ${replyLabel(result)}`);
-      hitArea.addEventListener('click', () => openQuestion(result.id));
-      hitArea.addEventListener('keydown', (event) => {
-        if (event.key === 'Enter') openQuestion(result.id);
-      });
-      svg.append(hitArea);
-    });
-
-    const slowestLabel = makeSvgElement('text', { class: 'direct-label', x: margin.left + band / 2, y: yPosition(timed[0].latency_seconds) - 6 });
-    slowestLabel.textContent = `${timed[0].id} ${formatSeconds(timed[0].latency_seconds)}`;
-    svg.append(slowestLabel);
-    container.replaceChildren(svg);
-  }
-
-  function openQuestion(id) {
-    state.openIds.add(id);
-    renderTable();
-    const toggle = document.querySelector(`[data-toggle-id="${CSS.escape(id)}"]`);
-    if (toggle) {
-      toggle.focus({ preventScroll: true });
-      toggle.scrollIntoView({ block: 'center', behavior: 'smooth' });
-    }
-  }
-
   function renderTableHead() {
     document.getElementById('table-head').replaceChildren(...COLUMNS.map((column) => {
       const arrow = state.sortKey === column.key ? (state.sortDescending ? ' ↓' : ' ↑') : '';
@@ -709,7 +569,7 @@
         renderTableHead();
         renderTable();
       });
-      const heading = makeElement('th', { scope: 'col', className: `${column.numeric ? 'numeric' : ''} ${column.narrowHidden ? 'hide-narrow' : ''}` }, [button]);
+      const heading = makeElement('th', { scope: 'col', className: column.narrowHidden ? 'hide-narrow' : '' }, [button]);
       if (state.sortKey === column.key) {
         heading.setAttribute('aria-sort', state.sortDescending ? 'descending' : 'ascending');
       }
@@ -806,8 +666,6 @@
       makeElement('td', { className: 'secondary-cell hide-narrow', textContent: result.category || '' }),
       makeElement('td', { className: 'secondary-cell hide-narrow', textContent: result.tier || '' }),
       makeElement('td', {}, [makeReplyStatus(result)]),
-      makeElement('td', { className: 'numeric', textContent: formatSeconds(result.latency_seconds) }),
-      makeElement('td', { className: 'numeric hide-narrow', textContent: String(sourceCount(result)) }),
       makeElement('td', {}, [makeStatus(scoreOption(result).label, scoreOption(result))]),
     ]);
     row.addEventListener('click', () => {
@@ -838,7 +696,6 @@
   function renderCharts(items) {
     renderStackedChart(document.getElementById('category-chart'), groupByCategory(items));
     renderStackedChart(document.getElementById('quality-chart'), groupByKeyQuality(items));
-    renderLatencyChart(items);
   }
 
   function renderAll() {
@@ -876,7 +733,7 @@
   }
 
   function exportScores() {
-    const header = ['run_id', 'id', 'category', 'tier', 'question', 'score', 'note', 'reply', 'latency_seconds'];
+    const header = ['run_id', 'id', 'category', 'tier', 'question', 'score', 'note', 'reply'];
     const rows = results.map((result) => {
       const option = scoreOption(result);
       return [
@@ -888,7 +745,6 @@
         option === UNSCORED_OPTION ? '' : option.label,
         scores[result.id] && scores[result.id].note,
         replyLabel(result),
-        result.latency_seconds,
       ];
     });
     const lines = [header, ...rows].map((row) => row.map(csvCell).join(','));
@@ -929,7 +785,6 @@
   renderTableHead();
   renderAll();
   document.getElementById('export-button').addEventListener('click', exportScores);
-  window.addEventListener('resize', () => renderLatencyChart(visibleResults()));
 </script>
 </body>
 </html>
