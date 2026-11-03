@@ -67,7 +67,6 @@
   button, select, input, textarea { font: inherit; color: inherit; }
 
   .run-details { margin: 6px 0 0; color: var(--text-secondary); }
-  .explainer { margin: 12px 0 0; max-width: 80ch; color: var(--text-secondary); }
   .notice {
     margin: 16px 0 0;
     padding: 10px 14px;
@@ -279,11 +278,6 @@
   <header>
     <h1>Ross benchmark results</h1>
     <p class="run-details" id="run-details"></p>
-    <p class="explainer">
-      "Replied" only means the chat API returned an answer. It does not say whether the answer is
-      right. Open a question, compare the reply with the expected response, and score it. Scores are
-      saved in this browser only, so use Export scores to share them.
-    </p>
     <p class="notice" id="incomplete-notice" hidden></p>
     <p class="notice" id="storage-notice" hidden>
       This browser is not saving scores, so they will be lost when the page closes. Export them before leaving.
