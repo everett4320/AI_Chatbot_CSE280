@@ -11,17 +11,12 @@
     --surface: #fcfcfb;
     --text-primary: #0b0b0b;
     --text-secondary: #52514e;
-    --text-muted: #898781;
     --gridline: #e1e0d9;
     --baseline: #c3c2b7;
     --border: rgba(11, 11, 11, 0.10);
     --hover-wash: rgba(11, 11, 11, 0.04);
     --link: #1c5cab;
-    --score-pass: #0ca30c;
-    --score-partial: #fab219;
-    --score-fail: #d03b3b;
-    --score-not-applicable: #898781;
-    --score-unscored: #e1e0d9;
+    --error: #d03b3b;
   }
   @media (prefers-color-scheme: dark) {
     :root:not([data-theme="light"]) {
@@ -35,7 +30,6 @@
       --border: rgba(255, 255, 255, 0.10);
       --hover-wash: rgba(255, 255, 255, 0.05);
       --link: #86b6ef;
-      --score-unscored: #383835;
     }
   }
   :root[data-theme="dark"] {
@@ -49,7 +43,6 @@
     --border: rgba(255, 255, 255, 0.10);
     --hover-wash: rgba(255, 255, 255, 0.05);
     --link: #86b6ef;
-    --score-unscored: #383835;
   }
 
   * { box-sizing: border-box; }
@@ -61,17 +54,16 @@
   }
   main { max-width: 1240px; margin: 0 auto; padding: 32px 24px 64px; }
   h1 { margin: 0; font-size: 24px; line-height: 1.25; font-weight: 600; }
-  h2 { margin: 0; font-size: 15px; font-weight: 600; }
   h3 { margin: 0 0 6px; font-size: 13px; font-weight: 600; color: var(--text-secondary); }
   a { color: var(--link); }
-  button, select, input, textarea { font: inherit; color: inherit; }
+  button, select, input { font: inherit; color: inherit; }
 
   .run-details { margin: 6px 0 0; color: var(--text-secondary); }
   .notice {
     margin: 16px 0 0;
     padding: 10px 14px;
     border: 1px solid var(--border);
-    border-left: 3px solid var(--score-fail);
+    border-left: 3px solid var(--error);
     border-radius: 4px;
     background: var(--surface);
   }
@@ -87,7 +79,7 @@
   .filters label { display: grid; gap: 4px; font-size: 12px; color: var(--text-secondary); }
   .filters select, .filters input {
     height: 34px;
-    max-width: 200px;
+    max-width: 260px;
     padding: 0 8px;
     border: 1px solid var(--border);
     border-radius: 6px;
@@ -95,78 +87,14 @@
     font-size: 14px;
     color: var(--text-primary);
   }
-  .button {
-    height: 34px;
-    padding: 0 12px;
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    background: var(--surface);
-    cursor: pointer;
-  }
-  .button:hover { background: var(--hover-wash); }
-  .filters .button { margin-left: auto; }
 
-  .card {
-    background: var(--surface);
+  .table-card {
+    min-width: 0;
+    overflow-x: auto;
     border: 1px solid var(--border);
     border-radius: 8px;
-    padding: 16px;
-    min-width: 0;
-  }
-  .stat-row {
-    display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: 12px;
-  }
-  @media (max-width: 640px) { .stat-row { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-  .stat-label { color: var(--text-secondary); font-size: 13px; }
-  .stat-value { margin-top: 4px; font-size: 26px; line-height: 1.2; font-weight: 600; }
-  .stat-note { margin-top: 2px; color: var(--text-secondary); font-size: 12px; }
-
-  .chart-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(min(100%, 460px), 1fr));
-    gap: 12px;
-    margin-top: 12px;
-  }
-  .chart-caption { margin: 2px 0 12px; color: var(--text-secondary); font-size: 12px; }
-  .legend { display: flex; flex-wrap: wrap; gap: 4px 14px; margin-bottom: 10px; font-size: 12px; color: var(--text-secondary); }
-  .legend-item { display: inline-flex; align-items: center; gap: 6px; }
-  .legend-swatch { width: 10px; height: 10px; border-radius: 2px; }
-
-  .stack-row {
-    display: grid;
-    grid-template-columns: minmax(0, 190px) minmax(0, 1fr) 84px;
-    align-items: center;
-    gap: 10px;
-    padding: 3px 0;
-  }
-  .stack-label { font-size: 12.5px; line-height: 1.3; }
-  .stack-label span { color: var(--text-secondary); }
-  .stack-bar { display: flex; gap: 2px; min-width: 0; }
-  .stack-segment { min-width: 3px; padding: 6px 0; cursor: default; outline-offset: 1px; }
-  .stack-segment > div { height: 16px; }
-  .stack-segment:last-child > div { border-radius: 0 4px 4px 0; }
-  .stack-segment:hover > div, .stack-segment:focus-visible > div { filter: brightness(1.12); }
-  .stack-result { font-size: 12px; color: var(--text-secondary); font-variant-numeric: tabular-nums; }
-
-  .tooltip {
-    position: fixed;
-    z-index: 10;
-    max-width: 280px;
-    padding: 6px 10px;
-    border: 1px solid var(--border);
-    border-radius: 6px;
     background: var(--surface);
-    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.16);
-    pointer-events: none;
-    font-size: 12px;
   }
-  .tooltip[hidden] { display: none; }
-  .tooltip strong { display: block; font-size: 13px; font-weight: 600; }
-  .tooltip span { color: var(--text-secondary); }
-
-  .table-card { margin-top: 12px; padding: 0; overflow-x: auto; }
   table { width: 100%; border-collapse: collapse; }
   th {
     padding: 0;
@@ -203,73 +131,33 @@
   .secondary-cell { color: var(--text-secondary); font-size: 13px; }
   .empty-message { padding: 24px; text-align: center; color: var(--text-secondary); }
 
-  .status { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
-  .status-mark {
+  .detail-row > td { padding: 0; background: var(--page); }
+  .detail { max-width: 90ch; padding: 16px 16px 20px 26px; }
+  .turn + .turn { margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--gridline); }
+  .turn-question { margin-bottom: 8px; font-weight: 600; }
+  .reply-text { white-space: pre-wrap; overflow-wrap: anywhere; }
+  .error-text { display: flex; align-items: flex-start; gap: 6px; overflow-wrap: anywhere; }
+  .error-mark {
     display: inline-grid;
     place-items: center;
     flex: none;
     width: 16px;
     height: 16px;
+    margin-top: 2px;
     border-radius: 50%;
+    background: var(--error);
     color: #fff;
     font-size: 11px;
     line-height: 1;
     font-weight: 700;
-  }
-  .status-mark.on-light-fill { color: #0b0b0b; }
-  .status-mark.outline { border: 1.5px solid var(--text-muted); background: transparent; }
-
-  .detail-row > td { padding: 0; background: var(--page); }
-  .detail {
-    display: grid;
-    grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
-    gap: 24px;
-    padding: 16px 16px 20px 26px;
-  }
-  .turn + .turn { margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--gridline); }
-  .turn-question { margin-bottom: 8px; font-weight: 600; }
-  .reply-text { white-space: pre-wrap; overflow-wrap: anywhere; }
-  .error-text { color: var(--text-primary); overflow-wrap: anywhere; }
-  .error-text .status { align-items: flex-start; white-space: normal; }
-  .source-list { margin: 10px 0 0; padding-left: 18px; font-size: 13px; overflow-wrap: anywhere; }
-  .side-block + .side-block { margin-top: 14px; }
-  .side-block p { margin: 0; }
-  .score-buttons { display: flex; flex-wrap: wrap; gap: 6px; }
-  .score-button {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    height: 32px;
-    padding: 0 10px;
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    background: var(--surface);
-    cursor: pointer;
-  }
-  .score-button:hover { background: var(--hover-wash); }
-  .score-button[aria-pressed="true"] { border-color: var(--text-primary); font-weight: 600; }
-  textarea {
-    display: block;
-    width: 100%;
-    min-height: 64px;
-    padding: 8px;
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    background: var(--surface);
-    resize: vertical;
   }
 
   @media (max-width: 760px) {
     main { padding: 20px 16px 48px; }
     .filters select, .filters input { max-width: none; width: 100%; }
     .filters label { flex: 1 1 140px; }
-    .filters .button { margin-left: 0; }
-    .stack-row { grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "label result" "bar bar"; }
-    .stack-label { grid-area: label; }
-    .stack-result { grid-area: result; }
-    .stack-bar { grid-area: bar; }
     .hide-narrow { display: none; }
-    .detail { grid-template-columns: minmax(0, 1fr); padding-left: 16px; }
+    .detail { padding-left: 16px; }
   }
 </style>
 </head>
@@ -279,135 +167,45 @@
     <h1>Ross benchmark results</h1>
     <p class="run-details" id="run-details"></p>
     <p class="notice" id="incomplete-notice" hidden></p>
-    <p class="notice" id="storage-notice" hidden>
-      This browser is not saving scores, so they will be lost when the page closes. Export them before leaving.
-    </p>
   </header>
 
   <section class="filters" id="filters" aria-label="Filters">
     <label id="search-filter">Search
       <input type="search" id="search-input" placeholder="ID or question text">
     </label>
-    <button type="button" class="button" id="export-button">Export scores</button>
   </section>
 
-  <section class="stat-row" id="stats" aria-label="Summary"></section>
-
-  <section class="chart-grid">
-    <figure class="card" style="margin:0">
-      <h2>Scores by category</h2>
-      <p class="chart-caption">Share of questions at each score. The count on the right leaves out N/A and unscored questions.</p>
-      <div class="legend" id="category-legend"></div>
-      <div id="category-chart"></div>
-    </figure>
-    <figure class="card" id="quality-figure" style="margin:0">
-      <h2>Scores by key quality</h2>
-      <p class="chart-caption">A question with several key qualities counts once under each of them.</p>
-      <div class="legend" id="quality-legend"></div>
-      <div id="quality-chart"></div>
-    </figure>
-  </section>
-
-  <section class="card table-card" aria-label="Questions">
+  <section class="table-card" aria-label="Questions">
     <table>
       <thead><tr id="table-head"></tr></thead>
       <tbody id="table-body"></tbody>
     </table>
   </section>
 </main>
-<div class="tooltip" id="tooltip" role="status" hidden></div>
 
 <script id="run-record" type="application/json">__RUN_RECORD_JSON__</script>
 <script>
   const record = JSON.parse(document.getElementById('run-record').textContent);
   const results = record.results;
-  const STORAGE_KEY = `ross-benchmark-scores:${record.run_id}`;
 
-  const SCORE_OPTIONS = [
-    { value: 'pass', label: 'Pass', icon: '✓', color: 'var(--score-pass)' },
-    { value: 'partial', label: 'Partial', icon: '~', color: 'var(--score-partial)', lightFill: true },
-    { value: 'fail', label: 'Fail', icon: '✕', color: 'var(--score-fail)' },
-    { value: 'na', label: 'N/A', icon: '–', color: 'var(--score-not-applicable)' },
-  ];
-  const UNSCORED_OPTION = { value: 'unscored', label: 'Not scored', icon: '', color: 'var(--score-unscored)', outline: true };
-  const ALL_SCORE_OPTIONS = [...SCORE_OPTIONS, UNSCORED_OPTION];
-  const REPLY_LABELS = {
-    transport_ok: 'Replied',
-    http_error: 'HTTP error',
-    api_error: 'API error',
-    invalid_response: 'Invalid response',
-    request_failed: 'Request failed',
-  };
   const FILTER_DEFINITIONS = [
     { key: 'category', label: 'Category', getValue: (result) => result.category || '' },
     { key: 'tier', label: 'Tier', getValue: (result) => result.tier || '' },
-    { key: 'edge_case', label: 'Edge case', getValue: (result) => result.edge_case || '' },
-    { key: 'test_type', label: 'Test type', getValue: (result) => result.test_type || '' },
-    { key: 'reply', label: 'Reply', getValue: (result) => replyLabel(result) },
-    { key: 'score', label: 'Score', getValue: (result) => scoreOption(result).label, fixedOptions: ALL_SCORE_OPTIONS.map((option) => option.label) },
   ];
   const COLUMNS = [
     { key: 'id', label: 'ID', getSortValue: (result) => result.id },
     { key: 'question', label: 'Question', getSortValue: (result) => result.question },
     { key: 'category', label: 'Category', narrowHidden: true, getSortValue: (result) => result.category || '' },
     { key: 'tier', label: 'Tier', narrowHidden: true, getSortValue: (result) => result.tier || '' },
-    { key: 'reply', label: 'Reply', getSortValue: (result) => replyLabel(result) },
-    { key: 'score', label: 'Score', getSortValue: (result) => ALL_SCORE_OPTIONS.indexOf(scoreOption(result)) },
   ];
 
   const state = { filters: {}, search: '', sortKey: null, sortDescending: false, openIds: new Set() };
-  const scores = loadScores();
-
-  function loadScores() {
-    try {
-      return JSON.parse(localStorage.getItem(STORAGE_KEY)) || {};
-    } catch {
-      return {};
-    }
-  }
-
-  function saveScores() {
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(scores));
-    } catch {
-      document.getElementById('storage-notice').hidden = false;
-    }
-  }
-
-  function scoreOption(result) {
-    const saved = scores[result.id] && scores[result.id].score;
-    return SCORE_OPTIONS.find((option) => option.value === saved) || UNSCORED_OPTION;
-  }
-
-  function replyLabel(result) {
-    return REPLY_LABELS[result.status] || result.status;
-  }
 
   function makeElement(tag, properties = {}, children = []) {
     const element = document.createElement(tag);
     Object.assign(element, properties);
     element.append(...children);
     return element;
-  }
-
-  function makeStatus(label, option) {
-    const mark = makeElement('span', { className: 'status-mark', textContent: option.icon, ariaHidden: 'true' });
-    if (option.outline) {
-      mark.classList.add('outline');
-    } else {
-      mark.style.background = option.color;
-    }
-    if (option.lightFill) {
-      mark.classList.add('on-light-fill');
-    }
-    return makeElement('span', { className: 'status' }, [mark, label]);
-  }
-
-  function makeReplyStatus(result) {
-    if (result.status === 'transport_ok') {
-      return makeElement('span', { className: 'status', textContent: 'Replied' });
-    }
-    return makeStatus(replyLabel(result), { icon: '!', color: 'var(--score-fail)' });
   }
 
   function visibleResults() {
@@ -422,134 +220,11 @@
     const column = COLUMNS.find((candidate) => candidate.key === state.sortKey);
     if (column) {
       const direction = state.sortDescending ? -1 : 1;
-      matching.sort((first, second) => {
-        const firstValue = column.getSortValue(first);
-        const secondValue = column.getSortValue(second);
-        if (firstValue === null || firstValue === undefined) return 1;
-        if (secondValue === null || secondValue === undefined) return -1;
-        if (typeof firstValue === 'number') return (firstValue - secondValue) * direction;
-        return String(firstValue).localeCompare(String(secondValue), undefined, { numeric: true }) * direction;
-      });
+      matching.sort((first, second) => (
+        String(column.getSortValue(first)).localeCompare(String(column.getSortValue(second)), undefined, { numeric: true }) * direction
+      ));
     }
     return matching;
-  }
-
-  function positionTooltip(x, y) {
-    const tooltip = document.getElementById('tooltip');
-    const bounds = tooltip.getBoundingClientRect();
-    tooltip.style.left = `${Math.max(8, Math.min(x + 12, window.innerWidth - bounds.width - 8))}px`;
-    tooltip.style.top = `${Math.max(8, y - bounds.height - 10)}px`;
-  }
-
-  function attachTooltip(element, value, label) {
-    const tooltip = document.getElementById('tooltip');
-    const show = () => {
-      tooltip.replaceChildren(
-        makeElement('strong', { textContent: value }),
-        makeElement('span', { textContent: label }),
-      );
-      tooltip.hidden = false;
-    };
-    element.addEventListener('pointerenter', show);
-    element.addEventListener('pointermove', (event) => positionTooltip(event.clientX, event.clientY));
-    element.addEventListener('pointerleave', () => { tooltip.hidden = true; });
-    element.addEventListener('focus', () => {
-      show();
-      const bounds = element.getBoundingClientRect();
-      positionTooltip(bounds.left, bounds.top);
-    });
-    element.addEventListener('blur', () => { tooltip.hidden = true; });
-  }
-
-  function renderStat(label, value, note) {
-    return makeElement('div', { className: 'card' }, [
-      makeElement('div', { className: 'stat-label', textContent: label }),
-      makeElement('div', { className: 'stat-value', textContent: value }),
-      makeElement('div', { className: 'stat-note', textContent: note }),
-    ]);
-  }
-
-  function renderStats(items) {
-    const replied = items.filter((result) => result.status === 'transport_ok').length;
-    const failed = items.length - replied;
-    const counts = countScores(items);
-    const graded = counts.pass + counts.partial + counts.fail;
-    const scoredCount = items.length - counts.unscored;
-    document.getElementById('stats').replaceChildren(
-      renderStat('Questions', String(items.length), items.length === results.length ? `of ${record.total_questions} planned` : `of ${results.length} in this run`),
-      renderStat('Replied', String(replied), failed ? `${failed} failed` : 'none failed'),
-      renderStat('Scored', String(scoredCount), `of ${items.length} questions`),
-      renderStat('Pass rate', graded ? `${Math.round((counts.pass / graded) * 100)}%` : '–', graded ? `${counts.pass} of ${graded} graded, N/A left out` : 'nothing graded yet'),
-    );
-  }
-
-  function countScores(items) {
-    const counts = Object.fromEntries(ALL_SCORE_OPTIONS.map((option) => [option.value, 0]));
-    for (const result of items) {
-      counts[scoreOption(result).value] += 1;
-    }
-    return counts;
-  }
-
-  function renderLegend(container) {
-    container.replaceChildren(...ALL_SCORE_OPTIONS.map((option) => {
-      const swatch = makeElement('span', { className: 'legend-swatch' });
-      swatch.style.background = option.color;
-      return makeElement('span', { className: 'legend-item' }, [swatch, option.label]);
-    }));
-  }
-
-  function renderStackedChart(container, groups) {
-    if (!groups.length) {
-      container.replaceChildren(makeElement('div', { className: 'empty-message', textContent: 'No questions match these filters.' }));
-      return;
-    }
-    container.replaceChildren(...groups.map((group) => {
-      const counts = countScores(group.items);
-      const graded = counts.pass + counts.partial + counts.fail;
-      const segments = ALL_SCORE_OPTIONS.filter((option) => counts[option.value] > 0).map((option) => {
-        const fill = makeElement('div');
-        fill.style.background = option.color;
-        const segment = makeElement('div', { className: 'stack-segment', tabIndex: 0 }, [fill]);
-        segment.style.flex = `${counts[option.value]} 1 0`;
-        const share = Math.round((counts[option.value] / group.items.length) * 100);
-        segment.setAttribute('role', 'img');
-        segment.setAttribute('aria-label', `${group.label}: ${option.label}, ${counts[option.value]} of ${group.items.length}`);
-        attachTooltip(segment, `${counts[option.value]} of ${group.items.length} (${share}%)`, `${option.label} · ${group.label}`);
-        return segment;
-      });
-      return makeElement('div', { className: 'stack-row' }, [
-        makeElement('div', { className: 'stack-label' }, [`${group.label} `, makeElement('span', { textContent: `(${group.items.length})` })]),
-        makeElement('div', { className: 'stack-bar' }, segments),
-        makeElement('div', { className: 'stack-result', textContent: graded ? `${counts.pass} of ${graded} pass` : 'not scored' }),
-      ]);
-    }));
-  }
-
-  function groupByCategory(items) {
-    const groups = new Map();
-    for (const result of items) {
-      const category = result.category || 'Uncategorized';
-      if (!groups.has(category)) groups.set(category, []);
-      groups.get(category).push(result);
-    }
-    return [...groups].map(([label, groupItems]) => ({ label, items: groupItems }));
-  }
-
-  function groupByKeyQuality(items) {
-    const groups = new Map();
-    for (const result of items) {
-      for (const part of (result.key_qualities || '').split(',')) {
-        const trimmed = part.trim();
-        if (!trimmed) continue;
-        const quality = trimmed[0].toUpperCase() + trimmed.slice(1);
-        if (!groups.has(quality)) groups.set(quality, []);
-        groups.get(quality).push(result);
-      }
-    }
-    return [...groups]
-      .map(([label, groupItems]) => ({ label, items: groupItems }))
-      .sort((first, second) => second.items.length - first.items.length);
   }
 
   function renderTableHead() {
@@ -579,72 +254,20 @@
       children.push(makeElement('div', { className: 'reply-text', textContent: turn.response }));
     }
     if (turn.error) {
-      children.push(makeElement('div', { className: 'error-text' }, [makeStatus(turn.error, { icon: '!', color: 'var(--score-fail)' })]));
-    }
-    if ((turn.sources || []).length) {
-      children.push(makeElement('ul', { className: 'source-list' }, turn.sources.map((source) => {
-        const title = source.title || source.url || 'Untitled source';
-        // Links come from the bot, so only web addresses become clickable.
-        if (/^https?:\/\//i.test(source.url || '')) {
-          return makeElement('li', {}, [makeElement('a', { href: source.url, textContent: title, target: '_blank', rel: 'noopener noreferrer' })]);
-        }
-        return makeElement('li', { textContent: title });
-      })));
-    } else if (turn.status === 'transport_ok') {
-      children.push(makeElement('p', { className: 'secondary-cell', textContent: 'No sources returned.' }));
+      children.push(makeElement('div', { className: 'error-text' }, [
+        makeElement('span', { className: 'error-mark', textContent: '!', ariaHidden: 'true' }),
+        turn.error,
+      ]));
     }
     return makeElement('div', { className: 'turn' }, children);
   }
 
-  function renderSideBlock(heading, text) {
-    return makeElement('div', { className: 'side-block' }, [
-      makeElement('h3', { textContent: heading }),
-      makeElement('p', { textContent: text }),
-    ]);
-  }
-
   function renderDetail(result) {
-    const side = [];
-    if (result.expected_response) side.push(renderSideBlock('Expected response', result.expected_response));
-    if (result.key_qualities) side.push(renderSideBlock('Key qualities', result.key_qualities));
-    if (result.test_type) side.push(renderSideBlock('Test type', result.test_type));
-
-    const scoreButtons = SCORE_OPTIONS.map((option) => {
-      const button = makeElement('button', { type: 'button', className: 'score-button' }, [makeStatus(option.label, option)]);
-      button.dataset.scoreButton = `${result.id}:${option.value}`;
-      button.setAttribute('aria-pressed', String(scoreOption(result) === option));
-      button.addEventListener('click', () => setScore(result.id, option.value, button.dataset.scoreButton));
-      return button;
-    });
-    const noteInput = makeElement('textarea', { placeholder: 'Short note, including any citation or link problems', value: (scores[result.id] && scores[result.id].note) || '' });
-    noteInput.setAttribute('aria-label', `Note for ${result.id}`);
-    noteInput.addEventListener('input', () => {
-      scores[result.id] = { ...scores[result.id], note: noteInput.value };
-      saveScores();
-    });
-    side.push(makeElement('div', { className: 'side-block' }, [
-      makeElement('h3', { textContent: 'Score' }),
-      makeElement('div', { className: 'score-buttons' }, scoreButtons),
-    ]));
-    side.push(makeElement('div', { className: 'side-block' }, [makeElement('h3', { textContent: 'Note' }), noteInput]));
-
     const isMultiTurn = result.turns.length > 1;
     return makeElement('div', { className: 'detail' }, [
-      makeElement('div', {}, [
-        makeElement('h3', { textContent: 'Ross\'s reply' }),
-        ...result.turns.map((turn, index) => renderTurn(turn, isMultiTurn, index)),
-      ]),
-      makeElement('div', {}, side),
+      makeElement('h3', { textContent: 'Ross\'s reply' }),
+      ...result.turns.map((turn, index) => renderTurn(turn, isMultiTurn, index)),
     ]);
-  }
-
-  function setScore(id, value, focusKey) {
-    const isSameScore = scores[id] && scores[id].score === value;
-    scores[id] = { ...scores[id], score: isSameScore ? null : value };
-    saveScores();
-    renderAll();
-    const button = document.querySelector(`[data-score-button="${CSS.escape(focusKey)}"]`);
-    if (button) button.focus({ preventScroll: true });
   }
 
   function renderRow(result) {
@@ -658,8 +281,6 @@
       makeElement('td', { textContent: result.question }),
       makeElement('td', { className: 'secondary-cell hide-narrow', textContent: result.category || '' }),
       makeElement('td', { className: 'secondary-cell hide-narrow', textContent: result.tier || '' }),
-      makeElement('td', {}, [makeReplyStatus(result)]),
-      makeElement('td', {}, [makeStatus(scoreOption(result).label, scoreOption(result))]),
     ]);
     row.addEventListener('click', () => {
       // Selecting text in a row should not collapse it.
@@ -677,7 +298,8 @@
     return [row, makeElement('tr', { className: 'detail-row' }, [makeElement('td', { colSpan: COLUMNS.length }, [renderDetail(result)])])];
   }
 
-  function renderTable(items = visibleResults()) {
+  function renderTable() {
+    const items = visibleResults();
     const body = document.getElementById('table-body');
     if (!items.length) {
       body.replaceChildren(makeElement('tr', {}, [makeElement('td', { colSpan: COLUMNS.length, className: 'empty-message', textContent: 'No questions match these filters.' })]));
@@ -686,24 +308,11 @@
     body.replaceChildren(...items.flatMap(renderRow));
   }
 
-  function renderCharts(items) {
-    renderStackedChart(document.getElementById('category-chart'), groupByCategory(items));
-    renderStackedChart(document.getElementById('quality-chart'), groupByKeyQuality(items));
-  }
-
-  function renderAll() {
-    const items = visibleResults();
-    renderStats(items);
-    renderCharts(items);
-    renderTable(items);
-  }
-
   function renderFilters() {
     const container = document.getElementById('filters');
     const anchor = document.getElementById('search-filter');
     for (const definition of FILTER_DEFINITIONS) {
-      const discovered = [...new Set(results.map(definition.getValue))].filter(Boolean);
-      const values = definition.fixedOptions || discovered;
+      const values = [...new Set(results.map(definition.getValue))].filter(Boolean);
       if (values.length < 2) continue;
       const select = makeElement('select', {}, [
         makeElement('option', { value: '', textContent: 'All' }),
@@ -711,41 +320,14 @@
       ]);
       select.addEventListener('change', () => {
         state.filters[definition.key] = select.value;
-        renderAll();
+        renderTable();
       });
       container.insertBefore(makeElement('label', {}, [definition.label, select]), anchor);
     }
     document.getElementById('search-input').addEventListener('input', (event) => {
       state.search = event.target.value;
-      renderAll();
+      renderTable();
     });
-  }
-
-  function csvCell(value) {
-    return `"${String(value === null || value === undefined ? '' : value).replaceAll('"', '""')}"`;
-  }
-
-  function exportScores() {
-    const header = ['run_id', 'id', 'category', 'tier', 'question', 'score', 'note', 'reply'];
-    const rows = results.map((result) => {
-      const option = scoreOption(result);
-      return [
-        record.run_id,
-        result.id,
-        result.category,
-        result.tier,
-        result.question,
-        option === UNSCORED_OPTION ? '' : option.label,
-        scores[result.id] && scores[result.id].note,
-        replyLabel(result),
-      ];
-    });
-    const lines = [header, ...rows].map((row) => row.map(csvCell).join(','));
-    // The byte order mark tells Excel the file is UTF-8.
-    const blob = new Blob([`﻿${lines.join('\r\n')}\r\n`], { type: 'text/csv;charset=utf-8' });
-    const link = makeElement('a', { href: URL.createObjectURL(blob), download: `ross_scores_${record.run_id}.csv` });
-    link.click();
-    URL.revokeObjectURL(link.href);
   }
 
   function renderRunDetails() {
@@ -758,15 +340,10 @@
     }
   }
 
-  // A CSV with only id and question columns has no key qualities to chart.
-  document.getElementById('quality-figure').hidden = !groupByKeyQuality(results).length;
   renderRunDetails();
   renderFilters();
-  renderLegend(document.getElementById('category-legend'));
-  renderLegend(document.getElementById('quality-legend'));
   renderTableHead();
-  renderAll();
-  document.getElementById('export-button').addEventListener('click', exportScores);
+  renderTable();
 </script>
 </body>
 </html>
