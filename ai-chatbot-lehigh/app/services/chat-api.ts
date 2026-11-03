@@ -15,13 +15,19 @@ const CONFIGURATION_ERROR =
   "The chat service is not configured for this deployment. Please contact the site administrator.";
 const BOT_NAME_CONFIGURATION_ERROR =
   "The chatbot identity is not configured for this deployment. Please contact the site administrator.";
+const GATEWAY_TIMEOUT_ERROR =
+  "The server timed out before Ross could finish answering. Please try again.";
+const BAD_GATEWAY_ERROR =
+  "Ross ran into a server error. Please try again in a moment.";
 let sessionEpoch = 0;
 
 export const REQUEST_TIMEOUT_MS = 60_000;
 
 export class ChatTimeoutError extends Error {
-  constructor() {
-    super("The chat service did not respond in time. Please try again.");
+  constructor(
+    message = `Ross took too long to respond (over ${REQUEST_TIMEOUT_MS / 1000} seconds). Please try again.`,
+  ) {
+    super(message);
     this.name = "ChatTimeoutError";
   }
 }
@@ -278,8 +284,14 @@ export async function postToApi(
       signal: controller.signal,
     });
 
+    // API Gateway usually gives up before our own timer fires.
     if (response.status === 504) {
-      throw new ChatTimeoutError();
+      throw new ChatTimeoutError(GATEWAY_TIMEOUT_ERROR);
+    }
+
+    // The backend failed or returned a malformed response; it was not slow.
+    if (response.status === 502) {
+      throw new Error(BAD_GATEWAY_ERROR);
     }
 
     if (!response.ok) {
