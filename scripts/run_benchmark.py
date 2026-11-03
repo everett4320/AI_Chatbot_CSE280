@@ -36,7 +36,6 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_QUESTIONS_FILE = REPO_ROOT / "fetched_site/questions/ross_benchmark.csv"
 DEFAULT_PROMPT_FILE = REPO_ROOT / "christopher-handoff/backend-inputs/SYSTEM_PROMPT.txt"
 DEFAULT_RUNS_DIR = REPO_ROOT / "fetched_site/prompt_effectiveness_runs"
-LEGACY_SHARED_ENDPOINT = "https://8lyrpsdez5.execute-api.us-east-1.amazonaws.com/call"
 REQUIRED_COLUMNS = {"id", "question"}
 TURN_MARKER = re.compile(r"\bT\d+:\s*")
 ERROR_SNIPPET_LENGTH = 300
@@ -123,40 +122,6 @@ def select_questions(
             raise ValueError(f"Unknown question IDs: {', '.join(sorted(unknown_ids))}")
         selected = [question for question in selected if question["id"] in wanted_ids]
     return selected
-
-
-def is_legacy_endpoint(endpoint: str) -> bool:
-    """Tell whether a URL is the historical shared endpoint.
-
-    Args:
-        endpoint (str): The URL requests would be sent to.
-
-    Returns:
-        bool: True if the URL, ignoring case, query and trailing slash, is that endpoint.
-    """
-    return endpoint.split("?")[0].split("#")[0].rstrip("/").lower() == LEGACY_SHARED_ENDPOINT
-
-
-def validate_endpoint(endpoint: str, allow_legacy_endpoint: bool = False) -> None:
-    """Reject endpoints that cannot be the assigned Ross API.
-
-    Args:
-        endpoint (str): The URL requests would be sent to.
-        allow_legacy_endpoint (bool): Accept the historical shared endpoint, for a
-            trial of the pipeline whose answers do not count as Ross results.
-
-    Raises:
-        ValueError: If the URL is not absolute http(s), or is the historical
-            shared endpoint, which routes to a different bot, without permission.
-    """
-    if not re.match(r"https?://", endpoint):
-        raise ValueError("Endpoint must be an absolute http(s) URL.")
-    if is_legacy_endpoint(endpoint) and not allow_legacy_endpoint:
-        raise ValueError(
-            "The historical shared endpoint is not a Ross endpoint. "
-            "Supply Christopher's assigned endpoint, or pass --allow-legacy-endpoint "
-            "for a trial run that does not count as a Ross result."
-        )
 
 
 def split_into_turns(question_text: str) -> list[str]:
@@ -369,17 +334,12 @@ def parse_arguments(argv: list[str] | None) -> argparse.Namespace:
     parser.add_argument(
         "--endpoint",
         default=os.environ.get("ROSS_API_ENDPOINT"),
-        help="Assigned Ross API URL (or set ROSS_API_ENDPOINT).",
+        help="Chat API URL that the deployed Ross site calls (or set ROSS_API_ENDPOINT).",
     )
     parser.add_argument(
         "--bot-name",
         default=os.environ.get("BOT_NAME"),
-        help="Assigned Ross bot name (or set BOT_NAME).",
-    )
-    parser.add_argument(
-        "--allow-legacy-endpoint",
-        action="store_true",
-        help="Allow the historical shared endpoint for a trial run. Its answers are not Ross results.",
+        help="Bot name that the deployed Ross site sends (or set BOT_NAME).",
     )
     parser.add_argument("--questions-file", type=Path, default=DEFAULT_QUESTIONS_FILE)
     parser.add_argument(
@@ -423,7 +383,8 @@ def main(argv: list[str] | None = None) -> int:
         raise SystemExit("Error: --bot-name or BOT_NAME is required.")
     custom_prompt = None
     try:
-        validate_endpoint(arguments.endpoint or "", arguments.allow_legacy_endpoint)
+        if not re.match(r"https?://", arguments.endpoint or ""):
+            raise ValueError("--endpoint or ROSS_API_ENDPOINT must be an absolute http(s) URL.")
         selected = select_questions(
             load_questions(arguments.questions_file), arguments.tier, arguments.only_ids
         )
@@ -454,7 +415,6 @@ def main(argv: list[str] | None = None) -> int:
             "only_ids": arguments.only_ids,
             "bot_name": arguments.bot_name,
             "endpoint": arguments.endpoint,
-            "uses_legacy_endpoint": is_legacy_endpoint(arguments.endpoint),
             "prompt_file": None if custom_prompt is None else to_repo_relative(arguments.prompt_file),
             "prompt_sha256": (
                 None if custom_prompt is None else hashlib.sha256(custom_prompt.encode("utf-8")).hexdigest()

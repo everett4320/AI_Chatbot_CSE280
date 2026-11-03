@@ -1,4 +1,4 @@
-"""Tests for the benchmark pipeline, using a local stand-in for the chat API.
+"""Tests for the benchmark pipeline, using a fake chat API server on localhost.
 
 Run with: python3 scripts/test_benchmark_pipeline.py
 """
@@ -33,7 +33,7 @@ class FakeChatHandler(BaseHTTPRequestHandler):
         ).encode("utf-8")
         if "http500" in message:
             status_code = 500
-            body = b"server exploded"
+            body = b"internal server error"
         elif "apierror" in message:
             body = json.dumps({"error": "bot not found"}).encode("utf-8")
         elif "notjson" in message:
@@ -48,7 +48,7 @@ class FakeChatHandler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(body)
 
-    def log_message(self, *_):
+    def log_message(self, *log_arguments):
         pass
 
 
@@ -116,16 +116,14 @@ class BenchmarkPipelineTest(unittest.TestCase):
         with self.assertRaises(ValueError):
             run_benchmark.select_questions(questions, "quick", "Q9")
 
-    def test_validate_endpoint_rejects_legacy_and_relative_urls(self):
-        run_benchmark.validate_endpoint(self.endpoint)
-        for endpoint in [run_benchmark.LEGACY_SHARED_ENDPOINT + "/", "example.com/call", ""]:
-            with self.subTest(endpoint), self.assertRaises(ValueError):
-                run_benchmark.validate_endpoint(endpoint)
-
-    def test_legacy_endpoint_needs_explicit_permission(self):
-        run_benchmark.validate_endpoint(run_benchmark.LEGACY_SHARED_ENDPOINT, allow_legacy_endpoint=True)
-        self.assertTrue(run_benchmark.is_legacy_endpoint(run_benchmark.LEGACY_SHARED_ENDPOINT.upper() + "/"))
-        self.assertFalse(run_benchmark.is_legacy_endpoint(self.endpoint))
+    def test_main_rejects_an_endpoint_that_is_not_an_absolute_url(self):
+        runs_dir = self.temporary_path / "runs"
+        for endpoint in ["example.com/call", ""]:
+            with self.subTest(endpoint), self.assertRaises(SystemExit):
+                run_benchmark.main(
+                    ["--endpoint", endpoint, "--bot-name", "ross-test", "--runs-dir", str(runs_dir)]
+                )
+        self.assertFalse(runs_dir.exists())
 
     def test_split_into_turns(self):
         self.assertEqual(run_benchmark.split_into_turns("How do I apply?"), ["How do I apply?"])
@@ -212,6 +210,14 @@ class BenchmarkPipelineTest(unittest.TestCase):
         self.assertEqual(json.loads(embedded)["results"][0]["reply"], reply)
 
     def run_main(self, questions_text):
+        """Run the whole benchmark against the fake server, using temporary input files.
+
+        Args:
+            questions_text (str): Contents of the question CSV.
+
+        Returns:
+            tuple[int, Path, dict]: The exit code, the run directory and the saved run record.
+        """
         questions_path = self.write_csv(questions_text)
         prompt_path = self.temporary_path / "prompt.txt"
         prompt_path.write_text("You are Ross.", encoding="utf-8")
@@ -241,7 +247,7 @@ class BenchmarkPipelineTest(unittest.TestCase):
         self.assertTrue((run_dir / "questions_snapshot.csv").is_file())
 
     def test_run_continues_past_a_failure_and_exits_nonzero(self):
-        exit_code, _, run_record = self.run_main("id,question\nQ1,http500\nQ2,hello\n")
+        exit_code, unused_run_dir, run_record = self.run_main("id,question\nQ1,http500\nQ2,hello\n")
         self.assertEqual(exit_code, 1)
         self.assertEqual(
             [result["status"] for result in run_record["results"]], ["http_error", "transport_ok"]

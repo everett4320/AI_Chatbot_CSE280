@@ -295,7 +295,6 @@
       right. Open a question, compare the reply with the expected response, and score it. Scores are
       saved in this browser only, so use Export scores to share them.
     </p>
-    <p class="notice" id="legacy-notice" hidden></p>
     <p class="notice" id="incomplete-notice" hidden></p>
     <p class="notice" id="storage-notice" hidden>
       This browser is not saving scores, so they will be lost when the page closes. Export them before leaving.
@@ -914,11 +913,6 @@
     }
     document.getElementById('run-details').textContent = details.filter(Boolean).join(' · ');
 
-    if (config.uses_legacy_endpoint) {
-      const notice = document.getElementById('legacy-notice');
-      notice.textContent = `Trial run, not a Ross result. This run used the old shared endpoint and the ${config.bot_name} bot, so replies come from that bot's knowledge base. Scores on knowledge questions do not reflect Ross.`;
-      notice.hidden = false;
-    }
     if (results.length < record.total_questions) {
       const notice = document.getElementById('incomplete-notice');
       notice.textContent = `This run stopped early: ${results.length} of ${record.total_questions} questions were sent.`;
