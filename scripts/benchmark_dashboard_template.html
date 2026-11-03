@@ -321,7 +321,6 @@
 <script>
   const record = JSON.parse(document.getElementById('run-record').textContent);
   const results = record.results;
-  const config = record.config || {};
   const STORAGE_KEY = `ross-benchmark-scores:${record.run_id}`;
 
   const SCORE_OPTIONS = [
@@ -750,18 +749,7 @@
   }
 
   function renderRunDetails() {
-    const details = [
-      `Run ${record.run_id}`,
-      new Date(record.started_at_utc).toLocaleString(),
-      config.bot_name && `bot ${config.bot_name}`,
-      config.tier && `${config.tier} tier`,
-      config.prompt_file ? `prompt ${config.prompt_sha256.slice(0, 8)}` : 'backend prompt',
-    ];
-    if (record.ended_at_utc) {
-      const minutes = (new Date(record.ended_at_utc) - new Date(record.started_at_utc)) / 60000;
-      details.push(minutes < 1 ? 'under a minute' : `${Math.round(minutes)} min`);
-    }
-    document.getElementById('run-details').textContent = details.filter(Boolean).join(' · ');
+    document.getElementById('run-details').textContent = new Date(record.started_at_utc).toLocaleString();
 
     if (results.length < record.total_questions) {
       const notice = document.getElementById('incomplete-notice');
