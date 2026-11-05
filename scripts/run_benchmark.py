@@ -12,10 +12,10 @@ Requests match what the production frontend sends, including the system prompt
 as `custom_prompt`, so a run measures what students would see.
 
 Usage:
-    python3 scripts/run_benchmark.py --endpoint URL --bot-name NAME
-    python3 scripts/run_benchmark.py --endpoint URL --bot-name NAME --tier quick
-    python3 scripts/run_benchmark.py --endpoint URL --bot-name NAME --only-ids EC-10,AM-04
-    python3 scripts/run_benchmark.py --endpoint URL --bot-name NAME --concurrency 1
+    python3 scripts/run_benchmark.py --endpoint URL
+    python3 scripts/run_benchmark.py --endpoint URL --tier quick
+    python3 scripts/run_benchmark.py --endpoint URL --only-ids EC-10,AM-04
+    python3 scripts/run_benchmark.py --endpoint URL --concurrency 1
 """
 
 import argparse
@@ -42,6 +42,9 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_QUESTIONS_FILE = REPO_ROOT / "fetched_site/questions/ross_benchmark.csv"
 DEFAULT_PROMPT_FILE = REPO_ROOT / "christopher-handoff/backend-inputs/SYSTEM_PROMPT.txt"
 DEFAULT_RUNS_DIR = REPO_ROOT / "fetched_site/prompt_effectiveness_runs"
+# The deployed Ross site sends this name. The backend still registers Ross under
+# the project's former name, LE-Chat, and Ross is the only bot the team uses.
+BOT_NAME = "le-chat"
 MAX_CONCURRENT_REQUESTS = 16
 REQUIRED_COLUMNS = {"id", "question"}
 TURN_MARKER = re.compile(r"\bT\d+:\s*")
@@ -242,7 +245,6 @@ def send_turn(endpoint: str, payload: dict, timeout_seconds: float) -> dict:
 def ask_question(
     question: dict[str, str],
     endpoint: str,
-    bot_name: str,
     custom_prompt: str | None,
     timeout_seconds: float,
 ) -> dict:
@@ -254,7 +256,6 @@ def ask_question(
     Args:
         question (dict[str, str]): One row from the question CSV.
         endpoint (str): Chat API URL.
-        bot_name (str): Bot the service should route to.
         custom_prompt (str | None): System prompt to send. None uses the prompt
             configured in the backend.
         timeout_seconds (float): Per-message request timeout.
@@ -273,7 +274,7 @@ def ask_question(
         question_id = f"{safe_code}-{uuid.uuid4()}"
         payload = {
             "action": "question",
-            "bot_name": bot_name,
+            "bot_name": BOT_NAME,
             "httpMethod": "POST",
             "userMessage": message,
             "sessionId": session_id,
@@ -348,11 +349,6 @@ def parse_arguments(argv: list[str] | None) -> argparse.Namespace:
         default=os.environ.get("ROSS_API_ENDPOINT"),
         help="Chat API URL that the deployed Ross site calls (or set ROSS_API_ENDPOINT).",
     )
-    parser.add_argument(
-        "--bot-name",
-        default=os.environ.get("BOT_NAME"),
-        help="Bot name that the deployed Ross site sends (or set BOT_NAME).",
-    )
     parser.add_argument("--questions-file", type=Path, default=DEFAULT_QUESTIONS_FILE)
     parser.add_argument(
         "--tier",
@@ -404,8 +400,6 @@ def main(argv: list[str] | None = None) -> int:
         SystemExit: If the options or the input files are invalid.
     """
     arguments = parse_arguments(argv)
-    if not arguments.bot_name:
-        raise SystemExit("Error: --bot-name or BOT_NAME is required.")
     if not 1 <= arguments.concurrency <= MAX_CONCURRENT_REQUESTS:
         raise SystemExit(f"Error: --concurrency must be between 1 and {MAX_CONCURRENT_REQUESTS}.")
     custom_prompt = None
@@ -440,7 +434,7 @@ def main(argv: list[str] | None = None) -> int:
             "questions_file": to_repo_relative(arguments.questions_file),
             "tier": arguments.tier,
             "only_ids": arguments.only_ids,
-            "bot_name": arguments.bot_name,
+            "bot_name": BOT_NAME,
             "endpoint": arguments.endpoint,
             "prompt_file": None if custom_prompt is None else to_repo_relative(arguments.prompt_file),
             "prompt_sha256": (
@@ -463,7 +457,6 @@ def main(argv: list[str] | None = None) -> int:
                 ask_question,
                 question,
                 arguments.endpoint,
-                arguments.bot_name,
                 custom_prompt,
                 arguments.timeout_seconds,
             ): position

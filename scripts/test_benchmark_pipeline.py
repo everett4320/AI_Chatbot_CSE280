@@ -84,7 +84,7 @@ class BenchmarkPipelineTest(unittest.TestCase):
 
     def ask(self, text, custom_prompt=None):
         return run_benchmark.ask_question(
-            {"id": "Q1", "question": text}, self.endpoint, "ross-test", custom_prompt, 5
+            {"id": "Q1", "question": text}, self.endpoint, custom_prompt, 5
         )
 
     def test_load_questions_accepts_id_and_question_only(self):
@@ -134,7 +134,7 @@ class BenchmarkPipelineTest(unittest.TestCase):
         for endpoint in ["example.com/call", ""]:
             with self.subTest(endpoint), self.assertRaises(SystemExit):
                 run_benchmark.main(
-                    ["--endpoint", endpoint, "--bot-name", "ross-test", "--runs-dir", str(runs_dir)]
+                    ["--endpoint", endpoint, "--runs-dir", str(runs_dir)]
                 )
         self.assertFalse(runs_dir.exists())
 
@@ -145,7 +145,6 @@ class BenchmarkPipelineTest(unittest.TestCase):
                 run_benchmark.main(
                     [
                         "--endpoint", self.endpoint,
-                        "--bot-name", "ross-test",
                         "--runs-dir", str(runs_dir),
                         "--concurrency", concurrency,
                     ]
@@ -170,7 +169,7 @@ class BenchmarkPipelineTest(unittest.TestCase):
         self.ask("hello", custom_prompt="You are Ross.")
         payload = self.server.received_payloads[0]
         self.assertEqual(payload["action"], "question")
-        self.assertEqual(payload["bot_name"], "ross-test")
+        self.assertEqual(payload["bot_name"], "le-chat")
         self.assertEqual(payload["httpMethod"], "POST")
         self.assertEqual(payload["custom_prompt"], "You are Ross.")
         self.assertTrue(payload["sessionId"].startswith("session-"))
@@ -195,7 +194,7 @@ class BenchmarkPipelineTest(unittest.TestCase):
     def test_unreachable_endpoint_is_a_request_failure(self):
         self.server.server_close()
         result = run_benchmark.ask_question(
-            {"id": "Q1", "question": "hello"}, "http://127.0.0.1:9/call", "ross-test", None, 2
+            {"id": "Q1", "question": "hello"}, "http://127.0.0.1:9/call", None, 2
         )
         self.assertEqual(result["status"], "request_failed")
         self.assertIsNone(result["turns"][0]["http_status"])
@@ -255,7 +254,6 @@ class BenchmarkPipelineTest(unittest.TestCase):
         exit_code = run_benchmark.main(
             [
                 "--endpoint", self.endpoint,
-                "--bot-name", "ross-test",
                 "--questions-file", str(questions_path),
                 "--prompt-file", str(prompt_path),
                 "--runs-dir", str(runs_dir),
