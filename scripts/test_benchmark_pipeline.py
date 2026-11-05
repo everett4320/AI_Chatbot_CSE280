@@ -11,6 +11,7 @@ import time
 import unittest
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
+from unittest import mock
 
 import build_benchmark_dashboard
 import run_benchmark
@@ -26,6 +27,9 @@ class FakeChatHandler(BaseHTTPRequestHandler):
         payload = json.loads(self.rfile.read(int(self.headers["Content-Length"])))
         self.server.received_payloads.append(payload)
         message = payload["userMessage"]
+        with self.server.counter_lock:
+            times_seen = self.server.message_counts.get(message, 0) + 1
+            self.server.message_counts[message] = times_seen
         if "slow" in message:
             # Count how many slow requests are open at once to detect concurrent sending.
             with self.server.counter_lock:
@@ -44,6 +48,9 @@ class FakeChatHandler(BaseHTTPRequestHandler):
         if "http500" in message:
             status_code = 500
             body = b"internal server error"
+        elif "flaky" in message and times_seen == 1:
+            status_code = 503
+            body = b"service unavailable"
         elif "apierror" in message:
             body = json.dumps({"error": "bot not found"}).encode("utf-8")
         elif "notjson" in message:
@@ -69,6 +76,7 @@ class BenchmarkPipelineTest(unittest.TestCase):
         self.server.counter_lock = threading.Lock()
         self.server.open_requests = 0
         self.server.peak_open_requests = 0
+        self.server.message_counts = {}
         threading.Thread(target=self.server.serve_forever, daemon=True).start()
         self.addCleanup(self.server.server_close)
         self.addCleanup(self.server.shutdown)
@@ -76,6 +84,10 @@ class BenchmarkPipelineTest(unittest.TestCase):
         temporary_directory = tempfile.TemporaryDirectory()
         self.addCleanup(temporary_directory.cleanup)
         self.temporary_path = Path(temporary_directory.name)
+        # Retries keep their real count but skip the pause, so the tests stay fast.
+        retry_delay_patch = mock.patch.object(run_benchmark, "RETRY_DELAY_SECONDS", 0)
+        retry_delay_patch.start()
+        self.addCleanup(retry_delay_patch.stop)
 
     def write_csv(self, text, encoding="utf-8"):
         questions_path = self.temporary_path / "questions.csv"
@@ -198,6 +210,29 @@ class BenchmarkPipelineTest(unittest.TestCase):
         )
         self.assertEqual(result["status"], "request_failed")
         self.assertIsNone(result["turns"][0]["http_status"])
+        self.assertEqual(result["turns"][0]["attempts"], run_benchmark.MAX_ATTEMPTS_PER_MESSAGE)
+
+    def test_temporary_failure_is_retried_until_it_succeeds(self):
+        result = self.ask("flaky")
+        self.assertEqual(result["status"], "transport_ok")
+        self.assertEqual(result["turns"][0]["attempts"], 2)
+        self.assertEqual(result["retries"], 1)
+        first_payload, second_payload = self.server.received_payloads
+        self.assertEqual(first_payload["sessionId"], second_payload["sessionId"])
+        self.assertNotEqual(first_payload["questionId"], second_payload["questionId"])
+
+    def test_lasting_server_error_stops_at_the_attempt_limit(self):
+        result = self.ask("http500")
+        self.assertEqual(result["status"], "http_error")
+        self.assertEqual(result["turns"][0]["attempts"], run_benchmark.MAX_ATTEMPTS_PER_MESSAGE)
+        self.assertEqual(len(self.server.received_payloads), run_benchmark.MAX_ATTEMPTS_PER_MESSAGE)
+
+    def test_errors_the_service_reports_are_not_retried(self):
+        for message in ["apierror", "notjson", "noreply"]:
+            with self.subTest(message):
+                result = self.ask(message)
+                self.assertEqual(result["turns"][0]["attempts"], 1)
+                self.assertEqual(self.server.message_counts[message], 1)
 
     def test_multi_turn_question_shares_a_session(self):
         result = self.ask("T1: first T2: second")
@@ -212,7 +247,8 @@ class BenchmarkPipelineTest(unittest.TestCase):
 
     def test_failed_turn_ends_the_question(self):
         result = self.ask("T1: http500 T2: second")
-        self.assertEqual(len(self.server.received_payloads), 1)
+        sent_messages = [payload["userMessage"] for payload in self.server.received_payloads]
+        self.assertEqual(sent_messages, ["http500"] * run_benchmark.MAX_ATTEMPTS_PER_MESSAGE)
         self.assertEqual(result["status"], "http_error")
 
     def test_each_question_gets_its_own_session(self):

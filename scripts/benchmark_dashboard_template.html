@@ -254,9 +254,11 @@
       children.push(makeElement('div', { className: 'reply-text', textContent: turn.response }));
     }
     if (turn.error) {
+      // Runs recorded before retries were added have no attempts field.
+      const attemptsNote = turn.attempts > 1 ? ` (tried ${turn.attempts} times)` : '';
       children.push(makeElement('div', { className: 'error-text' }, [
         makeElement('span', { className: 'error-mark', textContent: '!', ariaHidden: 'true' }),
-        turn.error,
+        turn.error + attemptsNote,
       ]));
     }
     return makeElement('div', { className: 'turn' }, children);

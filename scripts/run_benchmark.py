@@ -8,6 +8,10 @@ consecutive messages in one session.
 Up to 16 questions are sent at the same time. The messages of one multi-turn
 question are still sent one after another, because each depends on the last.
 
+A message that fails with a network error, a timeout, HTTP 429 or a 5xx status
+is sent again, up to 3 attempts in total. Errors the service reports in its JSON
+body, malformed replies and other 4xx statuses are not retried.
+
 Requests match what the production frontend sends, including the system prompt
 as `custom_prompt`, so a run measures what students would see.
 
@@ -51,6 +55,9 @@ DEFAULT_RUNS_DIR = REPO_ROOT / "fetched_site/prompt_effectiveness_runs"
 DEFAULT_ENDPOINT = "https://8lyrpsdez5.execute-api.us-east-1.amazonaws.com/call"
 BOT_NAME = "le-chat"
 MAX_CONCURRENT_REQUESTS = 16
+MAX_ATTEMPTS_PER_MESSAGE = 3
+RETRY_DELAY_SECONDS = 2
+RETRYABLE_HTTP_STATUSES = {429, 500, 502, 503, 504}
 REQUIRED_COLUMNS = {"id", "question"}
 TURN_MARKER = re.compile(r"\bT\d+:\s*")
 ERROR_SNIPPET_LENGTH = 300
@@ -258,17 +265,23 @@ def ask_question(
     Several questions can be asked at once from different threads, because each
     call uses its own session and shares no state with the others.
 
+    A message that fails in a way that may be temporary (no response, a timeout,
+    HTTP 429 or a 5xx status) is sent again after a growing pause, up to
+    `MAX_ATTEMPTS_PER_MESSAGE` attempts. Each attempt gets a new question ID.
+
     Args:
         question (dict[str, str]): One row from the question CSV.
         endpoint (str): Chat API URL.
         custom_prompt (str | None): System prompt to send. None uses the prompt
             configured in the backend.
-        timeout_seconds (float): Per-message request timeout.
+        timeout_seconds (float): Per-attempt request timeout.
 
     Returns:
         dict: The CSV row plus `session_id`, `status`, `error`, `latency_seconds`
-        (total across turns) and `turns` (one record per message sent). A failed
-        message ends the question, so `status` and `error` describe the last turn.
+        (total of the final attempts), `retries` (extra attempts across all
+        messages) and `turns` (one record per message, including its `attempts`).
+        A failed message ends the question, so `status` and `error` describe the
+        last turn.
     """
     # Random UUIDs, as the frontend uses, keep questions that start in the same
     # second from sharing a session.
@@ -276,22 +289,31 @@ def ask_question(
     safe_code = re.sub(r"[^A-Za-z0-9_-]", "", question["id"]) or "question"
     turns = []
     for message in split_into_turns(question["question"]):
-        question_id = f"{safe_code}-{uuid.uuid4()}"
-        payload = {
-            "action": "question",
-            "bot_name": BOT_NAME,
-            "httpMethod": "POST",
-            "userMessage": message,
-            "sessionId": session_id,
-            "questionId": question_id,
-        }
-        if custom_prompt is not None:
-            payload["custom_prompt"] = custom_prompt
+        for attempt in range(1, MAX_ATTEMPTS_PER_MESSAGE + 1):
+            question_id = f"{safe_code}-{uuid.uuid4()}"
+            payload = {
+                "action": "question",
+                "bot_name": BOT_NAME,
+                "httpMethod": "POST",
+                "userMessage": message,
+                "sessionId": session_id,
+                "questionId": question_id,
+            }
+            if custom_prompt is not None:
+                payload["custom_prompt"] = custom_prompt
 
-        turn = send_turn(endpoint, payload, timeout_seconds)
+            turn = send_turn(endpoint, payload, timeout_seconds)
+            may_succeed_on_retry = turn["status"] == "request_failed" or (
+                turn["status"] == "http_error" and turn["http_status"] in RETRYABLE_HTTP_STATUSES
+            )
+            if not may_succeed_on_retry or attempt == MAX_ATTEMPTS_PER_MESSAGE:
+                break
+            # Wait longer before each new attempt so an overloaded service can recover.
+            time.sleep(RETRY_DELAY_SECONDS * 2 ** (attempt - 1))
+
         # The frontend adopts a session ID returned by the service, so later turns do too.
         session_id = turn.pop("session_id") or session_id
-        turns.append({"question": message, "question_id": question_id, **turn})
+        turns.append({"question": message, "question_id": question_id, "attempts": attempt, **turn})
         if turn["status"] != "transport_ok":
             break
 
@@ -301,6 +323,7 @@ def ask_question(
         "status": turns[-1]["status"],
         "error": turns[-1]["error"],
         "latency_seconds": round(sum(turn["latency_seconds"] for turn in turns), 3),
+        "retries": sum(turn["attempts"] - 1 for turn in turns),
         "turns": turns,
     }
 
@@ -488,9 +511,10 @@ def main(argv: list[str] | None = None) -> int:
                     results_by_position[position] for position in sorted(results_by_position)
                 ]
                 write_run_record(run_record_path, run_record)
+                retry_note = f" after {result['retries']} retries" if result["retries"] else ""
                 print(
                     f"[{len(results_by_position)}/{len(selected)}] {result['id']} {result['status']} "
-                    f"{result['latency_seconds']:.1f}s"
+                    f"{result['latency_seconds']:.1f}s{retry_note}"
                 )
 
     if not interrupted:
