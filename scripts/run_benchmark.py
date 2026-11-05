@@ -5,19 +5,15 @@ own session, saves the replies in a new run directory, and writes a standalone
 HTML dashboard next to them. A question written as "T1: ... T2: ..." is sent as
 consecutive messages in one session.
 
-Up to 16 questions are sent at the same time. The messages of one multi-turn
-question are still sent one after another, because each depends on the last.
-
-A message that fails with a network error, a timeout, HTTP 429 or a 5xx status
-is sent again, up to 3 attempts in total. Errors the service reports in its JSON
-body, malformed replies and other 4xx statuses are not retried.
-
 Before sending anything, the script reads the chat API URL, the bot name and the
 system prompt from the deployed site at https://ross.cc.lehigh.edu/, so every
 request is the one the site sends when someone asks the same question in a new
 chat. The knowledge base lives in the backend, so both use the same one. A run
-with --prompt-file, --no-custom-prompt or --endpoint is marked as not matching
-the site.
+with --prompt-file or --endpoint is marked as not matching the site.
+
+Up to 16 questions are sent at the same time. A message that fails with a
+network error, a timeout, HTTP 429 or a 5xx status is sent again, up to 3
+attempts in total.
 
 Usage:
     python3 scripts/run_benchmark.py
@@ -42,19 +38,19 @@ import uuid
 from concurrent.futures import FIRST_COMPLETED, ThreadPoolExecutor, wait
 from datetime import datetime, timezone
 from pathlib import Path
-from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
+from zoneinfo import ZoneInfo
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 DASHBOARD_TEMPLATE_PATH = Path(__file__).resolve().parent / "benchmark_dashboard_template.html"
 RUN_RECORD_PLACEHOLDER = "__RUN_RECORD_JSON__"
 DEFAULT_QUESTIONS_FILE = REPO_ROOT / "fetched_site/questions/ross_benchmark.csv"
-# Only compared with the site's prompt, so the run can say whether the two differ.
-REPO_PROMPT_FILE = REPO_ROOT / "christopher-handoff/backend-inputs/SYSTEM_PROMPT.txt"
-DEFAULT_RUNS_DIR = REPO_ROOT / "fetched_site/test_prompt"
-DEFAULT_SITE_URL = "https://ross.cc.lehigh.edu/"
+RUNS_DIR = REPO_ROOT / "fetched_site/test_prompt"
+SITE_URL = "https://ross.cc.lehigh.edu/"
 # Run folders are named by their start time in US Eastern time, such as 11-05_15-18-01.
-RUN_FOLDER_TIME_ZONE = "America/New_York"
+RUN_FOLDER_TIME_ZONE = ZoneInfo("America/New_York")
 RUN_FOLDER_TIME_FORMAT = "%m-%d_%H-%M-%S"
+# Matches the frontend, which gives up on a reply after 60 seconds.
+REQUEST_TIMEOUT_SECONDS = 60
 MAX_CONCURRENT_REQUESTS = 16
 MAX_ATTEMPTS_PER_MESSAGE = 3
 RETRY_DELAY_SECONDS = 2
@@ -69,15 +65,13 @@ UTC_TIMESTAMP_FORMAT = "%Y-%m-%dT%H:%M:%SZ"
 # The site loads a few dozen scripts at most; the limit stops a runaway crawl.
 MAX_SITE_SCRIPT_FILES = 40
 SITE_SCRIPT_REFERENCE = re.compile(r"(?:/assets/|\./)([A-Za-z0-9_.-]+\.js)\b")
-SITE_PROMPT_LITERAL = re.compile(r'custom_prompt:\s*(`(?:[^`\\]|\\[\s\S])*`|"(?:[^"\\]|\\.)*")')
+SITE_PROMPT_LITERAL = re.compile(r"custom_prompt:\s*`((?:[^`\\]|\\[\s\S])*)`")
 SITE_ENDPOINT_LITERAL = re.compile(
     r'"(https://[A-Za-z0-9.-]+\.execute-api\.[A-Za-z0-9-]+\.amazonaws\.com/[^"]*)"'
 )
 # The frontend trims its configured bot name, which the build turns into "name".trim().
 SITE_BOT_NAME_LITERAL = re.compile(r'"([^"\\]+)"\.trim\(\)')
 SITE_REQUEST_HEADERS = {"User-Agent": "ross-benchmark"}
-JAVASCRIPT_ESCAPE = re.compile(r"\\(u\{[0-9A-Fa-f]+\}|u[0-9A-Fa-f]{4}|x[0-9A-Fa-f]{2}|\r\n|[\s\S])")
-SINGLE_CHARACTER_ESCAPES = {"n": "\n", "t": "\t", "r": "\r", "b": "\b", "f": "\f", "v": "\v", "0": "\0"}
 
 
 def load_questions(questions_path: Path) -> list[dict[str, str]]:
@@ -163,15 +157,7 @@ def select_questions(
 
 
 def split_into_turns(question_text: str) -> list[str]:
-    """Split a multi-turn question into the messages to send in order.
-
-    Args:
-        question_text (str): Question text. Text starting with "T1:" holds
-            several messages, each introduced by a marker such as "T2:".
-
-    Returns:
-        list[str]: The messages to send. Holds one item for an ordinary question.
-    """
+    """Split "T1: ... T2: ..." into its messages; any other text is one message."""
     if not question_text.startswith("T1:"):
         return [question_text]
     turns = [turn.strip() for turn in TURN_MARKER.split(question_text)]
@@ -274,7 +260,7 @@ def ask_question(
     question: dict[str, str],
     endpoint: str,
     bot_name: str,
-    custom_prompt: str | None,
+    custom_prompt: str,
     timeout_seconds: float,
 ) -> dict:
     """Send every message of one question in a single new session.
@@ -290,8 +276,7 @@ def ask_question(
         question (dict[str, str]): One row from the question CSV.
         endpoint (str): Chat API URL.
         bot_name (str): Bot the service should route to.
-        custom_prompt (str | None): System prompt to send. None uses the prompt
-            configured in the backend.
+        custom_prompt (str): System prompt to send with every message.
         timeout_seconds (float): Per-attempt request timeout.
 
     Returns:
@@ -316,10 +301,8 @@ def ask_question(
                 "userMessage": message,
                 "sessionId": session_id,
                 "questionId": question_id,
+                "custom_prompt": custom_prompt,
             }
-            if custom_prompt is not None:
-                payload["custom_prompt"] = custom_prompt
-
             turn = send_turn(endpoint, payload, timeout_seconds)
             may_succeed_on_retry = turn["status"] == "request_failed" or (
                 turn["status"] == "http_error" and turn["http_status"] in RETRYABLE_HTTP_STATUSES
@@ -346,65 +329,14 @@ def ask_question(
     }
 
 
-def decode_javascript_escape(match: re.Match) -> str:
-    """Return the character that one JavaScript escape sequence stands for.
-
-    Args:
-        match (re.Match): A match of `JAVASCRIPT_ESCAPE`; group 1 is the text after
-            the backslash.
-
-    Returns:
-        str: The decoded character, or an empty string for a line continuation.
-    """
-    escape = match.group(1)
-    if escape in ("\n", "\r", "\r\n"):
-        return ""
-    if escape.startswith("u{"):
-        return chr(int(escape[2:-1], 16))
-    if escape[0] in "ux" and len(escape) > 1:
-        return chr(int(escape[1:], 16))
-    return SINGLE_CHARACTER_ESCAPES.get(escape, escape)
-
-
-def decode_javascript_string(literal: str) -> str:
-    """Turn a JavaScript string or template literal into the text it holds.
-
-    Args:
-        literal (str): The literal as written in the bundle, including its
-            surrounding double quotes or backticks.
-
-    Returns:
-        str: The text value of the literal.
-
-    Raises:
-        ValueError: If a template literal contains a `${...}` expression, whose
-            value cannot be known without running the site's code.
-    """
-    body = literal[1:-1]
-    if literal.startswith("`") and re.search(r"(?<!\\)\$\{", body):
-        raise ValueError("The site's prompt contains a ${...} expression and cannot be read as plain text.")
-    return JAVASCRIPT_ESCAPE.sub(decode_javascript_escape, body)
-
-
-def fetch_site_text(url: str, timeout_seconds: float) -> str:
-    """Download one page or script from the deployed site as text.
-
-    Args:
-        url (str): Absolute URL to fetch.
-        timeout_seconds (float): Seconds to wait before giving up.
-
-    Returns:
-        str: The response body decoded as UTF-8.
-
-    Raises:
-        OSError: If the request fails or the server returns an error status.
-    """
+def fetch_site_text(url: str) -> str:
+    """Download one page or script from the deployed site as text."""
     request = urllib.request.Request(url, headers=SITE_REQUEST_HEADERS)
-    with urllib.request.urlopen(request, timeout=timeout_seconds) as response:
+    with urllib.request.urlopen(request, timeout=REQUEST_TIMEOUT_SECONDS) as response:
         return response.read().decode("utf-8", errors="replace")
 
 
-def read_live_site_settings(site_url: str, timeout_seconds: float) -> dict[str, str]:
+def read_live_site_settings(site_url: str) -> dict[str, str]:
     """Read the chat API URL, bot name and system prompt from the deployed site.
 
     The site writes these values into its JavaScript at build time, so they can
@@ -414,9 +346,7 @@ def read_live_site_settings(site_url: str, timeout_seconds: float) -> dict[str, 
     stops the run instead of silently sending something else.
 
     Args:
-        site_url (str): Address of the deployed site, such as
-            https://ross.cc.lehigh.edu/.
-        timeout_seconds (float): Per-request timeout for each download.
+        site_url (str): Address of the deployed site, ending in "/".
 
     Returns:
         dict[str, str]: `endpoint`, `bot_name` and `custom_prompt` as the site
@@ -427,10 +357,7 @@ def read_live_site_settings(site_url: str, timeout_seconds: float) -> dict[str, 
         ValueError: If any of the three values is missing or appears more than
             once with different contents.
     """
-    if not site_url.endswith("/"):
-        site_url += "/"
-    page = fetch_site_text(site_url, timeout_seconds)
-    pending_scripts = list(dict.fromkeys(SITE_SCRIPT_REFERENCE.findall(page)))
+    pending_scripts = list(dict.fromkeys(SITE_SCRIPT_REFERENCE.findall(fetch_site_text(site_url))))
     fetched_scripts = set()
     script_texts = []
     while pending_scripts and len(fetched_scripts) < MAX_SITE_SCRIPT_FILES:
@@ -438,7 +365,7 @@ def read_live_site_settings(site_url: str, timeout_seconds: float) -> dict[str, 
         if script_name in fetched_scripts:
             continue
         fetched_scripts.add(script_name)
-        script_text = fetch_site_text(urllib.parse.urljoin(site_url, f"assets/{script_name}"), timeout_seconds)
+        script_text = fetch_site_text(urllib.parse.urljoin(site_url, f"assets/{script_name}"))
         script_texts.append(script_text)
         pending_scripts.extend(
             name for name in SITE_SCRIPT_REFERENCE.findall(script_text) if name not in fetched_scripts
@@ -446,7 +373,9 @@ def read_live_site_settings(site_url: str, timeout_seconds: float) -> dict[str, 
     bundle = "\n".join(script_texts)
 
     found_values = {
-        "system prompt": {decode_javascript_string(literal) for literal in SITE_PROMPT_LITERAL.findall(bundle)},
+        # The build writes the prompt as a template literal with real line breaks,
+        # so the only escapes are a backslash before a backtick, "$" or "\".
+        "system prompt": {re.sub(r"\\([\s\S])", r"\1", body) for body in SITE_PROMPT_LITERAL.findall(bundle)},
         "chat API URL": set(SITE_ENDPOINT_LITERAL.findall(bundle)),
         "bot name": set(SITE_BOT_NAME_LITERAL.findall(bundle)),
     }
@@ -464,22 +393,7 @@ def read_live_site_settings(site_url: str, timeout_seconds: float) -> dict[str, 
 
 
 def build_dashboard(run_record_path: Path) -> Path:
-    """Write `dashboard.html` next to a run record.
-
-    The data is embedded in the page, so the file opens by double-clicking and can
-    be sent to teammates without a server or the run directory.
-
-    Args:
-        run_record_path (Path): A `run_record.json` written by this script.
-
-    Returns:
-        Path: The dashboard file. An existing dashboard for the run is replaced.
-
-    Raises:
-        OSError: If the run record or template cannot be read, or the output
-            cannot be written.
-        ValueError: If the run record is not valid JSON.
-    """
+    """Write `dashboard.html`, with the run's data embedded, next to the run record."""
     run_record = json.loads(run_record_path.read_text(encoding="utf-8"))
     # Escaping "<" stops a bot reply containing "</script>" from ending the data block.
     embedded_record = json.dumps(run_record, ensure_ascii=False).replace("<", "\\u003c")
@@ -492,31 +406,14 @@ def build_dashboard(run_record_path: Path) -> Path:
 
 
 def write_run_record(run_record_path: Path, run_record: dict) -> None:
-    """Save the run record, replacing the file in one step.
-
-    The record is rewritten after each question, so stopping a long run keeps
-    every answer received so far and never leaves a half-written file.
-
-    Args:
-        run_record_path (Path): Destination file.
-        run_record (dict): JSON-serializable run record.
-    """
+    """Save the run record in one step, so stopping a run never leaves a half-written file."""
     temporary_path = run_record_path.with_suffix(".tmp")
     temporary_path.write_text(json.dumps(run_record, indent=2, ensure_ascii=False), encoding="utf-8")
     os.replace(temporary_path, run_record_path)
 
 
 def to_repo_relative(path: Path) -> str:
-    """Return `path` relative to the repository when possible.
-
-    Keeps local home directories out of run records and dashboards that get shared.
-
-    Args:
-        path (Path): Any file path.
-
-    Returns:
-        str: The repository-relative path, or the original path if it lies outside.
-    """
+    """Return `path` relative to the repository, keeping home directories out of shared records."""
     resolved_path = path.resolve()
     if resolved_path.is_relative_to(REPO_ROOT):
         return str(resolved_path.relative_to(REPO_ROOT))
@@ -524,25 +421,9 @@ def to_repo_relative(path: Path) -> str:
 
 
 def parse_arguments(argv: list[str] | None) -> argparse.Namespace:
-    """Parse command-line options.
-
-    Args:
-        argv (list[str] | None): Arguments to parse. None reads `sys.argv`.
-
-    Returns:
-        argparse.Namespace: The parsed options.
-    """
+    """Parse command-line options; None reads `sys.argv`."""
     parser = argparse.ArgumentParser(
         description="Run the Ross benchmark and build a results dashboard."
-    )
-    parser.add_argument(
-        "--site-url",
-        default=DEFAULT_SITE_URL,
-        help="Deployed Ross site whose chat API URL, bot name and prompt the run copies.",
-    )
-    parser.add_argument(
-        "--endpoint",
-        help="Send to this chat API URL instead of the site's. Replies then may not match the site.",
     )
     parser.add_argument("--questions-file", type=Path, default=DEFAULT_QUESTIONS_FILE)
     parser.add_argument(
@@ -552,23 +433,14 @@ def parse_arguments(argv: list[str] | None) -> argparse.Namespace:
         help="quick: rows labeled Quick. extensive: every question (default).",
     )
     parser.add_argument("--only-ids", help="Comma-separated question IDs, such as EC-10,AM-04.")
-    prompt_options = parser.add_mutually_exclusive_group()
-    prompt_options.add_argument(
+    parser.add_argument(
         "--prompt-file",
         type=Path,
         help="Send this local prompt instead of the site's, for example to try an edited prompt.",
     )
-    prompt_options.add_argument(
-        "--no-custom-prompt",
-        action="store_true",
-        help="Send no custom_prompt, which tests the prompt configured in the backend.",
-    )
-    parser.add_argument("--runs-dir", type=Path, default=DEFAULT_RUNS_DIR)
     parser.add_argument(
-        "--timeout-seconds",
-        type=float,
-        default=60,
-        help="Seconds to wait for a reply. The default matches the frontend, which gives up at 60.",
+        "--endpoint",
+        help="Send to this chat API URL instead of the site's. Replies then may not match the site.",
     )
     parser.add_argument(
         "--concurrency",
@@ -586,10 +458,10 @@ def main(argv: list[str] | None = None) -> int:
     """Run the benchmark from start to finish.
 
     The chat API URL, bot name and prompt are read from the deployed site first,
-    unless options replace them. Questions are sent on up to `--concurrency` threads. The run record is saved
-    after every finished question and keeps the CSV order. Ctrl-C skips the
-    questions not yet sent, waits for the ones in progress (at most the request
-    timeout per message), and still builds the dashboard.
+    unless options replace them. Questions are sent on up to `--concurrency`
+    threads. The run record is saved after every finished question and keeps the
+    CSV order. Ctrl-C skips the questions not yet sent, waits for the ones in
+    progress, and still builds the dashboard.
 
     Args:
         argv (list[str] | None): Command-line arguments. None reads `sys.argv`.
@@ -613,7 +485,7 @@ def main(argv: list[str] | None = None) -> int:
         local_prompt = None
         if arguments.prompt_file is not None:
             local_prompt = arguments.prompt_file.read_text(encoding="utf-8")
-        site_settings = read_live_site_settings(arguments.site_url, arguments.timeout_seconds)
+        site_settings = read_live_site_settings(SITE_URL)
     except (ValueError, OSError) as e:
         raise SystemExit(f"Error: {e}") from e
     if not selected:
@@ -621,39 +493,26 @@ def main(argv: list[str] | None = None) -> int:
 
     endpoint = arguments.endpoint or site_settings["endpoint"]
     bot_name = site_settings["bot_name"]
-    if arguments.no_custom_prompt:
-        custom_prompt = None
-        prompt_source = None
-        print("Prompt: none sent, so the backend uses its own. Replies will not match the site.")
-    elif local_prompt is not None:
+    if local_prompt is None:
+        custom_prompt = site_settings["custom_prompt"]
+        prompt_source = "site"
+        print(f"Prompt and bot name ({bot_name}): read from {SITE_URL}")
+    else:
         custom_prompt = local_prompt
         prompt_source = to_repo_relative(arguments.prompt_file)
         print(f"Prompt: {prompt_source}, a local file. Replies will not match the site.")
-    else:
-        custom_prompt = site_settings["custom_prompt"]
-        prompt_source = "site"
-        repo_prompt = REPO_PROMPT_FILE.read_text(encoding="utf-8") if REPO_PROMPT_FILE.is_file() else ""
-        comparison = "same as" if custom_prompt.strip() == repo_prompt.strip() else "different from"
-        print(f"Prompt: the one {arguments.site_url} sends ({comparison} {to_repo_relative(REPO_PROMPT_FILE)})")
     if arguments.endpoint is not None:
         print(f"Endpoint: {endpoint}, set by --endpoint. Replies may not match the site.")
-    print(f"Bot name: {bot_name}, read from {arguments.site_url}")
 
     started_at = datetime.now(timezone.utc)
-    try:
-        folder_time_zone = ZoneInfo(RUN_FOLDER_TIME_ZONE)
-    except ZoneInfoNotFoundError:
-        # Windows has no time zone database unless the tzdata package is installed.
-        # The team works in Eastern time, so the computer's own clock is used instead.
-        folder_time_zone = None
-    base_run_id = started_at.astimezone(folder_time_zone).strftime(RUN_FOLDER_TIME_FORMAT)
+    base_run_id = started_at.astimezone(RUN_FOLDER_TIME_ZONE).strftime(RUN_FOLDER_TIME_FORMAT)
     run_id = base_run_id
     copy_number = 2
     # Two runs started in the same second get distinct folders.
-    while (arguments.runs_dir / run_id).exists():
+    while (RUNS_DIR / run_id).exists():
         run_id = f"{base_run_id}_{copy_number}"
         copy_number += 1
-    run_dir = arguments.runs_dir / run_id
+    run_dir = RUNS_DIR / run_id
     run_dir.mkdir(parents=True)
 
     run_record_path = run_dir / "run_record.json"
@@ -666,14 +525,12 @@ def main(argv: list[str] | None = None) -> int:
             "questions_file": to_repo_relative(arguments.questions_file),
             "tier": arguments.tier,
             "only_ids": arguments.only_ids,
-            "site_url": arguments.site_url,
+            "site_url": SITE_URL,
             "bot_name": bot_name,
             "endpoint": endpoint,
             "endpoint_source": "site" if arguments.endpoint is None else "command line",
             "prompt_source": prompt_source,
-            "prompt_sha256": (
-                None if custom_prompt is None else hashlib.sha256(custom_prompt.encode("utf-8")).hexdigest()
-            ),
+            "prompt_sha256": hashlib.sha256(custom_prompt.encode("utf-8")).hexdigest(),
             # True only when the run sent exactly what the site sends.
             "matches_site": prompt_source == "site" and arguments.endpoint is None,
         },
@@ -681,21 +538,13 @@ def main(argv: list[str] | None = None) -> int:
     }
     write_run_record(run_record_path, run_record)
 
-    print(
-        f"Sending {len(selected)} questions to {endpoint}, "
-        f"up to {arguments.concurrency} at a time"
-    )
+    print(f"Sending {len(selected)} questions to {endpoint}, up to {arguments.concurrency} at a time")
     results_by_position = {}
     interrupted = False
     with ThreadPoolExecutor(max_workers=arguments.concurrency) as executor:
         future_positions = {
             executor.submit(
-                ask_question,
-                question,
-                endpoint,
-                bot_name,
-                custom_prompt,
-                arguments.timeout_seconds,
+                ask_question, question, endpoint, bot_name, custom_prompt, REQUEST_TIMEOUT_SECONDS
             ): position
             for position, question in enumerate(selected)
         }

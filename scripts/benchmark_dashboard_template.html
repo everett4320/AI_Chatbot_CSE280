@@ -121,7 +121,7 @@
   }
   table { width: 100%; border-collapse: collapse; }
   th {
-    padding: 0;
+    padding: 10px 12px;
     border-bottom: 1px solid var(--baseline);
     text-align: left;
     font-size: 12px;
@@ -129,16 +129,6 @@
     color: var(--text-secondary);
     white-space: nowrap;
   }
-  th button {
-    width: 100%;
-    padding: 10px 12px;
-    border: 0;
-    background: none;
-    text-align: inherit;
-    font-weight: inherit;
-    cursor: pointer;
-  }
-  th button:hover { background: var(--hover-wash); }
   td { padding: 9px 12px; border-bottom: 1px solid var(--gridline); vertical-align: top; }
   .question-row { cursor: pointer; }
   .question-row:hover { background: var(--hover-wash); }
@@ -250,16 +240,16 @@
     { key: 'category', label: 'Category', getValue: (result) => result.category || '' },
   ];
   const COLUMNS = [
-    { key: 'id', label: 'ID', getSortValue: (result) => result.id },
-    { key: 'question', label: 'Question', getSortValue: (result) => result.question },
-    { key: 'category', label: 'Category', narrowHidden: true, getSortValue: (result) => result.category || '' },
+    { label: 'ID' },
+    { label: 'Question' },
+    { label: 'Category', narrowHidden: true },
   ];
   const failedResults = results.filter((result) => result.status !== 'transport_ok');
   const INLINE_MARKDOWN = /\*\*([^*]+)\*\*|`([^`]+)`|\[([^\]]+)\]\(([^)\s]+)\)|\*([^*\s][^*]*)\*/g;
   const MARKDOWN_HEADING = /^(#{1,6})\s+(.*)$/;
   const MARKDOWN_LIST_ITEM = /^(\s*)([-*•]|\d+[.)])\s+(.*)$/;
 
-  const state = { filters: {}, search: '', sortKey: null, sortDescending: false, openIds: new Set(), onlyFailed: false };
+  const state = { filters: {}, search: '', openIds: new Set(), onlyFailed: false };
 
   function makeElement(tag, properties = {}, children = []) {
     const element = document.createElement(tag);
@@ -270,7 +260,7 @@
 
   function visibleResults() {
     const search = state.search.trim().toLowerCase();
-    const matching = results.filter((result) => {
+    return results.filter((result) => {
       const matchesFilters = FILTER_DEFINITIONS.every((definition) => {
         const selected = state.filters[definition.key];
         return !selected || definition.getValue(result) === selected;
@@ -278,32 +268,12 @@
       const matchesFailureFilter = !state.onlyFailed || result.status !== 'transport_ok';
       return matchesFilters && matchesFailureFilter && (!search || `${result.id} ${result.question}`.toLowerCase().includes(search));
     });
-    const column = COLUMNS.find((candidate) => candidate.key === state.sortKey);
-    if (column) {
-      const direction = state.sortDescending ? -1 : 1;
-      matching.sort((first, second) => (
-        String(column.getSortValue(first)).localeCompare(String(column.getSortValue(second)), undefined, { numeric: true }) * direction
-      ));
-    }
-    return matching;
   }
 
   function renderTableHead() {
-    document.getElementById('table-head').replaceChildren(...COLUMNS.map((column) => {
-      const arrow = state.sortKey === column.key ? (state.sortDescending ? ' ↓' : ' ↑') : '';
-      const button = makeElement('button', { type: 'button', textContent: column.label + arrow });
-      button.addEventListener('click', () => {
-        state.sortDescending = state.sortKey === column.key ? !state.sortDescending : false;
-        state.sortKey = column.key;
-        renderTableHead();
-        renderTable();
-      });
-      const heading = makeElement('th', { scope: 'col', className: column.narrowHidden ? 'hide-narrow' : '' }, [button]);
-      if (state.sortKey === column.key) {
-        heading.setAttribute('aria-sort', state.sortDescending ? 'descending' : 'ascending');
-      }
-      return heading;
-    }));
+    document.getElementById('table-head').replaceChildren(...COLUMNS.map((column) => (
+      makeElement('th', { scope: 'col', className: column.narrowHidden ? 'hide-narrow' : '', textContent: column.label })
+    )));
   }
 
   function appendInlineMarkdown(parent, text) {
@@ -542,8 +512,7 @@
 
     if (config.matches_site === false) {
       const differences = [];
-      if (config.prompt_source === null) differences.push('sent no prompt');
-      else if (config.prompt_source !== 'site') differences.push(`used the local prompt ${config.prompt_source}`);
+      if (config.prompt_source !== 'site') differences.push(`used the local prompt ${config.prompt_source}`);
       if (config.endpoint_source !== 'site') differences.push(`sent to ${config.endpoint}`);
       const notice = document.getElementById('settings-notice');
       notice.textContent = `This run ${differences.join(' and ')} instead of what ${config.site_url} sends, so its replies may differ from the site's.`;

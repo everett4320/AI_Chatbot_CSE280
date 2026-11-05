@@ -20,13 +20,15 @@ SLOW_REPLY_SECONDS = 0.3
 SITE_ENDPOINT = "https://abc123.execute-api.us-east-1.amazonaws.com/call/"
 SITE_PROMPT = 'You are Ross.\nCite `sources` and say "hi".'
 # A miniature build of the deployed site: the page loads one script, which loads
-# the chunk that holds the chat settings, written the way the real build writes them.
+# the chunk that holds the chat settings, written the way the real build writes them,
+# with the prompt as a template literal holding real line breaks and escaped backticks.
 FAKE_SITE_FILES = {
     "/": '<html><link rel="modulepreload" href="/assets/entry.js"></html>',
     "/assets/entry.js": 'import("./home.js");',
     "/assets/home.js": (
         f'const a="{SITE_ENDPOINT}",b="le-chat".trim();'
-        r'''function q(e){return{action:"question",bot_name:b,custom_prompt:`You are Ross.\nCite \`sources\` and say "hi".`}}'''
+        'function q(e){return{action:"question",bot_name:b,custom_prompt:`You are Ross.\n'
+        r'''Cite \`sources\` and say "hi".`}}'''
     ),
     "/broken/": "<html>No scripts here.</html>",
 }
@@ -104,17 +106,21 @@ class BenchmarkPipelineTest(unittest.TestCase):
         temporary_directory = tempfile.TemporaryDirectory()
         self.addCleanup(temporary_directory.cleanup)
         self.temporary_path = Path(temporary_directory.name)
-        # Retries keep their real count but skip the pause, so the tests stay fast.
-        retry_delay_patch = mock.patch.object(run_benchmark, "RETRY_DELAY_SECONDS", 0)
-        retry_delay_patch.start()
-        self.addCleanup(retry_delay_patch.stop)
+        self.runs_dir = self.temporary_path / "runs"
+        # Read settings from the fake site, write results to a temporary folder, and
+        # keep the real retry count without its pauses so the tests stay fast.
+        replacements = {"SITE_URL": self.site_url, "RUNS_DIR": self.runs_dir, "RETRY_DELAY_SECONDS": 0}
+        for name, value in replacements.items():
+            constant_patch = mock.patch.object(run_benchmark, name, value)
+            constant_patch.start()
+            self.addCleanup(constant_patch.stop)
 
     def write_csv(self, text, encoding="utf-8"):
         questions_path = self.temporary_path / "questions.csv"
         questions_path.write_text(text, encoding=encoding)
         return questions_path
 
-    def ask(self, text, custom_prompt=None):
+    def ask(self, text, custom_prompt="You are Ross."):
         return run_benchmark.ask_question(
             {"id": "Q1", "question": text}, self.endpoint, "le-chat", custom_prompt, 5
         )
@@ -162,26 +168,16 @@ class BenchmarkPipelineTest(unittest.TestCase):
             run_benchmark.select_questions(questions, "quick", "Q9")
 
     def test_main_rejects_an_endpoint_that_is_not_an_absolute_url(self):
-        runs_dir = self.temporary_path / "runs"
         for endpoint in ["example.com/call", ""]:
             with self.subTest(endpoint), self.assertRaises(SystemExit):
-                run_benchmark.main(
-                    ["--endpoint", endpoint, "--runs-dir", str(runs_dir)]
-                )
-        self.assertFalse(runs_dir.exists())
+                run_benchmark.main(["--endpoint", endpoint])
+        self.assertFalse(self.runs_dir.exists())
 
     def test_main_rejects_concurrency_outside_one_to_sixteen(self):
-        runs_dir = self.temporary_path / "runs"
         for concurrency in ["0", "17"]:
             with self.subTest(concurrency), self.assertRaises(SystemExit):
-                run_benchmark.main(
-                    [
-                        "--endpoint", self.endpoint,
-                        "--runs-dir", str(runs_dir),
-                        "--concurrency", concurrency,
-                    ]
-                )
-        self.assertFalse(runs_dir.exists())
+                run_benchmark.main(["--endpoint", self.endpoint, "--concurrency", concurrency])
+        self.assertFalse(self.runs_dir.exists())
         self.assertEqual(self.server.received_payloads, [])
 
     def test_split_into_turns(self):
@@ -198,7 +194,7 @@ class BenchmarkPipelineTest(unittest.TestCase):
         self.assertEqual(len(result["turns"][0]["sources"]), 1)
 
     def test_request_matches_the_frontend_payload(self):
-        self.ask("hello", custom_prompt="You are Ross.")
+        self.ask("hello")
         payload = self.server.received_payloads[0]
         self.assertEqual(payload["action"], "question")
         self.assertEqual(payload["bot_name"], "le-chat")
@@ -206,9 +202,6 @@ class BenchmarkPipelineTest(unittest.TestCase):
         self.assertEqual(payload["custom_prompt"], "You are Ross.")
         self.assertTrue(payload["sessionId"].startswith("session-"))
         self.assertTrue(payload["questionId"].startswith("Q1-"))
-
-        self.ask("hello", custom_prompt=None)
-        self.assertNotIn("custom_prompt", self.server.received_payloads[1])
 
     def test_failures_are_recorded_instead_of_raised(self):
         expected_statuses = {
@@ -307,17 +300,10 @@ class BenchmarkPipelineTest(unittest.TestCase):
             tuple[int, Path, dict]: The exit code, the run directory and the saved run record.
         """
         questions_path = self.write_csv(questions_text)
-        runs_dir = self.temporary_path / "runs"
         exit_code = run_benchmark.main(
-            [
-                "--site-url", self.site_url,
-                "--endpoint", self.endpoint,
-                "--questions-file", str(questions_path),
-                "--runs-dir", str(runs_dir),
-                *extra_arguments,
-            ]
+            ["--endpoint", self.endpoint, "--questions-file", str(questions_path), *extra_arguments]
         )
-        run_dir = next(runs_dir.iterdir())
+        run_dir = next(self.runs_dir.iterdir())
         return exit_code, run_dir, json.loads((run_dir / "run_record.json").read_text(encoding="utf-8"))
 
     def test_full_run_writes_results_and_dashboard(self):
@@ -334,41 +320,27 @@ class BenchmarkPipelineTest(unittest.TestCase):
         self.assertEqual(run_record["run_id"], run_dir.name)
 
     def test_runs_started_in_the_same_second_get_separate_folders(self):
-        runs_dir = self.temporary_path / "runs"
         questions_path = self.write_csv("id,question\nQ1,hello\n")
         frozen_time = run_benchmark.datetime(2026, 11, 5, 20, 18, 1, tzinfo=run_benchmark.timezone.utc)
         with mock.patch.object(run_benchmark, "datetime") as mocked_datetime:
             mocked_datetime.now.return_value = frozen_time
             for unused_run_number in range(2):
-                run_benchmark.main(
-                    [
-                        "--site-url", self.site_url,
-                        "--endpoint", self.endpoint,
-                        "--questions-file", str(questions_path),
-                        "--runs-dir", str(runs_dir),
-                    ]
-                )
-        self.assertEqual(sorted(path.name for path in runs_dir.iterdir()), ["11-05_15-18-01", "11-05_15-18-01_2"])
+                run_benchmark.main(["--endpoint", self.endpoint, "--questions-file", str(questions_path)])
+        self.assertEqual(sorted(path.name for path in self.runs_dir.iterdir()), ["11-05_15-18-01", "11-05_15-18-01_2"])
 
     def test_reads_endpoint_bot_name_and_prompt_from_the_site(self):
-        settings = run_benchmark.read_live_site_settings(self.site_url, 5)
+        settings = run_benchmark.read_live_site_settings(self.site_url)
         self.assertEqual(
             settings, {"endpoint": SITE_ENDPOINT, "bot_name": "le-chat", "custom_prompt": SITE_PROMPT}
         )
 
     def test_run_stops_when_the_site_settings_cannot_be_found(self):
-        runs_dir = self.temporary_path / "runs"
+        broken_site_url = self.site_url + "broken/"
         with self.assertRaises(ValueError):
-            run_benchmark.read_live_site_settings(self.site_url + "broken/", 5)
-        with self.assertRaises(SystemExit):
-            run_benchmark.main(
-                [
-                    "--site-url", self.site_url + "broken/",
-                    "--questions-file", str(self.write_csv("id,question\nQ1,hello\n")),
-                    "--runs-dir", str(runs_dir),
-                ]
-            )
-        self.assertFalse(runs_dir.exists())
+            run_benchmark.read_live_site_settings(broken_site_url)
+        with mock.patch.object(run_benchmark, "SITE_URL", broken_site_url), self.assertRaises(SystemExit):
+            run_benchmark.main(["--questions-file", str(self.write_csv("id,question\nQ1,hello\n"))])
+        self.assertFalse(self.runs_dir.exists())
         self.assertEqual(self.server.received_payloads, [])
 
     def test_default_run_sends_the_site_prompt_and_bot_name(self):
