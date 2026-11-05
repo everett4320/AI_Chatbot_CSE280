@@ -11,11 +11,14 @@ question are still sent one after another, because each depends on the last.
 Requests match what the production frontend sends, including the system prompt
 as `custom_prompt`, so a run measures what students would see.
 
+By default every request goes to the chat API that the deployed site at
+https://ross.cc.lehigh.edu/ uses, so runs reach the live Ross backend.
+
 Usage:
-    python3 scripts/run_benchmark.py --endpoint URL
-    python3 scripts/run_benchmark.py --endpoint URL --tier quick
-    python3 scripts/run_benchmark.py --endpoint URL --only-ids EC-10,AM-04
-    python3 scripts/run_benchmark.py --endpoint URL --concurrency 1
+    python3 scripts/run_benchmark.py
+    python3 scripts/run_benchmark.py --tier quick
+    python3 scripts/run_benchmark.py --only-ids EC-10,AM-04
+    python3 scripts/run_benchmark.py --concurrency 1
 """
 
 import argparse
@@ -42,8 +45,10 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_QUESTIONS_FILE = REPO_ROOT / "fetched_site/questions/ross_benchmark.csv"
 DEFAULT_PROMPT_FILE = REPO_ROOT / "christopher-handoff/backend-inputs/SYSTEM_PROMPT.txt"
 DEFAULT_RUNS_DIR = REPO_ROOT / "fetched_site/prompt_effectiveness_runs"
-# The deployed Ross site sends this name. The backend still registers Ross under
-# the project's former name, LE-Chat, and Ross is the only bot the team uses.
+# The deployed Ross site sends questions to this endpoint with this bot name. The
+# backend still registers Ross under the project's former name, LE-Chat, and Ross
+# is the only bot the team uses.
+DEFAULT_ENDPOINT = "https://8lyrpsdez5.execute-api.us-east-1.amazonaws.com/call"
 BOT_NAME = "le-chat"
 MAX_CONCURRENT_REQUESTS = 16
 REQUIRED_COLUMNS = {"id", "question"}
@@ -346,8 +351,8 @@ def parse_arguments(argv: list[str] | None) -> argparse.Namespace:
     )
     parser.add_argument(
         "--endpoint",
-        default=os.environ.get("ROSS_API_ENDPOINT"),
-        help="Chat API URL that the deployed Ross site calls (or set ROSS_API_ENDPOINT).",
+        default=DEFAULT_ENDPOINT,
+        help="Chat API URL. The default is the one the deployed Ross site calls.",
     )
     parser.add_argument("--questions-file", type=Path, default=DEFAULT_QUESTIONS_FILE)
     parser.add_argument(
@@ -404,8 +409,8 @@ def main(argv: list[str] | None = None) -> int:
         raise SystemExit(f"Error: --concurrency must be between 1 and {MAX_CONCURRENT_REQUESTS}.")
     custom_prompt = None
     try:
-        if not re.match(r"https?://", arguments.endpoint or ""):
-            raise ValueError("--endpoint or ROSS_API_ENDPOINT must be an absolute http(s) URL.")
+        if not re.match(r"https?://", arguments.endpoint):
+            raise ValueError("--endpoint must be an absolute http(s) URL.")
         selected = select_questions(
             load_questions(arguments.questions_file), arguments.tier, arguments.only_ids
         )
