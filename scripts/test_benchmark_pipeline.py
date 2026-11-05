@@ -307,9 +307,26 @@ class BenchmarkPipelineTest(unittest.TestCase):
         self.assertEqual(len(run_record["results"]), 2)
         self.assertEqual(run_record["results"][0]["category"], "Majors")
         self.assertIsNotNone(run_record["ended_at_utc"])
-        self.assertTrue((run_dir / "dashboard.html").is_file())
+        self.assertEqual(
+            sorted(path.name for path in run_dir.iterdir()),
+            ["dashboard.html", "prompt_snapshot.txt", "run_record.json"],
+        )
         self.assertEqual((run_dir / "prompt_snapshot.txt").read_text(encoding="utf-8"), "You are Ross.")
-        self.assertTrue((run_dir / "questions_snapshot.csv").is_file())
+        # Eastern-time month, day, hour, minute and second, with no year.
+        self.assertRegex(run_dir.name, r"^\d{2}-\d{2}_\d{2}-\d{2}-\d{2}$")
+        self.assertEqual(run_record["run_id"], run_dir.name)
+
+    def test_runs_started_in_the_same_second_get_separate_folders(self):
+        runs_dir = self.temporary_path / "runs"
+        questions_path = self.write_csv("id,question\nQ1,hello\n")
+        frozen_time = run_benchmark.datetime(2026, 11, 5, 20, 18, 1, tzinfo=run_benchmark.timezone.utc)
+        with mock.patch.object(run_benchmark, "datetime") as mocked_datetime:
+            mocked_datetime.now.return_value = frozen_time
+            for unused_run_number in range(2):
+                run_benchmark.main(
+                    ["--endpoint", self.endpoint, "--questions-file", str(questions_path), "--runs-dir", str(runs_dir)]
+                )
+        self.assertEqual(sorted(path.name for path in runs_dir.iterdir()), ["11-05_15-18-01", "11-05_15-18-01_2"])
 
     def test_run_continues_past_a_failure_and_exits_nonzero(self):
         exit_code, unused_run_dir, run_record = self.run_main("id,question\nQ1,http500\nQ2,hello\n")

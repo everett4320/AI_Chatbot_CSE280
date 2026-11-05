@@ -31,9 +31,7 @@ import hashlib
 import http.client
 import json
 import os
-import random
 import re
-import shutil
 import sys
 import time
 import urllib.error
@@ -42,13 +40,17 @@ import uuid
 from concurrent.futures import FIRST_COMPLETED, ThreadPoolExecutor, wait
 from datetime import datetime, timezone
 from pathlib import Path
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from build_benchmark_dashboard import build_dashboard
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_QUESTIONS_FILE = REPO_ROOT / "fetched_site/questions/ross_benchmark.csv"
 DEFAULT_PROMPT_FILE = REPO_ROOT / "christopher-handoff/backend-inputs/SYSTEM_PROMPT.txt"
-DEFAULT_RUNS_DIR = REPO_ROOT / "fetched_site/prompt_effectiveness_runs"
+DEFAULT_RUNS_DIR = REPO_ROOT / "fetched_site/test_prompt"
+# Run folders are named by their start time in US Eastern time, such as 11-05_15-18-01.
+RUN_FOLDER_TIME_ZONE = "America/New_York"
+RUN_FOLDER_TIME_FORMAT = "%m-%d_%H-%M-%S"
 # The deployed Ross site sends questions to this endpoint with this bot name. The
 # backend still registers Ross under the project's former name, LE-Chat, and Ross
 # is the only bot the team uses.
@@ -445,10 +447,21 @@ def main(argv: list[str] | None = None) -> int:
         raise SystemExit("Error: no questions match the selected tier.")
 
     started_at = datetime.now(timezone.utc)
-    run_id = f"{started_at:%Y%m%dT%H%M%SZ}_{random.randrange(100000)}"
+    try:
+        folder_time_zone = ZoneInfo(RUN_FOLDER_TIME_ZONE)
+    except ZoneInfoNotFoundError:
+        # Windows has no time zone database unless the tzdata package is installed.
+        # The team works in Eastern time, so the computer's own clock is used instead.
+        folder_time_zone = None
+    base_run_id = started_at.astimezone(folder_time_zone).strftime(RUN_FOLDER_TIME_FORMAT)
+    run_id = base_run_id
+    copy_number = 2
+    # Two runs started in the same second get distinct folders.
+    while (arguments.runs_dir / run_id).exists():
+        run_id = f"{base_run_id}_{copy_number}"
+        copy_number += 1
     run_dir = arguments.runs_dir / run_id
     run_dir.mkdir(parents=True)
-    shutil.copy(arguments.questions_file, run_dir / "questions_snapshot.csv")
     if custom_prompt is not None:
         (run_dir / "prompt_snapshot.txt").write_text(custom_prompt, encoding="utf-8")
 
