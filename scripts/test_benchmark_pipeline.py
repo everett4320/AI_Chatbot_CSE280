@@ -1,4 +1,4 @@
-"""Tests for the benchmark pipeline, using a fake chat API server on localhost.
+"""Tests for the benchmark pipeline, using a fake chat API and fake site on localhost.
 
 Run with: python3 scripts/test_benchmark_pipeline.py
 """
@@ -13,11 +13,23 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from unittest import mock
 
-import build_benchmark_dashboard
 import run_benchmark
 
 CANONICAL_SESSION_ID = "session-from-backend"
 SLOW_REPLY_SECONDS = 0.3
+SITE_ENDPOINT = "https://abc123.execute-api.us-east-1.amazonaws.com/call/"
+SITE_PROMPT = 'You are Ross.\nCite `sources` and say "hi".'
+# A miniature build of the deployed site: the page loads one script, which loads
+# the chunk that holds the chat settings, written the way the real build writes them.
+FAKE_SITE_FILES = {
+    "/": '<html><link rel="modulepreload" href="/assets/entry.js"></html>',
+    "/assets/entry.js": 'import("./home.js");',
+    "/assets/home.js": (
+        f'const a="{SITE_ENDPOINT}",b="le-chat".trim();'
+        r'''function q(e){return{action:"question",bot_name:b,custom_prompt:`You are Ross.\nCite \`sources\` and say "hi".`}}'''
+    ),
+    "/broken/": "<html>No scripts here.</html>",
+}
 
 
 class FakeChatHandler(BaseHTTPRequestHandler):
@@ -65,6 +77,13 @@ class FakeChatHandler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(body)
 
+    def do_GET(self):
+        page = FAKE_SITE_FILES.get(self.path)
+        self.send_response(404 if page is None else 200)
+        self.end_headers()
+        if page is not None:
+            self.wfile.write(page.encode("utf-8"))
+
     def log_message(self, *log_arguments):
         pass
 
@@ -81,6 +100,7 @@ class BenchmarkPipelineTest(unittest.TestCase):
         self.addCleanup(self.server.server_close)
         self.addCleanup(self.server.shutdown)
         self.endpoint = f"http://127.0.0.1:{self.server.server_port}/call"
+        self.site_url = f"http://127.0.0.1:{self.server.server_port}/"
         temporary_directory = tempfile.TemporaryDirectory()
         self.addCleanup(temporary_directory.cleanup)
         self.temporary_path = Path(temporary_directory.name)
@@ -96,7 +116,7 @@ class BenchmarkPipelineTest(unittest.TestCase):
 
     def ask(self, text, custom_prompt=None):
         return run_benchmark.ask_question(
-            {"id": "Q1", "question": text}, self.endpoint, custom_prompt, 5
+            {"id": "Q1", "question": text}, self.endpoint, "le-chat", custom_prompt, 5
         )
 
     def test_load_questions_accepts_id_and_question_only(self):
@@ -206,7 +226,7 @@ class BenchmarkPipelineTest(unittest.TestCase):
     def test_unreachable_endpoint_is_a_request_failure(self):
         self.server.server_close()
         result = run_benchmark.ask_question(
-            {"id": "Q1", "question": "hello"}, "http://127.0.0.1:9/call", None, 2
+            {"id": "Q1", "question": "hello"}, "http://127.0.0.1:9/call", "le-chat", None, 2
         )
         self.assertEqual(result["status"], "request_failed")
         self.assertIsNone(result["turns"][0]["http_status"])
@@ -262,11 +282,11 @@ class BenchmarkPipelineTest(unittest.TestCase):
         reply = "</script><img src=x onerror=alert(1)>"
         run_record_path.write_text(json.dumps({"results": [{"reply": reply}]}), encoding="utf-8")
 
-        dashboard_path = build_benchmark_dashboard.build_dashboard(run_record_path)
+        dashboard_path = run_benchmark.build_dashboard(run_record_path)
 
         html = dashboard_path.read_text(encoding="utf-8")
         self.assertNotIn(reply, html)
-        self.assertNotIn(build_benchmark_dashboard.RUN_RECORD_PLACEHOLDER, html)
+        self.assertNotIn(run_benchmark.RUN_RECORD_PLACEHOLDER, html)
         embedded = re.search(
             r'<script id="run-record" type="application/json">(.*?)</script>', html, re.DOTALL
         ).group(1)
@@ -280,18 +300,19 @@ class BenchmarkPipelineTest(unittest.TestCase):
             extra_arguments (tuple[str, ...]): More command-line options, such as
                 ("--concurrency", "1"). Empty by default.
 
+        Settings come from the fake site, except the endpoint, which points at the
+        fake chat API because the site's address is not reachable from tests.
+
         Returns:
             tuple[int, Path, dict]: The exit code, the run directory and the saved run record.
         """
         questions_path = self.write_csv(questions_text)
-        prompt_path = self.temporary_path / "prompt.txt"
-        prompt_path.write_text("You are Ross.", encoding="utf-8")
         runs_dir = self.temporary_path / "runs"
         exit_code = run_benchmark.main(
             [
+                "--site-url", self.site_url,
                 "--endpoint", self.endpoint,
                 "--questions-file", str(questions_path),
-                "--prompt-file", str(prompt_path),
                 "--runs-dir", str(runs_dir),
                 *extra_arguments,
             ]
@@ -307,11 +328,7 @@ class BenchmarkPipelineTest(unittest.TestCase):
         self.assertEqual(len(run_record["results"]), 2)
         self.assertEqual(run_record["results"][0]["category"], "Majors")
         self.assertIsNotNone(run_record["ended_at_utc"])
-        self.assertEqual(
-            sorted(path.name for path in run_dir.iterdir()),
-            ["dashboard.html", "prompt_snapshot.txt", "run_record.json"],
-        )
-        self.assertEqual((run_dir / "prompt_snapshot.txt").read_text(encoding="utf-8"), "You are Ross.")
+        self.assertEqual(sorted(path.name for path in run_dir.iterdir()), ["dashboard.html", "run_record.json"])
         # Eastern-time month, day, hour, minute and second, with no year.
         self.assertRegex(run_dir.name, r"^\d{2}-\d{2}_\d{2}-\d{2}-\d{2}$")
         self.assertEqual(run_record["run_id"], run_dir.name)
@@ -324,9 +341,55 @@ class BenchmarkPipelineTest(unittest.TestCase):
             mocked_datetime.now.return_value = frozen_time
             for unused_run_number in range(2):
                 run_benchmark.main(
-                    ["--endpoint", self.endpoint, "--questions-file", str(questions_path), "--runs-dir", str(runs_dir)]
+                    [
+                        "--site-url", self.site_url,
+                        "--endpoint", self.endpoint,
+                        "--questions-file", str(questions_path),
+                        "--runs-dir", str(runs_dir),
+                    ]
                 )
         self.assertEqual(sorted(path.name for path in runs_dir.iterdir()), ["11-05_15-18-01", "11-05_15-18-01_2"])
+
+    def test_reads_endpoint_bot_name_and_prompt_from_the_site(self):
+        settings = run_benchmark.read_live_site_settings(self.site_url, 5)
+        self.assertEqual(
+            settings, {"endpoint": SITE_ENDPOINT, "bot_name": "le-chat", "custom_prompt": SITE_PROMPT}
+        )
+
+    def test_run_stops_when_the_site_settings_cannot_be_found(self):
+        runs_dir = self.temporary_path / "runs"
+        with self.assertRaises(ValueError):
+            run_benchmark.read_live_site_settings(self.site_url + "broken/", 5)
+        with self.assertRaises(SystemExit):
+            run_benchmark.main(
+                [
+                    "--site-url", self.site_url + "broken/",
+                    "--questions-file", str(self.write_csv("id,question\nQ1,hello\n")),
+                    "--runs-dir", str(runs_dir),
+                ]
+            )
+        self.assertFalse(runs_dir.exists())
+        self.assertEqual(self.server.received_payloads, [])
+
+    def test_default_run_sends_the_site_prompt_and_bot_name(self):
+        unused_exit_code, unused_run_dir, run_record = self.run_main("id,question\nQ1,hello\n")
+        payload = self.server.received_payloads[0]
+        self.assertEqual(payload["custom_prompt"], SITE_PROMPT)
+        self.assertEqual(payload["bot_name"], "le-chat")
+        self.assertEqual(run_record["config"]["prompt_source"], "site")
+        # The tests replace the site's endpoint, so the run is marked as not matching the site.
+        self.assertEqual(run_record["config"]["endpoint_source"], "command line")
+        self.assertFalse(run_record["config"]["matches_site"])
+
+    def test_local_prompt_file_replaces_the_site_prompt(self):
+        prompt_path = self.temporary_path / "my_prompt.txt"
+        prompt_path.write_text("You are a local test prompt.", encoding="utf-8")
+        unused_exit_code, unused_run_dir, run_record = self.run_main(
+            "id,question\nQ1,hello\n", ("--prompt-file", str(prompt_path))
+        )
+        self.assertEqual(self.server.received_payloads[0]["custom_prompt"], "You are a local test prompt.")
+        self.assertEqual(run_record["config"]["prompt_source"], str(prompt_path))
+        self.assertFalse(run_record["config"]["matches_site"])
 
     def test_run_continues_past_a_failure_and_exits_nonzero(self):
         exit_code, unused_run_dir, run_record = self.run_main("id,question\nQ1,http500\nQ2,hello\n")

@@ -221,6 +221,7 @@
   <header>
     <h1>Ross benchmark results</h1>
     <p class="run-details" id="run-details"></p>
+    <p class="notice" id="settings-notice" hidden></p>
     <p class="notice" id="incomplete-notice" hidden></p>
     <div class="notice failure-notice" id="failure-notice" role="status" hidden></div>
   </header>
@@ -243,6 +244,7 @@
 <script>
   const record = JSON.parse(document.getElementById('run-record').textContent);
   const results = record.results;
+  const config = record.config || {};
 
   const FILTER_DEFINITIONS = [
     { key: 'category', label: 'Category', getValue: (result) => result.category || '' },
@@ -538,6 +540,15 @@
   function renderRunDetails() {
     document.getElementById('run-details').textContent = new Date(record.started_at_utc).toLocaleString();
 
+    if (config.matches_site === false) {
+      const differences = [];
+      if (config.prompt_source === null) differences.push('sent no prompt');
+      else if (config.prompt_source !== 'site') differences.push(`used the local prompt ${config.prompt_source}`);
+      if (config.endpoint_source !== 'site') differences.push(`sent to ${config.endpoint}`);
+      const notice = document.getElementById('settings-notice');
+      notice.textContent = `This run ${differences.join(' and ')} instead of what ${config.site_url} sends, so its replies may differ from the site's.`;
+      notice.hidden = false;
+    }
     if (results.length < record.total_questions) {
       const notice = document.getElementById('incomplete-notice');
       notice.textContent = `This run stopped early: ${results.length} of ${record.total_questions} questions were sent.`;

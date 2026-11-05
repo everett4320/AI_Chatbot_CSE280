@@ -12,17 +12,18 @@ A message that fails with a network error, a timeout, HTTP 429 or a 5xx status
 is sent again, up to 3 attempts in total. Errors the service reports in its JSON
 body, malformed replies and other 4xx statuses are not retried.
 
-Requests match what the production frontend sends, including the system prompt
-as `custom_prompt`, so a run measures what students would see.
-
-By default every request goes to the chat API that the deployed site at
-https://ross.cc.lehigh.edu/ uses, so runs reach the live Ross backend.
+Before sending anything, the script reads the chat API URL, the bot name and the
+system prompt from the deployed site at https://ross.cc.lehigh.edu/, so every
+request is the one the site sends when someone asks the same question in a new
+chat. The knowledge base lives in the backend, so both use the same one. A run
+with --prompt-file, --no-custom-prompt or --endpoint is marked as not matching
+the site.
 
 Usage:
     python3 scripts/run_benchmark.py
     python3 scripts/run_benchmark.py --tier quick
     python3 scripts/run_benchmark.py --only-ids EC-10,AM-04
-    python3 scripts/run_benchmark.py --concurrency 1
+    python3 scripts/run_benchmark.py --prompt-file my_prompt.txt
 """
 
 import argparse
@@ -35,6 +36,7 @@ import re
 import sys
 import time
 import urllib.error
+import urllib.parse
 import urllib.request
 import uuid
 from concurrent.futures import FIRST_COMPLETED, ThreadPoolExecutor, wait
@@ -42,20 +44,17 @@ from datetime import datetime, timezone
 from pathlib import Path
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
-from build_benchmark_dashboard import build_dashboard
-
 REPO_ROOT = Path(__file__).resolve().parent.parent
+DASHBOARD_TEMPLATE_PATH = Path(__file__).resolve().parent / "benchmark_dashboard_template.html"
+RUN_RECORD_PLACEHOLDER = "__RUN_RECORD_JSON__"
 DEFAULT_QUESTIONS_FILE = REPO_ROOT / "fetched_site/questions/ross_benchmark.csv"
-DEFAULT_PROMPT_FILE = REPO_ROOT / "christopher-handoff/backend-inputs/SYSTEM_PROMPT.txt"
+# Only compared with the site's prompt, so the run can say whether the two differ.
+REPO_PROMPT_FILE = REPO_ROOT / "christopher-handoff/backend-inputs/SYSTEM_PROMPT.txt"
 DEFAULT_RUNS_DIR = REPO_ROOT / "fetched_site/test_prompt"
+DEFAULT_SITE_URL = "https://ross.cc.lehigh.edu/"
 # Run folders are named by their start time in US Eastern time, such as 11-05_15-18-01.
 RUN_FOLDER_TIME_ZONE = "America/New_York"
 RUN_FOLDER_TIME_FORMAT = "%m-%d_%H-%M-%S"
-# The deployed Ross site sends questions to this endpoint with this bot name. The
-# backend still registers Ross under the project's former name, LE-Chat, and Ross
-# is the only bot the team uses.
-DEFAULT_ENDPOINT = "https://8lyrpsdez5.execute-api.us-east-1.amazonaws.com/call"
-BOT_NAME = "le-chat"
 MAX_CONCURRENT_REQUESTS = 16
 MAX_ATTEMPTS_PER_MESSAGE = 3
 RETRY_DELAY_SECONDS = 2
@@ -64,6 +63,21 @@ REQUIRED_COLUMNS = {"id", "question"}
 TURN_MARKER = re.compile(r"\bT\d+:\s*")
 ERROR_SNIPPET_LENGTH = 300
 UTC_TIMESTAMP_FORMAT = "%Y-%m-%dT%H:%M:%SZ"
+
+# The deployed site is a static build: the chat API URL, the bot name and the full
+# system prompt are written into its JavaScript, and these patterns find them there.
+# The site loads a few dozen scripts at most; the limit stops a runaway crawl.
+MAX_SITE_SCRIPT_FILES = 40
+SITE_SCRIPT_REFERENCE = re.compile(r"(?:/assets/|\./)([A-Za-z0-9_.-]+\.js)\b")
+SITE_PROMPT_LITERAL = re.compile(r'custom_prompt:\s*(`(?:[^`\\]|\\[\s\S])*`|"(?:[^"\\]|\\.)*")')
+SITE_ENDPOINT_LITERAL = re.compile(
+    r'"(https://[A-Za-z0-9.-]+\.execute-api\.[A-Za-z0-9-]+\.amazonaws\.com/[^"]*)"'
+)
+# The frontend trims its configured bot name, which the build turns into "name".trim().
+SITE_BOT_NAME_LITERAL = re.compile(r'"([^"\\]+)"\.trim\(\)')
+SITE_REQUEST_HEADERS = {"User-Agent": "ross-benchmark"}
+JAVASCRIPT_ESCAPE = re.compile(r"\\(u\{[0-9A-Fa-f]+\}|u[0-9A-Fa-f]{4}|x[0-9A-Fa-f]{2}|\r\n|[\s\S])")
+SINGLE_CHARACTER_ESCAPES = {"n": "\n", "t": "\t", "r": "\r", "b": "\b", "f": "\f", "v": "\v", "0": "\0"}
 
 
 def load_questions(questions_path: Path) -> list[dict[str, str]]:
@@ -259,6 +273,7 @@ def send_turn(endpoint: str, payload: dict, timeout_seconds: float) -> dict:
 def ask_question(
     question: dict[str, str],
     endpoint: str,
+    bot_name: str,
     custom_prompt: str | None,
     timeout_seconds: float,
 ) -> dict:
@@ -274,6 +289,7 @@ def ask_question(
     Args:
         question (dict[str, str]): One row from the question CSV.
         endpoint (str): Chat API URL.
+        bot_name (str): Bot the service should route to.
         custom_prompt (str | None): System prompt to send. None uses the prompt
             configured in the backend.
         timeout_seconds (float): Per-attempt request timeout.
@@ -295,7 +311,7 @@ def ask_question(
             question_id = f"{safe_code}-{uuid.uuid4()}"
             payload = {
                 "action": "question",
-                "bot_name": BOT_NAME,
+                "bot_name": bot_name,
                 "httpMethod": "POST",
                 "userMessage": message,
                 "sessionId": session_id,
@@ -328,6 +344,151 @@ def ask_question(
         "retries": sum(turn["attempts"] - 1 for turn in turns),
         "turns": turns,
     }
+
+
+def decode_javascript_escape(match: re.Match) -> str:
+    """Return the character that one JavaScript escape sequence stands for.
+
+    Args:
+        match (re.Match): A match of `JAVASCRIPT_ESCAPE`; group 1 is the text after
+            the backslash.
+
+    Returns:
+        str: The decoded character, or an empty string for a line continuation.
+    """
+    escape = match.group(1)
+    if escape in ("\n", "\r", "\r\n"):
+        return ""
+    if escape.startswith("u{"):
+        return chr(int(escape[2:-1], 16))
+    if escape[0] in "ux" and len(escape) > 1:
+        return chr(int(escape[1:], 16))
+    return SINGLE_CHARACTER_ESCAPES.get(escape, escape)
+
+
+def decode_javascript_string(literal: str) -> str:
+    """Turn a JavaScript string or template literal into the text it holds.
+
+    Args:
+        literal (str): The literal as written in the bundle, including its
+            surrounding double quotes or backticks.
+
+    Returns:
+        str: The text value of the literal.
+
+    Raises:
+        ValueError: If a template literal contains a `${...}` expression, whose
+            value cannot be known without running the site's code.
+    """
+    body = literal[1:-1]
+    if literal.startswith("`") and re.search(r"(?<!\\)\$\{", body):
+        raise ValueError("The site's prompt contains a ${...} expression and cannot be read as plain text.")
+    return JAVASCRIPT_ESCAPE.sub(decode_javascript_escape, body)
+
+
+def fetch_site_text(url: str, timeout_seconds: float) -> str:
+    """Download one page or script from the deployed site as text.
+
+    Args:
+        url (str): Absolute URL to fetch.
+        timeout_seconds (float): Seconds to wait before giving up.
+
+    Returns:
+        str: The response body decoded as UTF-8.
+
+    Raises:
+        OSError: If the request fails or the server returns an error status.
+    """
+    request = urllib.request.Request(url, headers=SITE_REQUEST_HEADERS)
+    with urllib.request.urlopen(request, timeout=timeout_seconds) as response:
+        return response.read().decode("utf-8", errors="replace")
+
+
+def read_live_site_settings(site_url: str, timeout_seconds: float) -> dict[str, str]:
+    """Read the chat API URL, bot name and system prompt from the deployed site.
+
+    The site writes these values into its JavaScript at build time, so they can
+    differ from the files in this repository. Downloading the page and the
+    scripts it loads, and taking the values from there, makes a run send exactly
+    what the site sends. Each value must appear exactly once, so a changed build
+    stops the run instead of silently sending something else.
+
+    Args:
+        site_url (str): Address of the deployed site, such as
+            https://ross.cc.lehigh.edu/.
+        timeout_seconds (float): Per-request timeout for each download.
+
+    Returns:
+        dict[str, str]: `endpoint`, `bot_name` and `custom_prompt` as the site
+        sends them.
+
+    Raises:
+        OSError: If the site or one of its scripts cannot be downloaded.
+        ValueError: If any of the three values is missing or appears more than
+            once with different contents.
+    """
+    if not site_url.endswith("/"):
+        site_url += "/"
+    page = fetch_site_text(site_url, timeout_seconds)
+    pending_scripts = list(dict.fromkeys(SITE_SCRIPT_REFERENCE.findall(page)))
+    fetched_scripts = set()
+    script_texts = []
+    while pending_scripts and len(fetched_scripts) < MAX_SITE_SCRIPT_FILES:
+        script_name = pending_scripts.pop()
+        if script_name in fetched_scripts:
+            continue
+        fetched_scripts.add(script_name)
+        script_text = fetch_site_text(urllib.parse.urljoin(site_url, f"assets/{script_name}"), timeout_seconds)
+        script_texts.append(script_text)
+        pending_scripts.extend(
+            name for name in SITE_SCRIPT_REFERENCE.findall(script_text) if name not in fetched_scripts
+        )
+    bundle = "\n".join(script_texts)
+
+    found_values = {
+        "system prompt": {decode_javascript_string(literal) for literal in SITE_PROMPT_LITERAL.findall(bundle)},
+        "chat API URL": set(SITE_ENDPOINT_LITERAL.findall(bundle)),
+        "bot name": set(SITE_BOT_NAME_LITERAL.findall(bundle)),
+    }
+    for label, values in found_values.items():
+        if len(values) != 1:
+            raise ValueError(
+                f"Expected one {label} in the JavaScript of {site_url} but found {len(values)}. "
+                "The site's build may have changed, so the run cannot match what the site sends."
+            )
+    return {
+        "endpoint": found_values["chat API URL"].pop(),
+        "bot_name": found_values["bot name"].pop(),
+        "custom_prompt": found_values["system prompt"].pop(),
+    }
+
+
+def build_dashboard(run_record_path: Path) -> Path:
+    """Write `dashboard.html` next to a run record.
+
+    The data is embedded in the page, so the file opens by double-clicking and can
+    be sent to teammates without a server or the run directory.
+
+    Args:
+        run_record_path (Path): A `run_record.json` written by this script.
+
+    Returns:
+        Path: The dashboard file. An existing dashboard for the run is replaced.
+
+    Raises:
+        OSError: If the run record or template cannot be read, or the output
+            cannot be written.
+        ValueError: If the run record is not valid JSON.
+    """
+    run_record = json.loads(run_record_path.read_text(encoding="utf-8"))
+    # Escaping "<" stops a bot reply containing "</script>" from ending the data block.
+    embedded_record = json.dumps(run_record, ensure_ascii=False).replace("<", "\\u003c")
+    template = DASHBOARD_TEMPLATE_PATH.read_text(encoding="utf-8")
+    dashboard_path = run_record_path.with_name("dashboard.html")
+    dashboard_path.write_text(
+        template.replace(RUN_RECORD_PLACEHOLDER, embedded_record), encoding="utf-8"
+    )
+    return dashboard_path
 
 
 def write_run_record(run_record_path: Path, run_record: dict) -> None:
@@ -375,9 +536,13 @@ def parse_arguments(argv: list[str] | None) -> argparse.Namespace:
         description="Run the Ross benchmark and build a results dashboard."
     )
     parser.add_argument(
+        "--site-url",
+        default=DEFAULT_SITE_URL,
+        help="Deployed Ross site whose chat API URL, bot name and prompt the run copies.",
+    )
+    parser.add_argument(
         "--endpoint",
-        default=DEFAULT_ENDPOINT,
-        help="Chat API URL. The default is the one the deployed Ross site calls.",
+        help="Send to this chat API URL instead of the site's. Replies then may not match the site.",
     )
     parser.add_argument("--questions-file", type=Path, default=DEFAULT_QUESTIONS_FILE)
     parser.add_argument(
@@ -387,8 +552,13 @@ def parse_arguments(argv: list[str] | None) -> argparse.Namespace:
         help="quick: rows labeled Quick. extensive: every question (default).",
     )
     parser.add_argument("--only-ids", help="Comma-separated question IDs, such as EC-10,AM-04.")
-    parser.add_argument("--prompt-file", type=Path, default=DEFAULT_PROMPT_FILE)
-    parser.add_argument(
+    prompt_options = parser.add_mutually_exclusive_group()
+    prompt_options.add_argument(
+        "--prompt-file",
+        type=Path,
+        help="Send this local prompt instead of the site's, for example to try an edited prompt.",
+    )
+    prompt_options.add_argument(
         "--no-custom-prompt",
         action="store_true",
         help="Send no custom_prompt, which tests the prompt configured in the backend.",
@@ -415,7 +585,8 @@ def parse_arguments(argv: list[str] | None) -> argparse.Namespace:
 def main(argv: list[str] | None = None) -> int:
     """Run the benchmark from start to finish.
 
-    Questions are sent on up to `--concurrency` threads. The run record is saved
+    The chat API URL, bot name and prompt are read from the deployed site first,
+    unless options replace them. Questions are sent on up to `--concurrency` threads. The run record is saved
     after every finished question and keeps the CSV order. Ctrl-C skips the
     questions not yet sent, waits for the ones in progress (at most the request
     timeout per message), and still builds the dashboard.
@@ -427,24 +598,46 @@ def main(argv: list[str] | None = None) -> int:
         int: 0 if every question got a reply. 1 if any failed or the run was stopped.
 
     Raises:
-        SystemExit: If the options or the input files are invalid.
+        SystemExit: If the options or the input files are invalid, or the site's
+            settings cannot be read.
     """
     arguments = parse_arguments(argv)
     if not 1 <= arguments.concurrency <= MAX_CONCURRENT_REQUESTS:
         raise SystemExit(f"Error: --concurrency must be between 1 and {MAX_CONCURRENT_REQUESTS}.")
-    custom_prompt = None
     try:
-        if not re.match(r"https?://", arguments.endpoint):
+        if arguments.endpoint is not None and not re.match(r"https?://", arguments.endpoint):
             raise ValueError("--endpoint must be an absolute http(s) URL.")
         selected = select_questions(
             load_questions(arguments.questions_file), arguments.tier, arguments.only_ids
         )
-        if not arguments.no_custom_prompt:
-            custom_prompt = arguments.prompt_file.read_text(encoding="utf-8")
+        local_prompt = None
+        if arguments.prompt_file is not None:
+            local_prompt = arguments.prompt_file.read_text(encoding="utf-8")
+        site_settings = read_live_site_settings(arguments.site_url, arguments.timeout_seconds)
     except (ValueError, OSError) as e:
         raise SystemExit(f"Error: {e}") from e
     if not selected:
         raise SystemExit("Error: no questions match the selected tier.")
+
+    endpoint = arguments.endpoint or site_settings["endpoint"]
+    bot_name = site_settings["bot_name"]
+    if arguments.no_custom_prompt:
+        custom_prompt = None
+        prompt_source = None
+        print("Prompt: none sent, so the backend uses its own. Replies will not match the site.")
+    elif local_prompt is not None:
+        custom_prompt = local_prompt
+        prompt_source = to_repo_relative(arguments.prompt_file)
+        print(f"Prompt: {prompt_source}, a local file. Replies will not match the site.")
+    else:
+        custom_prompt = site_settings["custom_prompt"]
+        prompt_source = "site"
+        repo_prompt = REPO_PROMPT_FILE.read_text(encoding="utf-8") if REPO_PROMPT_FILE.is_file() else ""
+        comparison = "same as" if custom_prompt.strip() == repo_prompt.strip() else "different from"
+        print(f"Prompt: the one {arguments.site_url} sends ({comparison} {to_repo_relative(REPO_PROMPT_FILE)})")
+    if arguments.endpoint is not None:
+        print(f"Endpoint: {endpoint}, set by --endpoint. Replies may not match the site.")
+    print(f"Bot name: {bot_name}, read from {arguments.site_url}")
 
     started_at = datetime.now(timezone.utc)
     try:
@@ -462,8 +655,6 @@ def main(argv: list[str] | None = None) -> int:
         copy_number += 1
     run_dir = arguments.runs_dir / run_id
     run_dir.mkdir(parents=True)
-    if custom_prompt is not None:
-        (run_dir / "prompt_snapshot.txt").write_text(custom_prompt, encoding="utf-8")
 
     run_record_path = run_dir / "run_record.json"
     run_record = {
@@ -475,19 +666,23 @@ def main(argv: list[str] | None = None) -> int:
             "questions_file": to_repo_relative(arguments.questions_file),
             "tier": arguments.tier,
             "only_ids": arguments.only_ids,
-            "bot_name": BOT_NAME,
-            "endpoint": arguments.endpoint,
-            "prompt_file": None if custom_prompt is None else to_repo_relative(arguments.prompt_file),
+            "site_url": arguments.site_url,
+            "bot_name": bot_name,
+            "endpoint": endpoint,
+            "endpoint_source": "site" if arguments.endpoint is None else "command line",
+            "prompt_source": prompt_source,
             "prompt_sha256": (
                 None if custom_prompt is None else hashlib.sha256(custom_prompt.encode("utf-8")).hexdigest()
             ),
+            # True only when the run sent exactly what the site sends.
+            "matches_site": prompt_source == "site" and arguments.endpoint is None,
         },
         "results": [],
     }
     write_run_record(run_record_path, run_record)
 
     print(
-        f"Sending {len(selected)} questions to {arguments.endpoint}, "
+        f"Sending {len(selected)} questions to {endpoint}, "
         f"up to {arguments.concurrency} at a time"
     )
     results_by_position = {}
@@ -497,7 +692,8 @@ def main(argv: list[str] | None = None) -> int:
             executor.submit(
                 ask_question,
                 question,
-                arguments.endpoint,
+                endpoint,
+                bot_name,
                 custom_prompt,
                 arguments.timeout_seconds,
             ): position
