@@ -135,7 +135,21 @@
   .detail { max-width: 90ch; padding: 16px 16px 20px 26px; }
   .turn + .turn { margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--gridline); }
   .turn-question { margin-bottom: 8px; font-weight: 600; }
-  .reply-text { white-space: pre-wrap; overflow-wrap: anywhere; }
+  .markdown { overflow-wrap: anywhere; }
+  .markdown > :first-child { margin-top: 0; }
+  .markdown > :last-child { margin-bottom: 0; }
+  .markdown p { margin: 0 0 8px; }
+  .markdown .markdown-heading { margin: 14px 0 5px; font-weight: 600; line-height: 1.35; }
+  .markdown .markdown-heading.is-major { font-size: 1.1em; }
+  .markdown ul, .markdown ol { margin: 4px 0 10px; padding-left: 22px; }
+  .markdown li { margin: 2px 0; }
+  .markdown li > ul, .markdown li > ol { margin: 2px 0; }
+  .markdown code {
+    padding: 1px 4px;
+    border-radius: 4px;
+    background: var(--hover-wash);
+    font: 0.92em ui-monospace, SFMono-Regular, Menlo, monospace;
+  }
   .error-text { display: flex; align-items: flex-start; gap: 6px; overflow-wrap: anywhere; }
   .error-mark {
     display: inline-grid;
@@ -198,6 +212,9 @@
     { key: 'category', label: 'Category', narrowHidden: true, getSortValue: (result) => result.category || '' },
     { key: 'tier', label: 'Tier', narrowHidden: true, getSortValue: (result) => result.tier || '' },
   ];
+  const INLINE_MARKDOWN = /\*\*([^*]+)\*\*|`([^`]+)`|\[([^\]]+)\]\(([^)\s]+)\)|\*([^*\s][^*]*)\*/g;
+  const MARKDOWN_HEADING = /^(#{1,6})\s+(.*)$/;
+  const MARKDOWN_LIST_ITEM = /^(\s*)([-*•]|\d+[.)])\s+(.*)$/;
 
   const state = { filters: {}, search: '', sortKey: null, sortDescending: false, openIds: new Set() };
 
@@ -245,13 +262,88 @@
     }));
   }
 
+  function appendInlineMarkdown(parent, text) {
+    let position = 0;
+    for (const match of text.matchAll(INLINE_MARKDOWN)) {
+      const [token, boldText, codeText, linkText, linkUrl, italicText] = match;
+      parent.append(text.slice(position, match.index));
+      if (boldText !== undefined) {
+        parent.append(makeElement('strong', { textContent: boldText }));
+      } else if (codeText !== undefined) {
+        parent.append(makeElement('code', { textContent: codeText }));
+      } else if (linkText !== undefined) {
+        // Links come from the bot, so only web addresses become clickable.
+        parent.append(/^https?:\/\//i.test(linkUrl)
+          ? makeElement('a', { href: linkUrl, textContent: linkText, target: '_blank', rel: 'noopener noreferrer' })
+          : linkText);
+      } else {
+        parent.append(makeElement('em', { textContent: italicText }));
+      }
+      position = match.index + token.length;
+    }
+    parent.append(text.slice(position));
+  }
+
+  function renderMarkdown(text) {
+    // Covers what Ross replies use: headings, lists, bold, italic, code and links.
+    // Every piece is added as text, so a reply can never inject HTML into the page.
+    const container = makeElement('div', { className: 'markdown' });
+    let paragraph = null;
+    let list = null;
+    for (const line of text.split('\n')) {
+      const trimmed = line.trim();
+      const headingMatch = trimmed.match(MARKDOWN_HEADING);
+      const listMatch = line.match(MARKDOWN_LIST_ITEM);
+      if (!trimmed) {
+        paragraph = null;
+        list = null;
+      } else if (headingMatch) {
+        paragraph = null;
+        list = null;
+        const heading = makeElement('p', { className: `markdown-heading${headingMatch[1].length <= 2 ? ' is-major' : ''}` });
+        appendInlineMarkdown(heading, headingMatch[2]);
+        container.append(heading);
+      } else if (listMatch) {
+        const [, indent, marker, content] = listMatch;
+        const tag = /\d/.test(marker) ? 'ol' : 'ul';
+        let targetList = list;
+        paragraph = null;
+        if (indent.length >= 2 && list && list.lastElementChild) {
+          const parentItem = list.lastElementChild;
+          targetList = parentItem.querySelector(':scope > ul, :scope > ol');
+          if (!targetList) {
+            targetList = makeElement(tag);
+            parentItem.append(targetList);
+          }
+        } else if (!list || list.tagName.toLowerCase() !== tag) {
+          list = makeElement(tag);
+          if (tag === 'ol') list.start = Number.parseInt(marker, 10);
+          container.append(list);
+          targetList = list;
+        }
+        const item = makeElement('li');
+        appendInlineMarkdown(item, content);
+        targetList.append(item);
+      } else if (paragraph) {
+        paragraph.append(makeElement('br'));
+        appendInlineMarkdown(paragraph, trimmed);
+      } else {
+        list = null;
+        paragraph = makeElement('p');
+        appendInlineMarkdown(paragraph, trimmed);
+        container.append(paragraph);
+      }
+    }
+    return container;
+  }
+
   function renderTurn(turn, isMultiTurn, index) {
     const children = [];
     if (isMultiTurn) {
       children.push(makeElement('div', { className: 'turn-question', textContent: `T${index + 1}: ${turn.question}` }));
     }
     if (turn.response) {
-      children.push(makeElement('div', { className: 'reply-text', textContent: turn.response }));
+      children.push(renderMarkdown(turn.response));
     }
     if (turn.error) {
       // Runs recorded before retries were added have no attempts field.
