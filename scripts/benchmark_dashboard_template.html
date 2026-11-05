@@ -17,6 +17,7 @@
     --hover-wash: rgba(11, 11, 11, 0.04);
     --link: #1c5cab;
     --error: #d03b3b;
+    --error-wash: rgba(208, 59, 59, 0.08);
   }
   @media (prefers-color-scheme: dark) {
     :root:not([data-theme="light"]) {
@@ -30,6 +31,7 @@
       --border: rgba(255, 255, 255, 0.10);
       --hover-wash: rgba(255, 255, 255, 0.05);
       --link: #86b6ef;
+      --error-wash: rgba(208, 59, 59, 0.18);
     }
   }
   :root[data-theme="dark"] {
@@ -43,6 +45,7 @@
     --border: rgba(255, 255, 255, 0.10);
     --hover-wash: rgba(255, 255, 255, 0.05);
     --link: #86b6ef;
+    --error-wash: rgba(208, 59, 59, 0.18);
   }
 
   * { box-sizing: border-box; }
@@ -68,6 +71,27 @@
     background: var(--surface);
   }
   .notice[hidden] { display: none; }
+  .failure-notice { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
+  .failure-notice strong { color: var(--error); }
+  .link-button {
+    padding: 0;
+    border: 0;
+    background: none;
+    color: var(--link);
+    font-weight: 600;
+    text-decoration: underline;
+    cursor: pointer;
+  }
+  .notice-button {
+    margin-left: auto;
+    height: 28px;
+    padding: 0 10px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--surface);
+    cursor: pointer;
+  }
+  .notice-button:hover { background: var(--hover-wash); }
 
   .filters {
     display: flex;
@@ -118,6 +142,18 @@
   td { padding: 9px 12px; border-bottom: 1px solid var(--gridline); vertical-align: top; }
   .question-row { cursor: pointer; }
   .question-row:hover { background: var(--hover-wash); }
+  .question-row.failed-row, .question-row.failed-row:hover { background: var(--error-wash); }
+  .failure-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    margin-left: 8px;
+    color: var(--error);
+    font-size: 12px;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+  .failure-label .error-mark { margin-top: 0; }
   .id-toggle {
     padding: 0;
     border: 0;
@@ -186,6 +222,7 @@
     <h1>Ross benchmark results</h1>
     <p class="run-details" id="run-details"></p>
     <p class="notice" id="incomplete-notice" hidden></p>
+    <div class="notice failure-notice" id="failure-notice" role="status" hidden></div>
   </header>
 
   <section class="filters" id="filters" aria-label="Filters">
@@ -209,19 +246,18 @@
 
   const FILTER_DEFINITIONS = [
     { key: 'category', label: 'Category', getValue: (result) => result.category || '' },
-    { key: 'tier', label: 'Tier', getValue: (result) => result.tier || '' },
   ];
   const COLUMNS = [
     { key: 'id', label: 'ID', getSortValue: (result) => result.id },
     { key: 'question', label: 'Question', getSortValue: (result) => result.question },
     { key: 'category', label: 'Category', narrowHidden: true, getSortValue: (result) => result.category || '' },
-    { key: 'tier', label: 'Tier', narrowHidden: true, getSortValue: (result) => result.tier || '' },
   ];
+  const failedResults = results.filter((result) => result.status !== 'transport_ok');
   const INLINE_MARKDOWN = /\*\*([^*]+)\*\*|`([^`]+)`|\[([^\]]+)\]\(([^)\s]+)\)|\*([^*\s][^*]*)\*/g;
   const MARKDOWN_HEADING = /^(#{1,6})\s+(.*)$/;
   const MARKDOWN_LIST_ITEM = /^(\s*)([-*•]|\d+[.)])\s+(.*)$/;
 
-  const state = { filters: {}, search: '', sortKey: null, sortDescending: false, openIds: new Set() };
+  const state = { filters: {}, search: '', sortKey: null, sortDescending: false, openIds: new Set(), onlyFailed: false };
 
   function makeElement(tag, properties = {}, children = []) {
     const element = document.createElement(tag);
@@ -237,7 +273,8 @@
         const selected = state.filters[definition.key];
         return !selected || definition.getValue(result) === selected;
       });
-      return matchesFilters && (!search || `${result.id} ${result.question}`.toLowerCase().includes(search));
+      const matchesFailureFilter = !state.onlyFailed || result.status !== 'transport_ok';
+      return matchesFilters && matchesFailureFilter && (!search || `${result.id} ${result.question}`.toLowerCase().includes(search));
     });
     const column = COLUMNS.find((candidate) => candidate.key === state.sortKey);
     if (column) {
@@ -386,17 +423,69 @@
     ]);
   }
 
+  function failureLabel(result) {
+    const lastTurn = result.turns[result.turns.length - 1];
+    if (result.status === 'http_error') return `No reply (HTTP ${lastTurn.http_status})`;
+    if (result.status === 'request_failed') return 'No reply (request failed)';
+    if (result.status === 'api_error') return 'No reply (API error)';
+    return 'Empty or invalid reply';
+  }
+
+  function openQuestion(id) {
+    state.openIds.add(id);
+    renderTable();
+    const toggle = document.querySelector(`[data-toggle-id="${CSS.escape(id)}"]`);
+    if (toggle) {
+      toggle.focus({ preventScroll: true });
+      toggle.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    }
+  }
+
+  function renderFailureNotice() {
+    const notice = document.getElementById('failure-notice');
+    if (!failedResults.length) return;
+    const idButtons = failedResults.map((result) => {
+      const button = makeElement('button', { type: 'button', className: 'link-button', textContent: result.id });
+      button.addEventListener('click', () => openQuestion(result.id));
+      return button;
+    });
+    const filterButton = makeElement('button', {
+      type: 'button',
+      className: 'notice-button',
+      textContent: state.onlyFailed ? 'Show all questions' : 'Show only these',
+    });
+    filterButton.addEventListener('click', () => {
+      state.onlyFailed = !state.onlyFailed;
+      renderFailureNotice();
+      renderTable();
+    });
+    const count = failedResults.length;
+    notice.replaceChildren(
+      makeElement('strong', { textContent: `${count} question${count === 1 ? '' : 's'} got no usable reply:` }),
+      ...idButtons,
+      filterButton,
+    );
+    notice.hidden = false;
+  }
+
   function renderRow(result) {
     const isOpen = state.openIds.has(result.id);
+    const isFailed = result.status !== 'transport_ok';
     const toggle = makeElement('button', { type: 'button', className: 'id-toggle', textContent: result.id });
     toggle.dataset.toggleId = result.id;
     toggle.setAttribute('aria-expanded', String(isOpen));
+    const questionCell = makeElement('td', {}, [result.question]);
+    if (isFailed) {
+      questionCell.append(makeElement('span', { className: 'failure-label' }, [
+        makeElement('span', { className: 'error-mark', textContent: '!', ariaHidden: 'true' }),
+        failureLabel(result),
+      ]));
+    }
 
-    const row = makeElement('tr', { className: 'question-row' }, [
+    const row = makeElement('tr', { className: `question-row${isFailed ? ' failed-row' : ''}` }, [
       makeElement('td', {}, [toggle]),
-      makeElement('td', { textContent: result.question }),
+      questionCell,
       makeElement('td', { className: 'secondary-cell hide-narrow', textContent: result.category || '' }),
-      makeElement('td', { className: 'secondary-cell hide-narrow', textContent: result.tier || '' }),
     ]);
     row.addEventListener('click', () => {
       // Selecting text in a row should not collapse it.
@@ -457,6 +546,7 @@
   }
 
   renderRunDetails();
+  renderFailureNotice();
   renderFilters();
   renderTableHead();
   renderTable();
