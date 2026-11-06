@@ -22,6 +22,9 @@ Usage:
     python3 scripts/run_benchmark.py --prompt-file my_prompt.txt
 """
 
+# Lets the type hints below work on Python 3.9, the version macOS ships.
+from __future__ import annotations
+
 import argparse
 import csv
 import hashlib
