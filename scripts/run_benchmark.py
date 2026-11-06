@@ -1,9 +1,12 @@
 """Send the Ross benchmark questions to the chat API and build a results dashboard.
 
-Reads a CSV with at least `id` and `question` columns, asks each question in its
-own session, saves the replies in a new run directory, and writes a standalone
-HTML dashboard next to them. A question written as "T1: ... T2: ..." is sent as
-consecutive messages in one session.
+Reads every question in fetched_site/questions/ross_benchmark.csv, asks each one
+in its own session, saves the replies in a new run directory, and writes a
+standalone HTML dashboard next to them. A question written as "T1: ... T2: ..."
+is sent as consecutive messages in one session.
+
+To add, change or remove test questions, edit that CSV file. Each row needs a
+unique `id` and a `question`; other columns, such as `category`, are optional.
 
 Before sending anything, the script reads the chat API URL, the bot name and the
 system prompt from the deployed site at https://ross.cc.lehigh.edu/, so every
@@ -17,8 +20,6 @@ attempts in total.
 
 Usage:
     python3 scripts/run_benchmark.py
-    python3 scripts/run_benchmark.py --tier quick
-    python3 scripts/run_benchmark.py --only-ids EC-10,AM-04
     python3 scripts/run_benchmark.py --prompt-file my_prompt.txt
 """
 
@@ -122,41 +123,6 @@ def load_questions(questions_path: Path) -> list[dict[str, str]]:
             seen_ids.add(question["id"])
             questions.append(question)
     return questions
-
-
-def select_questions(
-    questions: list[dict[str, str]], tier: str, only_ids: str | None
-) -> list[dict[str, str]]:
-    """Choose which questions a run should send.
-
-    The Quick tier is the rows labeled Quick. The Extensive tier is the full
-    benchmark, because the team's testing framework defines it as covering every
-    question, so it includes the rows labeled Quick as well.
-
-    Args:
-        questions (list[dict[str, str]]): All questions from the CSV.
-        tier (str): "quick" or "extensive".
-        only_ids (str | None): Comma-separated IDs to keep, applied after the
-            tier filter. None keeps every question in the tier.
-
-    Returns:
-        list[dict[str, str]]: The selected questions in their original order.
-
-    Raises:
-        ValueError: If `only_ids` names an ID that is not in the selected tier.
-    """
-    selected = questions
-    if tier == "quick":
-        selected = [
-            question for question in selected if question.get("tier", "").lower() == "quick"
-        ]
-    if only_ids:
-        wanted_ids = {question_id.strip() for question_id in only_ids.split(",")}
-        unknown_ids = wanted_ids.difference(question["id"] for question in selected)
-        if unknown_ids:
-            raise ValueError(f"Unknown question IDs: {', '.join(sorted(unknown_ids))}")
-        selected = [question for question in selected if question["id"] in wanted_ids]
-    return selected
 
 
 def split_into_turns(question_text: str) -> list[str]:
@@ -441,13 +407,6 @@ def parse_arguments(argv: list[str] | None) -> argparse.Namespace:
     )
     parser.add_argument("--questions-file", type=Path, default=DEFAULT_QUESTIONS_FILE)
     parser.add_argument(
-        "--tier",
-        choices=["quick", "extensive"],
-        default="extensive",
-        help="quick: rows labeled Quick. extensive: every question (default).",
-    )
-    parser.add_argument("--only-ids", help="Comma-separated question IDs, such as EC-10,AM-04.")
-    parser.add_argument(
         "--prompt-file",
         type=Path,
         help="Send this local prompt instead of the site's, for example to try an edited prompt.",
@@ -493,17 +452,15 @@ def main(argv: list[str] | None = None) -> int:
     try:
         if arguments.endpoint is not None and not re.match(r"https?://", arguments.endpoint):
             raise ValueError("--endpoint must be an absolute http(s) URL.")
-        selected = select_questions(
-            load_questions(arguments.questions_file), arguments.tier, arguments.only_ids
-        )
+        questions = load_questions(arguments.questions_file)
         local_prompt = None
         if arguments.prompt_file is not None:
             local_prompt = arguments.prompt_file.read_text(encoding="utf-8")
         site_settings = read_live_site_settings(SITE_URL)
     except (ValueError, OSError) as e:
         raise SystemExit(f"Error: {e}") from e
-    if not selected:
-        raise SystemExit("Error: no questions match the selected tier.")
+    if not questions:
+        raise SystemExit(f"Error: {arguments.questions_file} has no questions.")
 
     endpoint = arguments.endpoint or site_settings["endpoint"]
     bot_name = site_settings["bot_name"]
@@ -534,11 +491,9 @@ def main(argv: list[str] | None = None) -> int:
         "run_id": run_id,
         "started_at_utc": started_at.strftime(UTC_TIMESTAMP_FORMAT),
         "ended_at_utc": None,
-        "total_questions": len(selected),
+        "total_questions": len(questions),
         "config": {
             "questions_file": to_repo_relative(arguments.questions_file),
-            "tier": arguments.tier,
-            "only_ids": arguments.only_ids,
             "site_url": SITE_URL,
             "bot_name": bot_name,
             "endpoint": endpoint,
@@ -552,7 +507,7 @@ def main(argv: list[str] | None = None) -> int:
     }
     write_run_record(run_record_path, run_record)
 
-    print(f"Sending {len(selected)} questions to {endpoint}, up to {arguments.concurrency} at a time")
+    print(f"Sending {len(questions)} questions to {endpoint}, up to {arguments.concurrency} at a time")
     results_by_position = {}
     interrupted = False
     with ThreadPoolExecutor(max_workers=arguments.concurrency) as executor:
@@ -560,7 +515,7 @@ def main(argv: list[str] | None = None) -> int:
             executor.submit(
                 ask_question, question, endpoint, bot_name, custom_prompt, REQUEST_TIMEOUT_SECONDS
             ): position
-            for position, question in enumerate(selected)
+            for position, question in enumerate(questions)
         }
         pending = set(future_positions)
         while pending:
@@ -585,7 +540,7 @@ def main(argv: list[str] | None = None) -> int:
                 write_run_record(run_record_path, run_record)
                 retry_note = f" after {result['retries']} retries" if result["retries"] else ""
                 print(
-                    f"[{len(results_by_position)}/{len(selected)}] {result['id']} {result['status']} "
+                    f"[{len(results_by_position)}/{len(questions)}] {result['id']} {result['status']} "
                     f"{result['latency_seconds']:.1f}s{retry_note}"
                 )
 
@@ -595,7 +550,7 @@ def main(argv: list[str] | None = None) -> int:
     dashboard_path = build_dashboard(run_record_path)
 
     failed_count = sum(1 for result in run_record["results"] if result["status"] != "transport_ok")
-    print(f"Replies received: {len(run_record['results']) - failed_count} of {len(selected)}")
+    print(f"Replies received: {len(run_record['results']) - failed_count} of {len(questions)}")
     print(f"Failed: {failed_count}")
     print(f"Run record: {to_repo_relative(run_record_path)}")
     print(f"Dashboard: {to_repo_relative(dashboard_path)}")

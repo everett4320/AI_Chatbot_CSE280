@@ -154,18 +154,8 @@ class BenchmarkPipelineTest(unittest.TestCase):
             with self.subTest(name), self.assertRaises(ValueError):
                 run_benchmark.load_questions(self.write_csv(text))
 
-    def test_repository_csv_loads_and_quick_is_a_smaller_subset(self):
-        questions = run_benchmark.load_questions(run_benchmark.DEFAULT_QUESTIONS_FILE)
-        quick_questions = run_benchmark.select_questions(questions, "quick", None)
-        self.assertTrue(quick_questions)
-        self.assertLess(len(quick_questions), len(questions))
-        self.assertEqual(run_benchmark.select_questions(questions, "extensive", None), questions)
-
-    def test_select_questions_rejects_unknown_ids(self):
-        questions = [{"id": "Q1", "question": "Hello", "tier": "Quick"}]
-        self.assertEqual(run_benchmark.select_questions(questions, "quick", "Q1"), questions)
-        with self.assertRaises(ValueError):
-            run_benchmark.select_questions(questions, "quick", "Q9")
+    def test_repository_csv_loads(self):
+        self.assertTrue(run_benchmark.load_questions(run_benchmark.DEFAULT_QUESTIONS_FILE))
 
     def test_main_rejects_an_endpoint_that_is_not_an_absolute_url(self):
         for endpoint in ["example.com/call", ""]:
