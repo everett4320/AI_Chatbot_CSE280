@@ -370,7 +370,7 @@
     const sources = turn.sources || [];
     if (sources.length) {
       const items = sources.map((source) => {
-        const title = source.title || source.url || 'Untitled source';
+        const title = source.title || source.url;
         // Links come from the bot, so only web addresses become clickable.
         if (/^https?:\/\//i.test(source.url || '')) {
           return makeElement('li', {}, [makeElement('a', { href: source.url, textContent: title, target: '_blank', rel: 'noopener noreferrer' })]);
@@ -379,7 +379,7 @@
       });
       children.push(makeElement('div', { className: 'sources' }, [
         makeElement('div', { className: 'sources-heading', textContent: `Sources (${sources.length})` }),
-        makeElement('ul', { className: 'source-list' }, items),
+        makeElement('ol', { className: 'source-list' }, items),
       ]));
     } else if (turn.status === 'transport_ok') {
       children.push(makeElement('p', { className: 'no-sources', textContent: 'No sources returned.' }));

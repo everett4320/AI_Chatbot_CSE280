@@ -193,6 +193,19 @@ class BenchmarkPipelineTest(unittest.TestCase):
         self.assertEqual(result["turns"][0]["response"], "Answer to hello")
         self.assertEqual(len(result["turns"][0]["sources"]), 1)
 
+    def test_sources_are_cleaned_up_like_the_site_does(self):
+        body = json.dumps({"Response": "ok", "Sources": [
+            {"title": "Page A", "url": "https://a.edu"},
+            {"title": "Page A again", "url": "https://a.edu"},
+            {"title": "No url"},
+            {"title": "  ", "url": "https://b.edu"},
+            "not a source",
+        ]}).encode()
+        self.assertEqual(run_benchmark.parse_response_body(body)["sources"], [
+            {"title": "Page A", "url": "https://a.edu"},
+            {"title": "https://b.edu", "url": "https://b.edu"},
+        ])
+
     def test_request_matches_the_frontend_payload(self):
         self.ask("hello")
         payload = self.server.received_payloads[0]

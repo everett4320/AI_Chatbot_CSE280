@@ -175,8 +175,9 @@ def parse_response_body(body: bytes) -> dict:
 
     Returns:
         dict: `status` ("transport_ok", "api_error" or "invalid_response"),
-        `error` (str or None), `response` (str or None), `sources` (list of
-        dicts) and `session_id` (the service's session ID, or None).
+        `error` (str or None), `response` (str or None), `sources` (the
+        `{"title", "url"}` list the site shows) and `session_id` (the
+        service's session ID, or None).
     """
     outcome = {
         "status": "invalid_response",
@@ -200,7 +201,17 @@ def parse_response_body(body: bytes) -> dict:
         outcome["response"] = response_text
     sources = parsed_body.get("Sources")
     if isinstance(sources, list):
-        outcome["sources"] = [source for source in sources if isinstance(source, dict)]
+        # The site drops sources without a url, keeps only the first source for
+        # each url, and shows the url when the title is empty.
+        seen_urls = set()
+        for source in sources:
+            url = source.get("url") if isinstance(source, dict) else None
+            if not isinstance(url, str) or not url or url in seen_urls:
+                continue
+            seen_urls.add(url)
+            title = source.get("title")
+            title = title.strip() if isinstance(title, str) else ""
+            outcome["sources"].append({"title": title or url, "url": url})
     outcome["session_id"] = parsed_body.get("sessionId") or None
 
     api_error = parsed_body.get("error")
