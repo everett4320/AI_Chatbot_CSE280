@@ -2,8 +2,11 @@
 
 Reads every question in fetched_site/questions/ross_benchmark.csv, asks each one
 in its own session, saves the replies in a new run directory, and writes a
-standalone HTML dashboard next to them. A question written as "T1: ... T2: ..."
-is sent as consecutive messages in one session.
+standalone HTML dashboard and a results.csv next to them. results.csv has the
+question CSV's columns plus a model_reply column; a failed question gets its
+error message there. When the run ends, the run directory opens in Finder or
+File Explorer. A question written as "T1: ... T2: ..." is sent as consecutive
+messages in one session.
 
 To add, change or remove test questions, edit that CSV file. Each row needs a
 unique `id` and a `question`; other columns, such as `category`, are optional.
@@ -33,6 +36,7 @@ import http.client
 import json
 import os
 import re
+import subprocess
 import sys
 import time
 import urllib.error
@@ -49,6 +53,7 @@ DASHBOARD_TEMPLATE_PATH = Path(__file__).resolve().parent / "benchmark_dashboard
 RUN_RECORD_PLACEHOLDER = "__RUN_RECORD_JSON__"
 DEFAULT_QUESTIONS_FILE = REPO_ROOT / "fetched_site/questions/ross_benchmark.csv"
 RUNS_DIR = REPO_ROOT / "fetched_site/test_prompt"
+REPLY_COLUMN = "model_reply"
 SITE_URL = "https://ross.cc.lehigh.edu/"
 # Run folders are named by their start time in US Eastern time, such as 11-05_15-18-01.
 RUN_FOLDER_TIME_ZONE = ZoneInfo("America/New_York")
@@ -385,11 +390,99 @@ def build_dashboard(run_record_path: Path) -> Path:
     return dashboard_path
 
 
+def format_reply_for_csv(question_text: str, turns: list[dict]) -> str:
+    """Build the text of one question's `model_reply` cell.
+
+    A message that failed contributes its error message instead of a reply, so
+    a reader of the CSV sees what went wrong without opening the run record.
+
+    Args:
+        question_text (str): The question column's value. It shows whether the
+            question was sent as several messages ("T1: ... T2: ...").
+        turns (list[dict]): The `turns` of one result in the run record. A
+            question stops at its first failed message, so later messages have
+            no entry.
+
+    Returns:
+        str: The reply or error message for a one-message question. For a
+        multi-message question, one "T<number>: ..." part per message that was
+        sent, separated by a blank line, like the labels in the question.
+    """
+    texts = [
+        turn["response"] if turn["status"] == "transport_ok" else turn["error"]
+        for turn in turns
+    ]
+    if len(split_into_turns(question_text)) == 1:
+        return texts[0]
+    return "\n\n".join(f"T{number}: {text}" for number, text in enumerate(texts, start=1))
+
+
+def write_results_csv(run_record_path: Path, question_columns: list[str]) -> Path:
+    """Write `results.csv` next to the run record: the question CSV plus the replies.
+
+    Each row keeps the question CSV's columns and adds `model_reply`. The file
+    starts with a byte order mark so that Excel reads the replies as UTF-8
+    instead of showing curly quotes and emoji as garbage. Python readers should
+    open it with encoding "utf-8-sig".
+
+    Args:
+        run_record_path (Path): The run's `run_record.json`.
+        question_columns (list[str]): Column names of the question CSV, in file order.
+
+    Returns:
+        Path: The CSV file that was written. It has a header and one row for
+        each question that finished, in question CSV order.
+    """
+    run_record = json.loads(run_record_path.read_text(encoding="utf-8"))
+    results_csv_path = run_record_path.with_name("results.csv")
+    with results_csv_path.open("w", encoding="utf-8-sig", newline="") as f:
+        writer = csv.writer(f)
+        writer.writerow([*question_columns, REPLY_COLUMN])
+        for result in run_record["results"]:
+            writer.writerow(
+                [
+                    *(result[column] for column in question_columns),
+                    format_reply_for_csv(result["question"], result["turns"]),
+                ]
+            )
+    return results_csv_path
+
+
 def write_run_record(run_record_path: Path, run_record: dict) -> None:
     """Save the run record in one step, so stopping a run never leaves a half-written file."""
     temporary_path = run_record_path.with_suffix(".tmp")
     temporary_path.write_text(json.dumps(run_record, indent=2, ensure_ascii=False), encoding="utf-8")
     os.replace(temporary_path, run_record_path)
+
+
+def open_folder_in_file_manager(folder: Path) -> None:
+    """Open `folder` in the computer's file manager, so the results are easy to find.
+
+    The file manager is Finder on macOS, File Explorer on Windows and the
+    desktop's default one on other systems. Only the folder is shown; no file
+    in it is opened in Excel, a browser or any other program.
+
+    Failing to start a file manager, for example on a computer with no desktop,
+    does not fail the run, since the results are already saved.
+
+    Args:
+        folder (Path): An existing folder, such as the run's directory.
+
+    Side effects:
+        Opens a file manager window and waits for the launcher command to return.
+    """
+    absolute_folder = folder.resolve()
+    if sys.platform == "darwin":
+        launcher = "open"
+    elif sys.platform == "win32":
+        launcher = "explorer"
+    else:
+        launcher = "xdg-open"
+    try:
+        # Explorer exits with status 1 even when it works, so the status is not checked.
+        subprocess.run([launcher, str(absolute_folder)], check=False)
+    except OSError:
+        print(f"Could not open a file manager. The results are in {absolute_folder}")
 
 
 def to_repo_relative(path: Path) -> str:
@@ -548,12 +641,15 @@ def main(argv: list[str] | None = None) -> int:
         run_record["ended_at_utc"] = datetime.now(timezone.utc).strftime(UTC_TIMESTAMP_FORMAT)
         write_run_record(run_record_path, run_record)
     dashboard_path = build_dashboard(run_record_path)
+    results_csv_path = write_results_csv(run_record_path, list(questions[0]))
 
     failed_count = sum(1 for result in run_record["results"] if result["status"] != "transport_ok")
     print(f"Replies received: {len(run_record['results']) - failed_count} of {len(questions)}")
     print(f"Failed: {failed_count}")
     print(f"Run record: {to_repo_relative(run_record_path)}")
+    print(f"Results CSV: {to_repo_relative(results_csv_path)}")
     print(f"Dashboard: {to_repo_relative(dashboard_path)}")
+    open_folder_in_file_manager(run_dir)
     return 1 if failed_count or interrupted else 0
 
 
