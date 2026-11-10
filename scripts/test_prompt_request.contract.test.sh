@@ -91,6 +91,7 @@ if ! request_output="$(RESULTS_DIR="$TMP_DIR/request-ok" bash "$REQUEST_SCRIPT" 
 fi
 grep -Fq "HTTP status:   200" <<<"$request_output"
 request_payload="$(find "$TMP_DIR/request-ok" -name '*.payload.json' -print -quit)"
+jq -e '.remember_conversation == "True"' "$request_payload" >/dev/null
 jq -e 'has("custom_prompt") | not' "$request_payload" >/dev/null
 
 if RESULTS_DIR="$TMP_DIR/request-failure" bash "$REQUEST_SCRIPT" --question "$QUESTION" --bot-name ross-test --endpoint "$ENDPOINT/failure" >"$TMP_DIR/request-failure.out" 2>&1; then
@@ -134,6 +135,7 @@ jq -e '
   and .results[0].request_question_id == .results[0].response_question_id
 ' "$suite_record" >/dev/null
 suite_payload="$(find "$TMP_DIR/suite-ok" -name '*.payload.json' -print -quit)"
+jq -e '.remember_conversation == "True"' "$suite_payload" >/dev/null
 jq -e 'has("custom_prompt") | not' "$suite_payload" >/dev/null
 
 if bash "$SUITE_SCRIPT"   --questions-file "$TMP_DIR/questions.json"   --runs-dir "$TMP_DIR/suite-failure"   --bot-name ross-test   --endpoint "$ENDPOINT/failure"   --sections 1 >"$TMP_DIR/suite-failure.out" 2>&1; then

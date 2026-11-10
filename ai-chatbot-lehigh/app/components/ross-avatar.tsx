@@ -1,9 +1,5 @@
-const rossMarkUrl = `${import.meta.env.BASE_URL}figma/ross-mark.svg`;
+const rossAvatarUrl = `${import.meta.env.BASE_URL}figma/ross-avatar.png`;
 
 export function RossAvatar() {
-  return (
-    <span className="ross-message__avatar" aria-hidden="true">
-      <img src={rossMarkUrl} alt="" />
-    </span>
-  );
+  return <img className="ross-message__avatar" src={rossAvatarUrl} alt="" />;
 }

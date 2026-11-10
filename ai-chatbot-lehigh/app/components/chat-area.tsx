@@ -1,17 +1,21 @@
 import { useRef, useEffect, useState } from "react";
-import type { FeedbackRating, Message } from "~/types/chat";
+import type { ChatErrorInfo, FeedbackRating, Message } from "~/types/chat";
 import { ChatMessage } from "~/components/chat-message";
 import { ChatInput } from "~/components/chat-input";
 import { TypingIndicator } from "~/components/typing-indicator";
+import { ChatErrorNotice } from "~/components/chat-error-notice";
 
 const figmaAssetBase = `${import.meta.env.BASE_URL}figma/`;
 
 interface ChatAreaProps {
   messages: Message[];
   isLoading: boolean;
-  error: string | null;
+  error: ChatErrorInfo | null;
+  feedbackErrors: Record<string, ChatErrorInfo>;
+  pendingFeedbackIds: string[];
   chatRevision: number;
   onSend: (content: string) => void;
+  onRetry: () => void;
   onClose: () => void;
   onRestart: () => void;
   onFeedback: (messageId: string, rating: FeedbackRating) => void;
@@ -21,8 +25,11 @@ export function ChatArea({
   messages,
   isLoading,
   error,
+  feedbackErrors,
+  pendingFeedbackIds,
   chatRevision,
   onSend,
+  onRetry,
   onClose,
   onRestart,
   onFeedback,
@@ -42,7 +49,7 @@ export function ChatArea({
         behavior: reduceMotion ? "auto" : "smooth",
       });
     }
-  }, [messages, isLoading]);
+  }, [messages, isLoading, error]);
 
   const handleNewChat = () => {
     onRestart();
@@ -53,10 +60,10 @@ export function ChatArea({
     <section className="ross-panel" aria-label="Ross, Lehigh engineering assistant">
       <header className="ross-header">
         <div className="ross-header__identity">
-          <span
+          <img
             className="ross-brand-mark"
-            style={{ maskImage: `url(${figmaAssetBase}ross-mark.svg)` }}
-            aria-hidden="true"
+            src={`${figmaAssetBase}ross-header.png`}
+            alt=""
           />
           <h1>Ross</h1>
         </div>
@@ -118,24 +125,29 @@ export function ChatArea({
                 key={message.id}
                 message={message}
                 onFeedback={onFeedback}
+                feedbackError={feedbackErrors[message.id]}
+                isRating={pendingFeedbackIds.includes(message.id)}
               />
             ))}
             {isLoading && <TypingIndicator />}
             {error && (
-              <div className="ross-error" role="alert">
-                <strong>Ross couldn’t answer just now.</strong>
-                <span>{error}</span>
-              </div>
+              <ChatErrorNotice
+                error={error}
+                onRetry={onRetry}
+                isLoading={isLoading}
+              />
             )}
           </div>
         </div>
       )}
 
       {!hasConversation && error && (
-        <div className="ross-error ross-error--welcome" role="alert">
-          <strong>Ross couldn’t connect.</strong>
-          <span>{error}</span>
-        </div>
+        <ChatErrorNotice
+          error={error}
+          onRetry={onRetry}
+          isLoading={isLoading}
+          welcome
+        />
       )}
 
       <ChatInput key={chatRevision} onSend={onSend} isLoading={isLoading} />

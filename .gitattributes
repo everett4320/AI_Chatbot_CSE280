@@ -1,2 +1,3 @@
 # Bash QA scripts must remain runnable on Linux/ITS hosts.
 *.sh text eol=lf
+christopher-handoff/backend-inputs/SYSTEM_PROMPT.txt text eol=lf

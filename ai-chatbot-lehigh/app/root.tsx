@@ -8,13 +8,14 @@ import {
 } from "react-router";
 
 import type { Route } from "./+types/root";
+import rossFavicon from "./assets/ross-mark.svg?no-inline";
 import "./app.css";
 
 export const links: Route.LinksFunction = () => [
   {
     rel: "icon",
     type: "image/svg+xml",
-    href: `${import.meta.env.BASE_URL}figma/ross-mark.svg`,
+    href: rossFavicon,
   },
   { rel: "preconnect", href: "https://fonts.googleapis.com" },
   {

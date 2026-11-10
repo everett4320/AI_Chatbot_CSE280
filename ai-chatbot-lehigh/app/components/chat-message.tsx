@@ -2,16 +2,20 @@ import { memo } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { RossAvatar } from "~/components/ross-avatar";
-import type { FeedbackRating, Message } from "~/types/chat";
+import type { ChatErrorInfo, FeedbackRating, Message } from "~/types/chat";
 
 interface ChatMessageProps {
   message: Message;
   onFeedback: (messageId: string, rating: FeedbackRating) => void;
+  feedbackError?: ChatErrorInfo;
+  isRating?: boolean;
 }
 
 export const ChatMessage = memo(function ChatMessage({
   message,
   onFeedback,
+  feedbackError,
+  isRating = false,
 }: ChatMessageProps) {
   const isUser = message.role === "user";
 
@@ -67,6 +71,7 @@ export const ChatMessage = memo(function ChatMessage({
                   className={message.feedback === "up" ? "is-selected" : ""}
                   aria-label="Helpful"
                   aria-pressed={message.feedback === "up"}
+                  disabled={isRating}
                   onClick={() => onFeedback(message.id, "up")}
                 >
                   <span aria-hidden="true">👍</span>
@@ -76,12 +81,19 @@ export const ChatMessage = memo(function ChatMessage({
                   className={message.feedback === "down" ? "is-selected" : ""}
                   aria-label="Not helpful"
                   aria-pressed={message.feedback === "down"}
+                  disabled={isRating}
                   onClick={() => onFeedback(message.id, "down")}
                 >
                   <span aria-hidden="true">👎</span>
                 </button>
               </div>
             </div>
+            {feedbackError && (
+              <div className="ross-feedback__error" role="status">
+                <strong>{feedbackError.title}</strong>
+                <span>{feedbackError.message}</span>
+              </div>
+            )}
           </>
         )}
       </div>

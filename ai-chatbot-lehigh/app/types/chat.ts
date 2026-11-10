@@ -23,3 +23,20 @@ export interface ChatReply {
   sessionId: string;
   questionId: string;
 }
+export type ChatErrorKind =
+  | "timeout"
+  | "service"
+  | "rate_limit"
+  | "access"
+  | "invalid_response"
+  | "network"
+  | "configuration"
+  | "request";
+
+export interface ChatErrorInfo {
+  kind: ChatErrorKind;
+  title: string;
+  message: string;
+  retryable: boolean;
+  details?: string;
+}

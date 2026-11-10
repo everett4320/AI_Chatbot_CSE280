@@ -41,7 +41,9 @@ is `https://ross.cc.lehigh.edu/`, which uses `VITE_BASE_PATH=/`.
 
 The API sends question and feedback payloads with `action`, `bot_name`, `sessionId`, and `questionId`. It renders the current Ross `Response` field and optional `Sources`.
 
-The transcript is local React state. A tab-scoped session is kept separately, scoped to endpoint and bot slug. Backend-returned canonical sessions are adopted for later requests; clearing the chat invalidates stale pending responses.
+Questions also send `remember_conversation: "True"` (a string). The backend uses earlier turns in the same session as context; send the latest user message and retain the canonical session ID. The backend returns one complete JSON reply and does not support streaming.
+
+The transcript is local React state. A tab-scoped session is kept separately, scoped to endpoint and bot slug. Backend-returned canonical sessions are adopted for later requests; `NEW CHAT` clears the local transcript and stored session ID and invalidates stale pending responses. It does not delete backend conversation records.
 
 A missing endpoint is only permitted for the development demo. It is not evidence of a working Ross clone.
 

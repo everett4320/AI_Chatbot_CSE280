@@ -20,6 +20,5 @@ Ross frontend deployments from this repository must follow these rules:
 
 ## Current implementation
 
-The frontend in `ai-chatbot-lehigh/` builds as a static SPA. From that
-directory, run `npm run verify:deployment` with the assigned build-time values,
-then check the current CI result before publishing `build/client/`.
+Use the [Ross handoff](christopher-handoff/README.md) to build and publish
+the static files. Check the branch's CI result before a production cutover.

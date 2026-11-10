@@ -63,33 +63,31 @@ button {
   padding: 0;
   place-items: center;
   border: 0;
-  border-radius: 999px;
-  background: #d1e9e8;
+  background: transparent;
   cursor: pointer;
   opacity: 1;
   transform: scale(1);
-  transition: transform 180ms ease, opacity 160ms ease, box-shadow 180ms ease;
+  transition: transform 180ms ease, opacity 160ms ease;
 }
 
 .ross-launcher:hover {
   transform: translateY(-3px) scale(1.04);
-  box-shadow:
-    0 18px 38px rgba(18, 53, 76, 0.28),
-    0 4px 10px rgba(18, 53, 76, 0.2);
 }
 
 .ross-launcher:focus-visible,
 .ross-header__icon:focus-visible,
 .ross-header__new-chat:focus-visible,
-.ross-composer__send:focus-visible {
+.ross-composer__send:focus-visible,
+.ross-error__retry:focus-visible {
   outline: 3px solid rgba(29, 112, 132, 0.5);
   outline-offset: 3px;
 }
 
 .ross-launcher img {
   display: block;
-  width: 86%;
-  height: 86%;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
 }
 
 .ross-panel {
@@ -161,7 +159,7 @@ button {
 
 .ross-header h1 {
   min-width: 0;
-  margin: 0 0 0 10px;
+  margin: 0 0 0 7px;
   font-family: "Work Sans", "Inter", sans-serif;
   font-size: 24px;
   font-weight: 600;
@@ -235,14 +233,12 @@ button {
 }
 
 .ross-brand-mark {
+  --ross-brand-size: 50px;
   display: block;
-  width: 45px;
-  height: 45px;
-  flex: 0 0 45px;
-  background: #d1e9e8;
-  mask-size: 140% 140%;
-  mask-position: center;
-  mask-repeat: no-repeat;
+  width: var(--ross-brand-size);
+  height: var(--ross-brand-size);
+  flex: 0 0 var(--ross-brand-size);
+  object-fit: contain;
 }
 
 .ross-help-popover {
@@ -357,23 +353,16 @@ button {
 }
 
 .ross-message__avatar {
-  display: grid;
-  place-items: center;
-  width: 38px;
-  height: 38px;
-  min-width: 38px;
-  margin-top: 4px;
-  border-radius: 50%;
-  background: #d1e9e8;
-}
-
-.ross-message__avatar img {
-  width: 86%;
+  display: block;
+  width: 48px;
+  height: 48px;
+  flex: none;
+  object-fit: contain;
 }
 
 .ross-message__bubble {
   min-width: 0;
-  max-width: calc(100% - 48px);
+  max-width: calc(100% - 58px);
   padding: 13px 20px;
   border-radius: 8px;
   box-shadow: 0 4px 13.1px rgba(0, 0, 0, 0.08);
@@ -617,16 +606,61 @@ button {
 
 .ross-error {
   display: flex;
-  margin: 0 23px 0 48px;
-  padding: 11px 13px;
+  margin: 0;
+  padding: 8px 0;
   flex-direction: column;
+  align-items: center;
   gap: 3px;
-  border-radius: 8px;
-  background: #fff2ef;
-  color: #812c22;
+  color: #566974;
   font-size: 14px;
-  line-height: 1.35;
+  line-height: 1.5;
+  text-align: center;
   overflow-wrap: anywhere;
+}
+
+.ross-error > strong {
+  color: #365263;
+  font-weight: 500;
+}
+
+.ross-error__retry {
+  display: inline-flex;
+  min-height: 44px;
+  padding: 8px;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: #245d6b;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 150ms ease, color 150ms ease;
+}
+
+.ross-error__retry svg {
+  flex: 0 0 auto;
+}
+
+.ross-error__retry:hover:not(:disabled) {
+  background: #edf4f4;
+  color: #12354c;
+}
+
+.ross-error__retry:disabled {
+  cursor: wait;
+  opacity: 0.6;
+}
+
+.ross-feedback__error {
+  display: flex;
+  margin-top: 10px;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 13px;
+  line-height: 1.4;
 }
 
 .ross-error--welcome {
@@ -792,14 +826,12 @@ button {
   }
 
   .ross-header h1 {
-    margin-left: 8px;
+    margin-left: 6px;
     font-size: 22px;
   }
 
   .ross-brand-mark {
-    width: 36px;
-    height: 36px;
-    flex-basis: 36px;
+    --ross-brand-size: 40px;
   }
 
   .ross-header__new-chat {
@@ -834,9 +866,7 @@ button {
   }
 
   .ross-brand-mark {
-    width: 28px;
-    height: 28px;
-    flex-basis: 28px;
+    --ross-brand-size: 36px;
   }
 
   .ross-header__new-chat {
@@ -862,13 +892,12 @@ button {
   }
 
   .ross-message__avatar {
-    width: 33px;
-    height: 33px;
-    min-width: 33px;
+    width: 42px;
+    height: 42px;
   }
 
   .ross-message__bubble {
-    max-width: calc(100% - 41px);
+    max-width: calc(100% - 50px);
     padding: 12px 14px;
   }
 
@@ -877,9 +906,6 @@ button {
     padding: 10px 14px;
   }
 
-  .ross-error {
-    margin: 0 14px 0 41px;
-  }
 }
 
 @media (max-height: 650px) {
@@ -917,14 +943,12 @@ button {
   }
 
   .ross-header h1 {
-    margin-left: 8px;
+    margin-left: 6px;
     font-size: 22px;
   }
 
   .ross-brand-mark {
-    width: 34px;
-    height: 34px;
-    flex-basis: 34px;
+    --ross-brand-size: 38px;
   }
 
   .ross-header__new-chat {

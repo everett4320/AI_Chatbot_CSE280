@@ -4,6 +4,9 @@ This is the Ross chat interface. It builds as a static React Router site that
 Apache can serve from `build/client/`, with no Node process needed in
 production. It connects to the school's existing chatbot API.
 
+For the one-command Apache update and rollback, use the
+[Ross 2.0 handoff](../christopher-handoff/README.md).
+
 ## Build configuration
 
 Set these values before building:
@@ -89,6 +92,14 @@ Questions send it as `custom_prompt`, with `action: "question"` and `bot_name`
 from `VITE_CHAT_BOT_NAME`. Rebuild and redeploy after editing the prompt file;
 generated JavaScript assets need no manual prompt edits.
 
+Every question also sends `remember_conversation: "True"`. The backend uses
+earlier turns from the same session as context; the frontend keeps the returned
+session ID for follow-up questions. `NEW CHAT` clears the local transcript and
+session ID and starts a separate session on the next question.
+
+The backend returns a complete JSON reply and does not support streaming. The
+waiting indicator stays visible until the reply is ready.
+
 ## After deployment
 
 Check the published page:
@@ -97,6 +108,8 @@ Check the published page:
 - Check that the launcher, chat panel, source links, and feedback buttons work.
 - Check that `NEW CHAT` clears the transcript and input draft and starts a new
   session.
+- Ask about a specific major, then ask a follow-up such as "Which department
+  offers that major?" and confirm that Ross keeps the context.
 - Test a narrow phone viewport and a mobile landscape viewport.
 - Confirm that requests reach Ross and answers include the expected sources.
 - Run the question suite using the command in the

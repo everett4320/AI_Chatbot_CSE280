@@ -1,5 +1,6 @@
 import { readFileSync } from "node:fs";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { getChatErrorInfo } from "./chat-errors";
 import {
   buildFeedbackPayload,
   buildQuestionPayload,
@@ -37,6 +38,7 @@ describe("Lehigh chatbot API contract", () => {
     ).toEqual({
       action: "question",
       bot_name: "ross-test",
+      remember_conversation: "True",
       custom_prompt: systemPrompt,
       httpMethod: "POST",
       userMessage: "What programs are there?",
@@ -110,7 +112,7 @@ describe("Lehigh chatbot API contract", () => {
         >[0],
         { sessionId: "fallback-session", questionId: "fallback-question" },
       ),
-    ).toThrow("empty response");
+    ).toThrow();
   });
 
   it.each([
@@ -201,10 +203,12 @@ describe("Lehigh chatbot API contract", () => {
       expect(request).toMatchObject({
         action: "question",
         bot_name: "ross-test",
+        remember_conversation: "True",
         custom_prompt: systemPrompt,
       });
     }
     expect(requests[2]).not.toHaveProperty("custom_prompt");
+    expect(requests[2]).not.toHaveProperty("remember_conversation");
     expect(requests[1].sessionId).toBe("backend-canonical-session");
     expect(requests[2].sessionId).toBe("backend-canonical-session");
   });
@@ -254,6 +258,44 @@ describe("Lehigh chatbot API contract", () => {
     expect(values.has(api.getSessionStorageKey())).toBe(false);
   });
 
+  it("keeps multi-turn sessions when IDs are omitted and isolates a new chat", async () => {
+    vi.stubEnv("VITE_CHAT_API_URL", "https://api.example.test/ross");
+    vi.stubEnv("VITE_CHAT_BOT_NAME", "ross-test");
+    vi.resetModules();
+
+    const values = new Map<string, string>();
+    vi.stubGlobal("window", {
+      sessionStorage: {
+        getItem: (key: string) => values.get(key) ?? null,
+        setItem: (key: string, value: string) => values.set(key, value),
+        removeItem: (key: string) => values.delete(key),
+      },
+    });
+    const requests: Array<Record<string, unknown>> = [];
+    vi.stubGlobal("fetch", vi.fn(async (_url: string, init?: RequestInit) => {
+      requests.push(JSON.parse(String(init?.body)));
+      return new Response(JSON.stringify({ Response: "Complete answer" }));
+    }));
+
+    const api = await import("./chat-api");
+    const firstQuestion = { id: "u1", role: "user" as const, content: "Tell me about Bioengineering", timestamp: 1 };
+    const firstReply = await api.sendMessage([firstQuestion]);
+    await api.sendMessage([
+      firstQuestion,
+      { id: "a1", role: "assistant", content: firstReply.content, timestamp: 2 },
+      { id: "u2", role: "user", content: "What courses does that major require?", timestamp: 3 },
+    ]);
+    api.resetChatSession();
+    await api.sendMessage([{ id: "u3", role: "user", content: "Start fresh", timestamp: 4 }]);
+
+    expect(requests).toHaveLength(3);
+    expect(requests.every((request) => request.remember_conversation === "True")).toBe(true);
+    expect(requests[1].sessionId).toBe(requests[0].sessionId);
+    expect(requests[1].userMessage).toBe("What courses does that major require?");
+    expect(requests[2].sessionId).not.toBe(requests[0].sessionId);
+    expect(new Set(requests.map((request) => request.questionId)).size).toBe(3);
+  });
+
   it("requires a non-blank backend bot identifier for real API requests", () => {
     expect(requireBotName(" ross ")).toBe("ross");
     expect(() => requireBotName(undefined)).toThrow("chatbot identity");
@@ -275,7 +317,7 @@ describe("Lehigh chatbot API contract", () => {
       ),
     );
     await expect(
-      postToApi("https://example.test/call", payload, "API", {
+      postToApi("https://example.test/call", payload, {
         parseJson: true,
       }),
     ).rejects.toBeInstanceOf(ChatTimeoutError);
@@ -289,10 +331,86 @@ describe("Lehigh chatbot API contract", () => {
         ),
     );
     await expect(
-      postToApi("https://example.test/call", payload, "API", {
+      postToApi("https://example.test/call", payload, {
         parseJson: true,
       }),
-    ).rejects.toThrow("API error: 502 Bad Gateway");
+    ).rejects.toMatchObject({ info: { kind: "service", details: "HTTP 502" } });
+  });
+
+  it.each([
+    [500, '{"error":"internal stack trace secret"}', "service"],
+    [500, "", "service"],
+    [500, "<html>private stack</html>", "service"],
+    [429, '{"error":"rate limit"}', "rate_limit"],
+    [403, '{"error":"blocked"}', "access"],
+  ])("classifies HTTP %s without exposing its body", async (status, body, kind) => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(body, { status })));
+    const payload = buildQuestionPayload("Question", "s", "q", "ross");
+    const error = await postToApi("https://example.test", payload, { parseJson: true }).catch((e) => e);
+    expect(getChatErrorInfo(error)).toMatchObject({ kind, details: `HTTP ${status}` });
+    expect(JSON.stringify(getChatErrorInfo(error))).not.toContain(body || "private stack");
+  });
+
+  it("classifies connection failures and feedback separately", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new TypeError("private network detail")));
+    const payload = buildFeedbackPayload("s", "q", "up", "ross");
+    const error = await postToApi("https://example.test", payload, { parseJson: false }).catch((e) => e);
+    expect(getChatErrorInfo(error, "feedback")).toMatchObject({ kind: "network", title: "Your feedback wasn’t saved" });
+  });
+
+  it("preserves ordinary refusal answers and rejects invalid response values", () => {
+    const fallback = { sessionId: "s", questionId: "q" };
+    expect(parseChatReply({ Response: "I cannot answer that question." }, fallback).content).toBe("I cannot answer that question.");
+    expect(() => parseChatReply({ Response: 42 } as unknown as Parameters<typeof parseChatReply>[0], fallback)).toThrow();
+    expect(() => parseChatReply(null as unknown as Parameters<typeof parseChatReply>[0], fallback)).toThrow();
+  });
+
+  it("maps only exact known JSON errors and hides unknown errors", () => {
+    const fallback = { sessionId: "s", questionId: "q" };
+    for (const [value, kind] of [
+      ["  RATE LIMIT EXCEEDED  ", "rate_limit"],
+      ["request timeout", "timeout"],
+      ["service unavailable", "service"],
+      ["secret stack trace: service unavailable", "request"],
+    ]) {
+      try {
+        parseChatReply({ error: value }, fallback);
+        throw new Error("expected failure");
+      } catch (error) {
+        const info = getChatErrorInfo(error);
+        expect(info.kind).toBe(kind);
+        expect(JSON.stringify(info)).not.toContain(value);
+      }
+    }
+    expect(JSON.stringify(getChatErrorInfo(new Error("secret details")))).not.toContain("secret details");
+  });
+
+  it("uses exact JSON error mappings only when the HTTP status does not already classify the error", async () => {
+    const payload = buildQuestionPayload("Question", "s", "q", "ross");
+    for (const [status, kind] of [[400, "rate_limit"], [403, "access"], [500, "service"]] as const) {
+      vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response('{"error":"too many requests"}', { status })));
+      const error = await postToApi("https://example.test", payload, { parseJson: true }).catch((e) => e);
+      expect(getChatErrorInfo(error).kind).toBe(kind);
+    }
+  });
+
+  it("classifies invalid JSON as an invalid response", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response("not JSON", { status: 200 })));
+    const payload = buildQuestionPayload("Question", "s", "q", "ross");
+    await expect(postToApi("https://example.test", payload, { parseJson: true })).rejects.toMatchObject({ info: { kind: "invalid_response" } });
+  });
+
+  it("keeps the deadline while reading a failed response body", async () => {
+    vi.useFakeTimers();
+    vi.stubGlobal("fetch", vi.fn(async (_url: string, init?: RequestInit) => ({
+      ok: false, status: 500,
+      text: () => new Promise((_resolve, reject) => init?.signal?.addEventListener("abort", () => reject(new DOMException("Aborted", "AbortError")), { once: true })),
+    })));
+    const payload = buildQuestionPayload("Question", "s", "q", "ross");
+    const request = postToApi("https://example.test", payload, { parseJson: true, timeoutMs: 25 });
+    const assertion = expect(request).rejects.toBeInstanceOf(ChatTimeoutError);
+    await vi.advanceTimersByTimeAsync(25);
+    await assertion;
   });
 
   it("keeps the timeout active while the response body is read", async () => {
@@ -327,7 +445,6 @@ describe("Lehigh chatbot API contract", () => {
     const request = postToApi(
       "https://example.test/call",
       payload,
-      "API",
       { parseJson: true, timeoutMs: 25 },
     );
     const rejection = expect(request).rejects.toBeInstanceOf(ChatTimeoutError);

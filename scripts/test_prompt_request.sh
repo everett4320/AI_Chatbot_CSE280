@@ -69,6 +69,7 @@ Usage:
 Notes:
   - --endpoint (or ROSS_API_ENDPOINT) must be Christopher's assigned Ross endpoint.
   - The default request uses the clone's configured backend prompt.
+  - Questions send remember_conversation as the string "True", matching the frontend.
   - --custom-prompt-file is an explicit exploratory override; it does not prove persistent clone configuration.
   - Outputs payload and response files under fetched_site/prompt_effectiveness_runs/single_requests/ by default.
 USAGE
@@ -155,10 +156,11 @@ payload=$(jq -n \
   --arg action "question" \
   --arg bot_name "$BOT_NAME" \
   --arg httpMethod "POST" \
+  --arg remember_conversation "True" \
   --arg userMessage "$QUESTION" \
   --arg sessionId "$SESSION_ID" \
   --arg questionId "$QUESTION_ID" \
-  '{action:$action,bot_name:$bot_name,httpMethod:$httpMethod,userMessage:$userMessage,sessionId:$sessionId,questionId:$questionId}')
+  '{action:$action,bot_name:$bot_name,httpMethod:$httpMethod,remember_conversation:$remember_conversation,userMessage:$userMessage,sessionId:$sessionId,questionId:$questionId}')
 
 if [[ -n "$MODEL_ID" ]]; then
   payload=$(jq --arg model_id "$MODEL_ID" '. + {model_id:$model_id}' <<< "$payload")

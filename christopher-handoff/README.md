@@ -1,82 +1,60 @@
-# Ross handoff for Christopher
+# Ross 2.0 handoff
 
-This branch has the Ross frontend, system prompt, and source list for the
-P.C. Rossin College of Engineering and Applied Science. Chris Larkin is the
-project sponsor.
+Deploy from `christopher-handoff`. The app runs as static files on the existing
+Apache site at <https://ross.cc.lehigh.edu/>.
 
-For this update, we've removed the back button, made the text easier to read,
-and adjusted the logo and chat icons. The welcome message now introduces Ross
-as a guide to the Rossin College of Engineering at Lehigh. We've also revised
-the system prompt. The source list hasn't changed. [UPDATES.md](UPDATES.md)
-has a short summary.
+## Deploy from the branch
 
-## Updating the frontend
-
-Use Node 22 and the API settings from the existing deployment:
+Use Node 22 on the build host and pull the branch.
 
 ```bash
-git fetch origin
+git fetch origin christopher-handoff
 git switch christopher-handoff
-git pull --ff-only origin christopher-handoff
-cd ai-chatbot-lehigh
-
-export VITE_CHAT_API_URL="<existing API endpoint>"
-export VITE_CHAT_BOT_NAME="<existing bot name>"
-export VITE_BASE_PATH="/"
-npm ci
-npm run verify:deployment
+git merge --ff-only FETCH_HEAD
 ```
 
-This runs our checks and builds the static site in `build/client/`. Publish the
-complete contents of that directory through your usual Apache process at
-<https://ross.cc.lehigh.edu/>. Keep the existing `/index.html` fallback for
-page refreshes. No Node process needs to run on the production server.
+Export the endpoint and bot name from the current Ross deployment as
+`VITE_CHAT_API_URL` and `VITE_CHAT_BOT_NAME`. The public path defaults to `/`.
 
-The three `VITE_*` values are included in the build, so changing one means
-rebuilding the frontend. Keep the existing bot name even if it differs from
-the name shown in the chat. More Apache and Docker details are in the
-[frontend README](../ai-chatbot-lehigh/README.md).
-
-## Applying the prompt
-
-`npm run build` reads
-[backend-inputs/SYSTEM_PROMPT.txt](backend-inputs/SYSTEM_PROMPT.txt) and embeds
-its full text in the frontend. Every question sends that text as
-`custom_prompt`, with `action: "question"` and the `bot_name` from
-`VITE_CHAT_BOT_NAME`. Its version hash is recorded in
-[RELEASE_MANIFEST.md](RELEASE_MANIFEST.md).
-
-After changing the prompt file, rebuild and publish the complete
-`build/client/` output. No manual edit to a generated JavaScript asset is
-needed.
-
-The [API notes](backend-inputs/API_CONTRACT.md) describe the requests the
-frontend currently sends. If your setup expects something different, send us
-the format and we'll update our side.
-
-## Sources and testing
-
-The four source URLs are in
-[backend-inputs/SOURCE_CATALOG.csv](backend-inputs/SOURCE_CATALOG.csv). The
-Engineering root covers the full `engineering.lehigh.edu` host; the other
-three URLs are individual supplemental pages. Their exact-page scope still
-needs confirmation. If these sources are already ingested, this update
-shouldn't need another crawl. `knowledge_base/sample.md` is a placeholder and
-shouldn't be ingested.
-
-Once the update is live, we'll check the interface and run the existing
-52-question set. From the repository root, the test command is:
+From the repository root, run this as the user who can write to the Ross
+document root. Replace the example path with the existing Apache path.
 
 ```bash
-bash scripts/run_question_suite.sh \
-  --questions-file christopher-handoff/validation/test_questions.json \
-  --custom-prompt-file christopher-handoff/backend-inputs/SYSTEM_PROMPT.txt \
-  --bot-name "<existing bot name>" \
-  --endpoint "<existing API endpoint>"
+bash scripts/deploy_ross.sh /var/www/ross
 ```
 
-This sends the same prompt as the frontend. The script checks whether requests
-and responses work. We'll also read the
-answers to check their sources and the new refusal rules, using the
-[acceptance checklist](validation/ACCEPTANCE_CHECKLIST.md). Please send us the
-updated link and the prompt version you applied when it's ready.
+The command installs dependencies, runs the frontend checks, builds the site,
+and copies the static files to Apache. It publishes the new `index.html` last
+and keeps the old assets available for open tabs and rollback. It needs Bash,
+`rsync`, and `flock` on Linux. Keep the existing Apache `index.html` fallback.
+
+If you're using the prebuilt archive, extract it and run
+`bash deploy_ross.sh /var/www/ross` from the extracted directory. The archive
+is built for the existing Ross endpoint and the root path. Node is needed on
+the build host only.
+
+## Check and roll back
+
+Open the site, send a question and a follow-up, then start a new chat. Check
+source links and feedback. Use the [acceptance checklist](validation/ACCEPTANCE_CHECKLIST.md)
+for the full pass. See the [release notes](UPDATES.md) for the current API
+retest.
+
+To restore the last version from the checkout, use the same deploy user.
+
+```bash
+bash scripts/deploy_ross.sh --rollback /var/www/ross
+```
+
+From the extracted archive, use `bash deploy_ross.sh --rollback /var/www/ross`.
+
+## Prompt and sources
+
+The build reads [SYSTEM_PROMPT.txt](backend-inputs/SYSTEM_PROMPT.txt) and sends
+its full text with every question. Rebuild after editing it. The
+[release record](RELEASE_MANIFEST.md) identifies the prompt version.
+
+The [source list](backend-inputs/SOURCE_CATALOG.csv) still has the Engineering
+host and three supplemental pages. Reuse the existing ingestion. The
+[API contract](backend-inputs/API_CONTRACT.md) covers questions, session IDs,
+and feedback.

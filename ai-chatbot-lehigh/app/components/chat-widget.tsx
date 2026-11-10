@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useChat } from "~/hooks/use-chat";
 import { ChatArea } from "~/components/chat-area";
 
-const rossMarkUrl = `${import.meta.env.BASE_URL}figma/ross-mark.svg`;
+const rossLauncherUrl = `${import.meta.env.BASE_URL}figma/ross-launcher.png`;
 
 export function ChatWidget() {
   const [isOpen, setIsOpen] = useState(false);
@@ -10,8 +10,11 @@ export function ChatWidget() {
     messages,
     isLoading,
     error,
+    feedbackErrors,
+    pendingFeedbackIds,
     chatRevision,
     sendMessage,
+    retryMessage,
     clearChat,
     rateMessage,
   } = useChat();
@@ -59,8 +62,11 @@ export function ChatWidget() {
           messages={messages}
           isLoading={isLoading}
           error={error}
+          feedbackErrors={feedbackErrors}
+          pendingFeedbackIds={pendingFeedbackIds}
           chatRevision={chatRevision}
           onSend={sendMessage}
+          onRetry={retryMessage}
           onClose={() => setIsOpen(false)}
           onRestart={clearChat}
           onFeedback={rateMessage}
@@ -73,7 +79,7 @@ export function ChatWidget() {
           className="ross-launcher"
           aria-label="Open Ross chat"
         >
-          <img src={rossMarkUrl} alt="" />
+          <img src={rossLauncherUrl} alt="" />
         </button>
       )}
     </div>

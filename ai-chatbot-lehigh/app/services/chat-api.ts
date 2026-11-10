@@ -1,3 +1,4 @@
+import { ChatServiceError, errorInfo, httpError, kindFromErrorBody } from "./chat-errors";
 import systemPrompt from "../../../christopher-handoff/backend-inputs/SYSTEM_PROMPT.txt?raw";
 import type {
   ChatReply,
@@ -19,9 +20,9 @@ let sessionEpoch = 0;
 
 export const REQUEST_TIMEOUT_MS = 60_000;
 
-export class ChatTimeoutError extends Error {
-  constructor() {
-    super("The chat service did not respond in time. Please try again.");
+export class ChatTimeoutError extends ChatServiceError {
+  constructor(operation: "question" | "feedback" = "question", details?: string) {
+    super(errorInfo("timeout", operation, details));
     this.name = "ChatTimeoutError";
   }
 }
@@ -37,6 +38,7 @@ export interface LehighApiResponse {
 export interface QuestionPayload {
   action: "question";
   bot_name: string;
+  remember_conversation: "True";
   custom_prompt: string;
   httpMethod: "POST";
   userMessage: string;
@@ -99,7 +101,7 @@ export function persistSessionId(sessionId: string, expectedEpoch = sessionEpoch
 export function requireBotName(botName: string | undefined) {
   const normalizedBotName = botName?.trim();
   if (normalizedBotName) return normalizedBotName;
-  throw new Error(BOT_NAME_CONFIGURATION_ERROR);
+  throw new ChatServiceError({ ...errorInfo("configuration"), message: BOT_NAME_CONFIGURATION_ERROR });
 }
 
 function normalizeSources(sources: LehighApiResponse["Sources"]): Source[] {
@@ -128,6 +130,7 @@ export function buildQuestionPayload(
   return {
     action: "question",
     bot_name: botName,
+    remember_conversation: "True",
     custom_prompt: systemPrompt,
     httpMethod: "POST",
     userMessage,
@@ -155,10 +158,17 @@ export function parseChatReply(
   data: LehighApiResponse,
   fallback: { sessionId: string; questionId: string },
 ): ChatReply {
-  if (data.error) throw new Error(data.error);
+  if (!data || typeof data !== "object" || Array.isArray(data)) {
+    throw new ChatServiceError(errorInfo("invalid_response"));
+  }
+  if (data.error) {
+    throw new ChatServiceError(errorInfo(kindFromErrorBody(data) ?? "request"));
+  }
 
   const content = data.Response;
-  if (!content) throw new Error("The assistant returned an empty response.");
+  if (typeof content !== "string" || !content.trim()) {
+    throw new ChatServiceError(errorInfo("invalid_response"));
+  }
 
   return {
     content,
@@ -259,10 +269,10 @@ function wait(milliseconds: number) {
 export async function postToApi(
   apiUrl: string,
   payload: QuestionPayload | FeedbackPayload,
-  requestLabel: "API" | "Feedback API",
   options: { parseJson: boolean; timeoutMs?: number },
 ): Promise<LehighApiResponse | undefined> {
   const timeoutMs = options.timeoutMs ?? REQUEST_TIMEOUT_MS;
+  const operation = payload.action;
 
   const controller = new AbortController();
   const timeoutId = globalThis.setTimeout(() => controller.abort(), timeoutMs);
@@ -278,28 +288,41 @@ export async function postToApi(
       signal: controller.signal,
     });
 
-    if (response.status === 504) {
-      throw new ChatTimeoutError();
-    }
-
     if (!response.ok) {
-      throw new Error(
-        `${requestLabel} error: ${response.status} ${response.statusText}`,
-      );
+      let body: unknown;
+      try {
+        const text = await response.text();
+        try {
+          body = JSON.parse(text);
+        } catch {
+          // Empty or non-JSON responses use the HTTP status classification.
+        }
+      } catch {
+        if (controller.signal.aborted) throw new ChatTimeoutError(operation);
+      }
+      if (response.status === 408 || response.status === 504) {
+        throw new ChatTimeoutError(operation, `HTTP ${response.status}`);
+      }
+      throw httpError(response.status, operation, body);
     }
 
     if (options.parseJson) {
-      return (await response.json()) as LehighApiResponse;
+      try {
+        return (await response.json()) as LehighApiResponse;
+      } catch {
+        if (controller.signal.aborted) throw new ChatTimeoutError(operation);
+        throw new ChatServiceError(errorInfo("invalid_response", operation));
+      }
     }
 
     await response.arrayBuffer();
     return undefined;
   } catch (error) {
-    if (error instanceof ChatTimeoutError) throw error;
-    if (error instanceof Error && error.name === "AbortError") {
-      throw new ChatTimeoutError();
+    if (error instanceof ChatServiceError) throw error;
+    if (controller.signal.aborted || (error instanceof Error && error.name === "AbortError")) {
+      throw new ChatTimeoutError(operation);
     }
-    throw error;
+    throw new ChatServiceError(errorInfo("network", operation));
   } finally {
     globalThis.clearTimeout(timeoutId);
   }
@@ -317,7 +340,7 @@ export async function sendMessage(messages: Message[]): Promise<ChatReply> {
   const questionId = createId("question");
 
   if (!API_URL) {
-    if (import.meta.env.PROD) throw new Error(CONFIGURATION_ERROR);
+    if (import.meta.env.PROD) throw new ChatServiceError({ ...errorInfo("configuration"), message: CONFIGURATION_ERROR });
     await wait(900);
     return createDemoReply(messages, sessionId, questionId);
   }
@@ -330,11 +353,10 @@ export async function sendMessage(messages: Message[]): Promise<ChatReply> {
       questionId,
       requireBotName(CONFIGURED_BOT_NAME),
     ),
-    "API",
     { parseJson: true },
   );
 
-  if (!data) throw new Error("The assistant returned an empty response.");
+  if (!data) throw new ChatServiceError(errorInfo("invalid_response"));
   const reply = parseChatReply(data, { sessionId, questionId });
   persistSessionId(reply.sessionId, requestSessionEpoch);
   return reply;
@@ -346,7 +368,7 @@ export async function sendFeedback(
   sessionId?: string,
 ): Promise<void> {
   if (!API_URL) {
-    if (import.meta.env.PROD) throw new Error(CONFIGURATION_ERROR);
+    if (import.meta.env.PROD) throw new ChatServiceError({ ...errorInfo("configuration"), message: CONFIGURATION_ERROR });
     await wait(180);
     return;
   }
@@ -359,7 +381,6 @@ export async function sendFeedback(
       rating,
       requireBotName(CONFIGURED_BOT_NAME),
     ),
-    "Feedback API",
     { parseJson: false },
   );
 }

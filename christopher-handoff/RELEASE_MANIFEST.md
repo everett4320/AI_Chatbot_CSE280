@@ -1,31 +1,16 @@
-# Ross deployment record
+# Ross 2.0 release record
 
-Fill this in when the Ross public link is created.
-
-| Item | Record |
+| Item | Value |
 | --- | --- |
-| Project | Ross AI chatbot for the P.C. Rossin College of Engineering and Applied Science |
-| Previous project name | LE-Chat |
-| Project sponsor | Chris Larkin |
 | Branch | `christopher-handoff` |
-| Commit shared with Christopher | |
-| Frontend hosting mode | Apache static SPA |
-| Fixed Ross bot name | |
-| Fixed API endpoint | |
-| Supported frontend origin | |
-| Final AWS-hosted HTTPS URL | |
-| Public path | |
-| Existing Ross mapping or collection ID | |
-| Prompt SHA-256 | `f46c20bd968c767cbf5623b2ab95746c8bfcc787e2a24bcc558b6f8507092815` |
-| Source rows in catalog | 4 |
-| Source rows submitted | |
-| Sources ingested | |
-| Failed sources | |
-| `backend_source_uri` mapping | |
-| QA result location | |
-| Previous frontend version for rollback | |
+| Site | <https://ross.cc.lehigh.edu/> |
+| Build | Node 22, static React Router SPA |
+| Apache mount | `/` with an `/index.html` fallback |
+| API endpoint and bot name | Existing Ross deployment values |
+| Prompt SHA-256 (LF line endings) | `f46c20bd968c767cbf5623b2ab95746c8bfcc787e2a24bcc558b6f8507092815` |
+| Source catalog | Four entries in [SOURCE_CATALOG.csv](backend-inputs/SOURCE_CATALOG.csv) |
+| Rollback | Restore the previous index with the installer. Previous assets stay in the document root. |
 
-Before sharing the public link, make sure the prompt hash matches
-`backend-inputs/SYSTEM_PROMPT.txt`, every included source has a recorded
-ingestion result, and the frontend uses the fixed Ross bot name and endpoint.
-This record does not authorize or request a backend or server change.
+Record the deployed commit and cutover time with the server's normal release
+records. Run the [acceptance checklist](validation/ACCEPTANCE_CHECKLIST.md)
+after cutover.

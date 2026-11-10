@@ -40,7 +40,9 @@ The source of truth is `../christopher-handoff/backend-inputs/API_CONTRACT.md`.
 
 Question and feedback requests use `action`, `bot_name`, `sessionId`, and `questionId`. Responses use `Response`, optional `Sources`, and may return canonical session/question identifiers.
 
-Sessions are scoped by endpoint and bot slug in tab `sessionStorage`. When the backend returns a canonical session ID, the frontend adopts it for later questions and feedback. Clearing the chat invalidates any in-flight UI result so an old answer cannot reappear in the new transcript.
+Every question sends `remember_conversation: "True"` as a string. Backend context comes from earlier turns associated with the same session; send only the latest user message. The backend does not support streaming and returns one complete JSON reply.
+
+Sessions are scoped by endpoint and bot slug in tab `sessionStorage`. When the backend returns a canonical session ID, the frontend adopts it for later questions and feedback. `NEW CHAT` clears the transcript and stored session ID and invalidates any in-flight UI result so an old answer cannot reappear in the new transcript. This starts a separate session without deleting backend conversation records.
 
 ## QA boundaries
 
