@@ -40,6 +40,18 @@ source links and feedback. Use the [acceptance checklist](validation/ACCEPTANCE_
 for the full pass. See the [release notes](UPDATES.md) for the current API
 retest.
 
+Run the 52-question suite from the repository root with Bash, `curl`, and `jq`.
+It sends the same prompt and conversation flag as the frontend. Review the
+answers and sources separately from the HTTP results.
+
+```bash
+bash scripts/run_question_suite.sh \
+  --questions-file christopher-handoff/validation/test_questions.json \
+  --custom-prompt-file christopher-handoff/backend-inputs/SYSTEM_PROMPT.txt \
+  --bot-name "$VITE_CHAT_BOT_NAME" \
+  --endpoint "$VITE_CHAT_API_URL"
+```
+
 To restore the last version from the checkout, use the same deploy user.
 
 ```bash

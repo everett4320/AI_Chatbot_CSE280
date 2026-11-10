@@ -16,9 +16,9 @@ existing API to RDS. Dashboard access is still pending on the platform side.
 
 ## API retest, November 10
 
-CORS preflight and the Bioengineering question returned HTTP 200. The follow-up
-returned HTTP 200 but asked for the major again in that session. A November 2
-run kept its context, so follow-up behavior still needs a live check.
+CORS preflight and the Bioengineering question returned HTTP 200. The
+follow-up returned HTTP 200 but asked for the major again in both retests.
+A November 2 run kept its context, so verify this again after cutover.
 
 Two earlier questions still returned HTTP 500 with `list index out of range`.
 The frontend handles these as service errors and offers a retry.
