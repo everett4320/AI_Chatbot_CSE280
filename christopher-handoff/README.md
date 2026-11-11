@@ -1,7 +1,8 @@
 # Ross 2.0 handoff
 
-Deploy from `christopher-handoff`. The app runs as static files on the existing
-Apache site at <https://ross.cc.lehigh.edu/>.
+Deploy from `christopher-handoff` to the existing Apache site at
+<https://ross.cc.lehigh.edu/>. Keep the current API endpoint, bot name and
+knowledge base. The live 1.0 site stays in place until this 2.0 update is deployed.
 
 ## Deploy from the branch
 
@@ -49,7 +50,8 @@ bash scripts/run_question_suite.sh \
   --questions-file christopher-handoff/validation/test_questions.json \
   --custom-prompt-file christopher-handoff/backend-inputs/SYSTEM_PROMPT.txt \
   --bot-name "$VITE_CHAT_BOT_NAME" \
-  --endpoint "$VITE_CHAT_API_URL"
+  --endpoint "$VITE_CHAT_API_URL" \
+  --sections 123
 ```
 
 To restore the last version from the checkout, use the same deploy user.
@@ -63,10 +65,15 @@ From the extracted archive, use `bash deploy_ross.sh --rollback /var/www/ross`.
 ## Prompt and sources
 
 The build reads [SYSTEM_PROMPT.txt](backend-inputs/SYSTEM_PROMPT.txt) and sends
-its full text with every question. Rebuild after editing it. The
-[release record](RELEASE_MANIFEST.md) identifies the prompt version.
+its full text with every question. Rebuild after editing it; generated JS needs
+no manual prompt edits. Prompt SHA-256 with LF line endings:
+`f46c20bd968c767cbf5623b2ab95746c8bfcc787e2a24bcc558b6f8507092815`.
 
-The [source list](backend-inputs/SOURCE_CATALOG.csv) still has the Engineering
-host and three supplemental pages. Reuse the existing ingestion. The
+Christopher confirmed loading the four URLs in the
+[source list](backend-inputs/SOURCE_CATALOG.csv) on September 23. This release
+does not change those sources or require a recrawl. The catalog records the
+requested crawl scopes; actual platform scopes and IDs can be recorded during
+acceptance. `loaded_reported` refers to that confirmation, `last_verified` is
+the URL check date, and `backend_source_uri` is the platform's source ID. The
 [API contract](backend-inputs/API_CONTRACT.md) covers questions, session IDs,
 and feedback.

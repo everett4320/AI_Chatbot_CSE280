@@ -5,10 +5,7 @@ on:
   push:
     branches:
       - main
-      - everett
-      - consolidate-branches
-      - "its-*"
-      - "christopher-*"
+      - christopher-handoff
 
 permissions:
   contents: read

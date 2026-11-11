@@ -5,9 +5,10 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 REQUEST_SCRIPT="${SCRIPT_DIR}/test_prompt_request.sh"
 SUITE_SCRIPT="${SCRIPT_DIR}/run_question_suite.sh"
-FETCH_SCRIPT="${SCRIPT_DIR}/fetch_site_assets.sh"
+PROMPT_FILE="${REPO_ROOT}/christopher-handoff/backend-inputs/SYSTEM_PROMPT.txt"
 TMP_DIR="$(mktemp -d)"
 SERVER_PID=""
+unset ROSS_API_ENDPOINT BOT_NAME CUSTOM_PROMPT_FILE
 
 cleanup() {
   if [[ -n "$SERVER_PID" ]]; then
@@ -18,141 +19,115 @@ cleanup() {
 }
 trap cleanup EXIT
 
-PORT_FILE="$TMP_DIR/port"
-python3 - "$PORT_FILE" <<'PY' &
+python3 - "$TMP_DIR/port" <<'PY' &
 import json
 import sys
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
-port_file = sys.argv[1]
-
 class Handler(BaseHTTPRequestHandler):
     def do_POST(self):
-        length = int(self.headers.get("content-length", "0"))
-        request = json.loads(self.rfile.read(length) or b"{}")
+        request = json.loads(self.rfile.read(int(self.headers.get("content-length", "0"))))
+        body = {"Response": "mock Ross answer", "Sources": []}
+        status = 200
         if self.path == "/failure":
-            body = json.dumps({"error": "mock failure"}).encode()
-            self.send_response(502)
-        else:
-            question_id = "wrong-question" if self.path == "/wrong-id" else request.get("questionId", "")
-            body = json.dumps({
-                "Response": "mock Ross answer",
-                "Sources": [{"title": "Mock source", "url": "https://example.test/source"}],
-                "sessionId": "mock-session",
-                "questionId": question_id,
-            }).encode()
-            self.send_response(200)
+            status, body = 502, {"error": "mock failure"}
+        elif self.path == "/invalid":
+            body = {"Response": "   "}
+        elif self.path == "/api-error":
+            body = {"Response": "ignored", "error": "mock API error"}
+        elif self.path == "/canonical":
+            body.update(sessionId="canonical-session", questionId="canonical-question")
+        elif self.path != "/no-ids":
+            body.update(sessionId="mock-session", questionId=request["questionId"])
+        encoded = json.dumps(body).encode()
+        self.send_response(status)
         self.send_header("content-type", "application/json")
-        self.send_header("content-length", str(len(body)))
+        self.send_header("content-length", str(len(encoded)))
         self.end_headers()
-        self.wfile.write(body)
+        self.wfile.write(encoded)
 
-    def log_message(self, _format, *_args):
+    def log_message(self, *_args):
         pass
 
 server = ThreadingHTTPServer(("127.0.0.1", 0), Handler)
-with open(port_file, "w", encoding="utf-8") as output:
+with open(sys.argv[1], "w", encoding="utf-8") as output:
     output.write(str(server.server_port))
 server.serve_forever()
 PY
 SERVER_PID="$!"
-
 for _ in {1..40}; do
-  [[ -s "$PORT_FILE" ]] && break
+  [[ -s "$TMP_DIR/port" ]] && break
   sleep 0.1
 done
-[[ -s "$PORT_FILE" ]] || { echo "mock server did not start" >&2; exit 1; }
-
-ENDPOINT="http://127.0.0.1:$(cat "$PORT_FILE")"
+[[ -s "$TMP_DIR/port" ]] || { echo "mock server did not start" >&2; exit 1; }
+ENDPOINT="http://127.0.0.1:$(cat "$TMP_DIR/port")"
 QUESTION="What engineering programs are available?"
 
-if RESULTS_DIR="$TMP_DIR/no-endpoint" bash "$REQUEST_SCRIPT" --question "$QUESTION" --bot-name ross-test >"$TMP_DIR/no-endpoint.out" 2>&1; then
-  echo "request script accepted a missing endpoint" >&2
-  exit 1
-fi
-if ! grep -Fq -- "--endpoint or ROSS_API_ENDPOINT is required" "$TMP_DIR/no-endpoint.out"; then
-  cat "$TMP_DIR/no-endpoint.out" >&2
-  exit 1
-fi
-
-for legacy_variant in \
-  "https://8lyrpsdez5.execute-api.us-east-1.amazonaws.com/call/" \
-  "https://8lyrpsdez5.execute-api.us-east-1.amazonaws.com/call?ignored=1"; do
-  if RESULTS_DIR="$TMP_DIR/legacy-endpoint" bash "$REQUEST_SCRIPT" --question "$QUESTION" --bot-name ross-test --endpoint "$legacy_variant" >"$TMP_DIR/legacy-endpoint.out" 2>&1; then
-    echo "request script accepted a historical endpoint variant" >&2
+expect_failure() {
+  local expected="$1"; shift
+  if "$@" > "$TMP_DIR/failure.out" 2>&1; then
+    echo "Expected failure: $*" >&2
     exit 1
   fi
-  grep -Fq "historical shared endpoint" "$TMP_DIR/legacy-endpoint.out"
+  grep -Fq -- "$expected" "$TMP_DIR/failure.out" || { cat "$TMP_DIR/failure.out" >&2; exit 1; }
+}
+
+expect_failure "--endpoint or ROSS_API_ENDPOINT is required" bash "$REQUEST_SCRIPT" --question "$QUESTION" --bot-name ross-test
+expect_failure "--bot-name or BOT_NAME is required" bash "$REQUEST_SCRIPT" --question "$QUESTION" --endpoint "$ENDPOINT/ok"
+expect_failure "--endpoint or ROSS_API_ENDPOINT is required" bash "$SUITE_SCRIPT" --bot-name ross-test
+expect_failure "--bot-name is required" bash "$SUITE_SCRIPT" --endpoint "$ENDPOINT/ok"
+
+RESULTS_DIR="$TMP_DIR/default-prompt" bash "$REQUEST_SCRIPT" --question "$QUESTION" --bot-name ross-test --endpoint "$ENDPOINT/ok" > "$TMP_DIR/request.out"
+payload="$(find "$TMP_DIR/default-prompt" -name '*.payload.json' -print -quit)"
+jq -e --rawfile expected "$PROMPT_FILE" '
+  .custom_prompt == $expected and .remember_conversation == "True"
+  and .action == "question" and .bot_name == "ross-test"
+' "$payload" >/dev/null
+
+# This catches the newline loss caused by Bash command substitution.
+printf 'Prompt with a final blank line.\n\n' > "$TMP_DIR/prompt.txt"
+RESULTS_DIR="$TMP_DIR/custom-prompt" bash "$REQUEST_SCRIPT" --question "$QUESTION" --bot-name ross-test --endpoint "$ENDPOINT/ok" --custom-prompt-file "$TMP_DIR/prompt.txt" > /dev/null
+payload="$(find "$TMP_DIR/custom-prompt" -name '*.payload.json' -print -quit)"
+jq -e --rawfile expected "$TMP_DIR/prompt.txt" '.custom_prompt == $expected' "$payload" >/dev/null
+
+RESULTS_DIR="$TMP_DIR/no-ids" bash "$REQUEST_SCRIPT" --question "$QUESTION" --session-id follow-up-session --bot-name ross-test --endpoint "$ENDPOINT/no-ids" > "$TMP_DIR/no-ids.out"
+grep -Fq 'Response session ID:  follow-up-session' "$TMP_DIR/no-ids.out"
+request_id="$(sed -n 's/^Question ID:[[:space:]]*//p' "$TMP_DIR/no-ids.out")"
+grep -Fq "Response question ID: $request_id" "$TMP_DIR/no-ids.out"
+
+RESULTS_DIR="$TMP_DIR/canonical" bash "$REQUEST_SCRIPT" --question "$QUESTION" --bot-name ross-test --endpoint "$ENDPOINT/canonical" > "$TMP_DIR/canonical.out"
+grep -Fq 'Response session ID:  canonical-session' "$TMP_DIR/canonical.out"
+grep -Fq 'Response question ID: canonical-question' "$TMP_DIR/canonical.out"
+
+for route in failure invalid api-error; do
+  expect_failure 'Error:' env RESULTS_DIR="$TMP_DIR/$route" bash "$REQUEST_SCRIPT" --question "$QUESTION" --bot-name ross-test --endpoint "$ENDPOINT/$route"
 done
 
-if ! request_output="$(RESULTS_DIR="$TMP_DIR/request-ok" bash "$REQUEST_SCRIPT" --question "$QUESTION" --bot-name ross-test --endpoint "$ENDPOINT/ok" 2>&1)"; then
-  printf '%s\n' "$request_output" >&2
-  exit 1
-fi
-grep -Fq "HTTP status:   200" <<<"$request_output"
-request_payload="$(find "$TMP_DIR/request-ok" -name '*.payload.json' -print -quit)"
-jq -e '.remember_conversation == "True"' "$request_payload" >/dev/null
-jq -e 'has("custom_prompt") | not' "$request_payload" >/dev/null
-
-if RESULTS_DIR="$TMP_DIR/request-failure" bash "$REQUEST_SCRIPT" --question "$QUESTION" --bot-name ross-test --endpoint "$ENDPOINT/failure" >"$TMP_DIR/request-failure.out" 2>&1; then
-  echo "request script accepted an HTTP 502 response" >&2
-  exit 1
-fi
-grep -Fq "HTTP status:   502" "$TMP_DIR/request-failure.out"
-
-if RESULTS_DIR="$TMP_DIR/request-wrong-id" bash "$REQUEST_SCRIPT" --question "$QUESTION" --bot-name ross-test --endpoint "$ENDPOINT/wrong-id" >"$TMP_DIR/request-wrong-id.out" 2>&1; then
-  echo "request script accepted a response with a mismatched question ID" >&2
-  exit 1
-fi
-grep -Fq "questionId did not match" "$TMP_DIR/request-wrong-id.out"
+# Use the actual default 52-question file, selecting just one mocked question.
+bash "$SUITE_SCRIPT" --runs-dir "$TMP_DIR/suite-ok" --bot-name ross-test --endpoint "$ENDPOINT/ok" --only-codes Q001 > "$TMP_DIR/suite.out"
+record="$(find "$TMP_DIR/suite-ok" -name run_record.json -print -quit)"
+expected_sha="$(sha256sum "$PROMPT_FILE" | awk '{print $1}')"
+jq -e --rawfile expected "$PROMPT_FILE" --arg expected_sha "$expected_sha" '
+  .validation.scope == "transport_only" and .summary.executed == 1 and .summary.failed == 0
+  and .config.questions_file == "christopher-handoff/validation/test_questions.json"
+  and .prompt.text == $expected and .prompt.sha256 == $expected_sha
+  and .results[0].status == "transport_ok" and .results[0].http_status == "200"
+' "$record" >/dev/null
+snapshot="$(dirname "$record")/prompt_snapshot.txt"
+cmp "$PROMPT_FILE" "$snapshot"
 
 cat > "$TMP_DIR/questions.json" <<'JSON'
-{
-  "sections": [{"id": "1", "name": "Smoke", "description": "Local mock transport test"}],
-  "questions": [{"id": "Q001", "section": "1", "text": "What engineering programs are available?", "enabled": true}]
-}
+{"sections":[{"id":"1","name":"Mock"}],"questions":[
+  {"id":"Q001","section":"1","text":"Enabled","enabled":true},
+  {"id":"Q002","section":"1","text":"Disabled","enabled":false}
+]}
 JSON
+bash "$SUITE_SCRIPT" --questions-file "$TMP_DIR/questions.json" --runs-dir "$TMP_DIR/suite-disabled" --bot-name ross-test --endpoint "$ENDPOINT/ok" > /dev/null
+record="$(find "$TMP_DIR/suite-disabled" -name run_record.json -print -quit)"
+jq -e '.summary.enabled == 1 and .summary.executed == 1 and .results[0].id == "Q001"' "$record" >/dev/null
 
-if bash "$SUITE_SCRIPT" \
-  --questions-file "$TMP_DIR/questions.json" \
-  --runs-dir "$TMP_DIR/legacy-suite" \
-  --bot-name ross-test \
-  --endpoint "https://8lyrpsdez5.execute-api.us-east-1.amazonaws.com/call/?ignored=1" \
-  --sections 1 >"$TMP_DIR/legacy-suite.out" 2>&1; then
-  echo "suite accepted a historical endpoint variant" >&2
-  exit 1
-fi
-grep -Fq "historical shared endpoint" "$TMP_DIR/legacy-suite.out"
-
-bash "$SUITE_SCRIPT"   --questions-file "$TMP_DIR/questions.json"   --runs-dir "$TMP_DIR/suite-ok"   --bot-name ross-test   --endpoint "$ENDPOINT/ok"   --sections 1 >"$TMP_DIR/suite-ok.out"
-
-suite_record="$(find "$TMP_DIR/suite-ok" -name run_record.json -print -quit)"
-jq -e '
-  .validation.scope == "transport_only"
-  and .summary.failed == 0
-  and .results[0].status == "transport_ok"
-  and .results[0].http_status == "200"
-  and .results[0].request_question_id == .results[0].response_question_id
-' "$suite_record" >/dev/null
-suite_payload="$(find "$TMP_DIR/suite-ok" -name '*.payload.json' -print -quit)"
-jq -e '.remember_conversation == "True"' "$suite_payload" >/dev/null
-jq -e 'has("custom_prompt") | not' "$suite_payload" >/dev/null
-
-if bash "$SUITE_SCRIPT"   --questions-file "$TMP_DIR/questions.json"   --runs-dir "$TMP_DIR/suite-failure"   --bot-name ross-test   --endpoint "$ENDPOINT/failure"   --sections 1 >"$TMP_DIR/suite-failure.out" 2>&1; then
-  echo "suite accepted an HTTP 502 response" >&2
-  exit 1
-fi
-failure_record="$(find "$TMP_DIR/suite-failure" -name run_record.json -print -quit)"
-jq -e '
-  .summary.failed == 1
-  and .results[0].status == "request_failed"
-  and .results[0].http_status == "502"
-' "$failure_record" >/dev/null
-
-if bash "$FETCH_SCRIPT" >"$TMP_DIR/fetch-no-args.out" 2>&1; then
-  echo "legacy fetch utility accepted implicit source and output defaults" >&2
-  exit 1
-fi
-grep -Fq "explicit-source-url" "$TMP_DIR/fetch-no-args.out"
+expect_failure '[FAIL] Q001' bash "$SUITE_SCRIPT" --runs-dir "$TMP_DIR/suite-failure" --bot-name ross-test --endpoint "$ENDPOINT/failure" --only-codes Q001
+record="$(find "$TMP_DIR/suite-failure" -name run_record.json -print -quit)"
+jq -e '.summary.failed == 1 and .results[0].http_status == "502"' "$record" >/dev/null
 
 echo "QA script contract tests passed."

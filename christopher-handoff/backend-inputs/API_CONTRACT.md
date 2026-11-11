@@ -1,14 +1,8 @@
 # Fixed frontend / chatbot API contract
 
-This file documents the existing server interface that the frontend targets.
-It is not a proposal to change the backend, server, payload, or response. If an
-integration mismatch is found, update and retest the frontend adapter instead
-of asking Christopher to change the fixed service.
-
-The frontend uses `POST` JSON requests to the assigned endpoint on
-Christopher's platform. The
-exact existing Ross `bot_name` must be configured at frontend build time
-through `VITE_CHAT_BOT_NAME`.
+The frontend uses the existing platform's JSON `POST` interface. Configure its
+endpoint and Ross bot name through `VITE_CHAT_API_URL` and `VITE_CHAT_BOT_NAME`.
+This release does not change the backend interface.
 
 ## Question
 
@@ -54,10 +48,7 @@ is ready.
 
 `feedback` is exactly `Good` or `Bad`.
 
-Christopher confirmed that feedback is stored in an RDS database. A dashboard
-for viewing feedback and Ross interactions, and any AWS Quick license needed
-to view it, are still awaiting confirmation. This frontend update does not add
-a dashboard or change feedback storage.
+Christopher confirmed that feedback is stored in RDS.
 
 ## Accepted response
 
@@ -80,28 +71,15 @@ a dashboard or change feedback storage.
 the corresponding client-generated ID. A normal `Response`, including a refusal,
 is rendered as an answer.
 
-The frontend reads existing failure responses for controlled classification and
-shows a concise, actionable message for service errors, rate limits, timeouts,
-connection failures, access failures, and invalid replies. It never displays raw
-error text, including unknown errors. HTTP 403 or 500 alone does not indicate a
-policy violation. Retrying resends the original question without adding another
-user message to the transcript. Feedback failures are reported separately from
-question failures. This handling uses the existing response and does not require
-new fields or backend changes.
+Failures show a short message for service errors, rate limits, timeouts,
+connection/access failures and invalid replies. Raw server errors are not shown.
+HTTP 403 or 500 alone is not classified as a policy refusal. Retry resends the
+question without duplicating it; feedback errors appear separately.
 
 If the fixed service returns a canonical `sessionId`, the frontend adopts it
 for later questions and feedback. The frontend must be hosted at an origin
 already accepted by the service's existing CORS policy.
 
-## Ross-routing confirmation
-
-The current response shape does not require a clone identity field, so the
-frontend cannot prove from JSON alone that a successful answer came from the
-Ross clone rather than another configured bot. Before acceptance, Christopher
-should confirm the existing `bot_name` mapping in the platform and retain any
-routing or deployment record already available for the request's session and
-question ID. No new response field or backend behavior is requested.
-
-`model_id` and `source_uri_filter` remain historical/test-tool options and are
-not sent by the production frontend. Apply the source list through
-Christopher's existing platform workflow.
+Confirm the existing bot mapping and source ingestion through the platform
+during [deployment acceptance](../validation/ACCEPTANCE_CHECKLIST.md). The
+frontend does not send model or source-filter overrides.

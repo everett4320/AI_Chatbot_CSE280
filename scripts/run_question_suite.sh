@@ -4,13 +4,9 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 
-LEGACY_SHARED_ENDPOINT="https://8lyrpsdez5.execute-api.us-east-1.amazonaws.com/call"
-
-QUESTIONS_FILE="${QUESTIONS_FILE:-fetched_site/questions/test_questions.json}"
-CUSTOM_PROMPT_FILE="${CUSTOM_PROMPT_FILE-}"
-RUNS_DIR="${RUNS_DIR:-fetched_site/prompt_effectiveness_runs}"
-MODEL_ID=""
-SOURCE_URI_FILTER=""
+QUESTIONS_FILE="${QUESTIONS_FILE:-christopher-handoff/validation/test_questions.json}"
+CUSTOM_PROMPT_FILE="${CUSTOM_PROMPT_FILE:-christopher-handoff/backend-inputs/SYSTEM_PROMPT.txt}"
+RUNS_DIR="${RUNS_DIR:-validation-runs}"
 BOT_NAME="${BOT_NAME:-}"
 ENDPOINT="${ROSS_API_ENDPOINT:-}"
 ONLY_CODES=""
@@ -35,30 +31,14 @@ to_repo_relative() {
   fi
 }
 
-normalize_endpoint_for_comparison() {
-  local value="$1"
-  value="${value%%\?*}"
-  value="${value%%\#*}"
-  while [[ "$value" == */ ]]; do
-    value="${value%/}"
-  done
-  printf '%s\n' "$value" | tr '[:upper:]' '[:lower:]'
-}
-
 validate_endpoint() {
   local endpoint="$1"
-  local normalized_endpoint
 
   if [[ -z "$endpoint" ]]; then
     echo "Error: --endpoint or ROSS_API_ENDPOINT is required for a Ross QA suite." >&2
     exit 1
   fi
-  normalized_endpoint="$(normalize_endpoint_for_comparison "$endpoint")"
-  if [[ "$normalized_endpoint" == "$LEGACY_SHARED_ENDPOINT" ]]; then
-    echo "Error: the historical shared endpoint is not a Ross endpoint. Supply Christopher's assigned endpoint." >&2
-    exit 1
-  fi
-  if ! [[ "$endpoint" =~ ^https?:// ]]; then
+  if ! [[ "$endpoint" =~ ^https?://[^/[:space:]]+ ]]; then
     echo "Error: endpoint must be an absolute http(s) URL." >&2
     exit 1
   fi
@@ -81,13 +61,11 @@ Usage:
 
 Options:
   --questions-file path         JSON file with numbered questions and sections
-  --custom-prompt-file path     Explicit exploratory prompt override (not acceptance configuration)
+  --custom-prompt-file path     Prompt file (default: handoff SYSTEM_PROMPT.txt)
   --runs-dir path               Directory for per-run records
-  --model-id id                 Optional Bedrock model ID
-  --source-uri-filter csv       Optional source filter (at least 2 entries if used)
   --bot-name name               Required stable backend bot name
   --endpoint url                Required Ross API endpoint (or set ROSS_API_ENDPOINT)
-  --sections 13                 Sections to run (e.g., 123, 13, 2). If omitted, interactive prompt is shown.
+  --sections 13                 Sections to run (e.g., 123, 13, 2; default: all)
   --only-codes Q001,Q003        Run only selected question IDs (applies after section filtering)
   --sleep-seconds N             Sleep between requests (default: 0)
   -h, --help                    Show help
@@ -111,14 +89,6 @@ while [[ $# -gt 0 ]]; do
       ;;
     --runs-dir)
       RUNS_DIR="$2"
-      shift 2
-      ;;
-    --model-id)
-      MODEL_ID="$2"
-      shift 2
-      ;;
-    --source-uri-filter)
-      SOURCE_URI_FILTER="$2"
       shift 2
       ;;
     --bot-name)
@@ -159,11 +129,11 @@ if ! command -v jq >/dev/null 2>&1; then
 fi
 
 QUESTIONS_FILE_ABS="$(resolve_path "$QUESTIONS_FILE")"
-CUSTOM_PROMPT_FILE_ABS=""
+CUSTOM_PROMPT_FILE_ABS="$(resolve_path "$CUSTOM_PROMPT_FILE")"
 RUNS_DIR_ABS="$(resolve_path "$RUNS_DIR")"
 
 QUESTIONS_FILE_DISPLAY="$(to_repo_relative "$QUESTIONS_FILE_ABS")"
-CUSTOM_PROMPT_FILE_DISPLAY="(backend configured prompt)"
+CUSTOM_PROMPT_FILE_DISPLAY="$(to_repo_relative "$CUSTOM_PROMPT_FILE_ABS")"
 RUNS_DIR_DISPLAY="$(to_repo_relative "$RUNS_DIR_ABS")"
 
 if [[ ! -f "$QUESTIONS_FILE_ABS" ]]; then
@@ -181,23 +151,8 @@ if ! jq -e '[.questions[] | (.section // empty | tostring)] | all(length > 0)' "
   exit 1
 fi
 
-CUSTOM_PROMPT_CONTENT=""
-PROMPT_MODE="backend_configured_prompt"
-if [[ -n "$CUSTOM_PROMPT_FILE" ]]; then
-  CUSTOM_PROMPT_FILE_ABS="$(resolve_path "$CUSTOM_PROMPT_FILE")"
-  CUSTOM_PROMPT_FILE_DISPLAY="$(to_repo_relative "$CUSTOM_PROMPT_FILE_ABS")"
-  if [[ ! -f "$CUSTOM_PROMPT_FILE_ABS" ]]; then
-    echo "Error: custom prompt file not found: $CUSTOM_PROMPT_FILE_DISPLAY" >&2
-    exit 1
-  fi
-  CUSTOM_PROMPT_CONTENT="$(cat "$CUSTOM_PROMPT_FILE_ABS")"
-  if [[ -z "$CUSTOM_PROMPT_CONTENT" ]]; then
-    echo "Error: custom prompt file is empty. Omit it to test the configured Ross prompt." >&2
-    exit 1
-  fi
-  PROMPT_MODE="exploratory_custom_prompt"
-fi
-PROMPT_SHA256="$(printf '%s' "$CUSTOM_PROMPT_CONTENT" | sha256_text)"
+[[ -s "$CUSTOM_PROMPT_FILE_ABS" ]] || { echo "Error: prompt file is missing or empty: $CUSTOM_PROMPT_FILE_DISPLAY" >&2; exit 1; }
+PROMPT_SHA256="$(sha256_text < "$CUSTOM_PROMPT_FILE_ABS")"
 
 EFFECTIVE_ENDPOINT="$ENDPOINT"
 validate_endpoint "$EFFECTIVE_ENDPOINT"
@@ -233,13 +188,6 @@ get_section_name() {
   else
     printf 'Section %s\n' "$sid"
   fi
-}
-
-get_section_description() {
-  local sid="$1"
-  local desc
-  desc="$(jq -r --arg sid "$sid" '. as $root | (($root.sections[]? | select((.id | tostring) == $sid) | .description) // empty)' "$QUESTIONS_FILE_ABS" | head -n 1)"
-  printf '%s\n' "$desc"
 }
 
 parse_section_input() {
@@ -284,47 +232,15 @@ parse_section_input() {
   return 0
 }
 
-prompt_for_sections() {
-  local sid
-  local name
-  local desc
-  local input
-
-  echo "Select question sections to run:"
-  while IFS= read -r sid; do
-    [[ -z "$sid" ]] && continue
-    name="$(get_section_name "$sid")"
-    desc="$(get_section_description "$sid")"
-    if [[ -n "$desc" ]]; then
-      echo "  [$sid] $name - $desc"
-    else
-      echo "  [$sid] $name"
-    fi
-  done <<< "$AVAILABLE_SECTIONS_NL"
-
-  while true; do
-    read -r -p "Enter sections (e.g., 123, 13, 2): " input
-    if parse_section_input "$input"; then
-      break
-    fi
-    echo "Invalid selection. Please enter only available section digits, such as 123 or 13."
-  done
-}
-
 if [[ -n "$SECTIONS" ]]; then
   if ! parse_section_input "$SECTIONS"; then
     echo "Error: invalid --sections value '$SECTIONS'." >&2
     exit 1
   fi
 else
-  if [[ -t 0 ]]; then
-    prompt_for_sections
-  else
-    # Non-interactive fallback: run all available sections.
-    if ! parse_section_input "$(printf '%s\n' "$AVAILABLE_SECTIONS_NL" | paste -sd '' -)"; then
-      echo "Error: failed to initialize section selection for non-interactive mode." >&2
-      exit 1
-    fi
+  if ! parse_section_input "$(printf '%s\n' "$AVAILABLE_SECTIONS_NL" | paste -sd '' -)"; then
+    echo "Error: failed to initialize section selection." >&2
+    exit 1
   fi
 fi
 
@@ -345,7 +261,7 @@ should_run_code() {
 }
 
 enabled_count=$(jq --argjson selected "$SELECTED_SECTIONS_JSON" '[.questions[]
-  | select((.enabled // true) == true)
+  | select(.enabled != false)
   | select((.section | tostring) as $s | ($selected | index($s)))
 ] | length' "$QUESTIONS_FILE_ABS")
 
@@ -362,7 +278,7 @@ RUN_DIR_DISPLAY="$(to_repo_relative "$RUN_DIR_ABS")"
 RAW_DIR_DISPLAY="$(to_repo_relative "$RAW_DIR_ABS")"
 
 mkdir -p "$RAW_DIR_ABS"
-printf '%s' "$CUSTOM_PROMPT_CONTENT" > "${RUN_DIR_ABS}/prompt_snapshot.txt"
+cp "$CUSTOM_PROMPT_FILE_ABS" "${RUN_DIR_ABS}/prompt_snapshot.txt"
 cp "$QUESTIONS_FILE_ABS" "${RUN_DIR_ABS}/questions_snapshot.json"
 
 RESULTS_TMP="$(mktemp)"
@@ -376,11 +292,7 @@ failed=0
 echo "Questions file:      $QUESTIONS_FILE_DISPLAY"
 echo "Endpoint:            $EFFECTIVE_ENDPOINT"
 echo "Custom prompt file:  $CUSTOM_PROMPT_FILE_DISPLAY"
-echo "Prompt mode:         $PROMPT_MODE"
 echo "Validation scope:    transport only; score answers, sources, and refusal quality manually."
-if [[ "$PROMPT_MODE" == "exploratory_custom_prompt" ]]; then
-  echo "Warning: custom_prompt is request-scoped and does not prove clone configuration."
-fi
 echo "Run output dir:      $RUN_DIR_DISPLAY"
 echo "Selected sections:   $SELECTED_SECTIONS_CSV"
 while IFS= read -r sid; do
@@ -406,15 +318,7 @@ while IFS=$'\t' read -r qid qsection qtext; do
   echo "[$qid][Section $qsection] $qtext"
 
   cmd=(bash "${SCRIPT_DIR}/test_prompt_request.sh" --question "$qtext" --question-code "$qid" --bot-name "$EFFECTIVE_BOT_NAME" --endpoint "$EFFECTIVE_ENDPOINT")
-  if [[ -n "$CUSTOM_PROMPT_FILE_ABS" ]]; then
-    cmd+=(--custom-prompt-file "$CUSTOM_PROMPT_FILE_ABS")
-  fi
-  if [[ -n "$MODEL_ID" ]]; then
-    cmd+=(--model-id "$MODEL_ID")
-  fi
-  if [[ -n "$SOURCE_URI_FILTER" ]]; then
-    cmd+=(--source-uri-filter "$SOURCE_URI_FILTER")
-  fi
+  cmd+=(--custom-prompt-file "$CUSTOM_PROMPT_FILE_ABS")
 
   set +e
   cmd_output=$(RESULTS_DIR="$RAW_DIR_ABS" "${cmd[@]}" 2>&1)
@@ -525,7 +429,7 @@ while IFS=$'\t' read -r qid qsection qtext; do
 
   echo
 done < <(jq -r --argjson selected "$SELECTED_SECTIONS_JSON" '.questions[]
-  | select((.enabled // true) == true)
+  | select(.enabled != false)
   | (.section | tostring) as $s
   | select($selected | index($s))
   | [(.id // ""), $s, (.text // "")]
@@ -540,13 +444,10 @@ jq -n \
   --arg validation_scope "transport_only" \
   --arg started_at_utc "$STARTED_AT_UTC" \
   --arg ended_at_utc "$ENDED_AT_UTC" \
-  --arg prompt_mode "$PROMPT_MODE" \
   --arg prompt_file "$CUSTOM_PROMPT_FILE_DISPLAY" \
   --arg prompt_sha256 "$PROMPT_SHA256" \
-  --arg prompt_text "$CUSTOM_PROMPT_CONTENT" \
+  --rawfile prompt_text "$CUSTOM_PROMPT_FILE_ABS" \
   --arg questions_file "$QUESTIONS_FILE_DISPLAY" \
-  --arg model_id "$MODEL_ID" \
-  --arg source_uri_filter "$SOURCE_URI_FILTER" \
   --arg bot_name "$EFFECTIVE_BOT_NAME" \
   --arg endpoint "$EFFECTIVE_ENDPOINT" \
   --arg only_codes "$ONLY_CODES" \
@@ -568,15 +469,13 @@ jq -n \
     started_at_utc: $started_at_utc,
     ended_at_utc: $ended_at_utc,
     prompt: {
-      mode: $prompt_mode,
+      mode: "request_custom_prompt",
       file: $prompt_file,
       sha256: $prompt_sha256,
       text: $prompt_text
     },
     config: {
       questions_file: $questions_file,
-      model_id: (if $model_id == "" then null else $model_id end),
-      source_uri_filter: (if $source_uri_filter == "" then null else $source_uri_filter end),
       bot_name: $bot_name,
       endpoint: $endpoint,
       only_codes: (if $only_codes == "" then null else $only_codes end),

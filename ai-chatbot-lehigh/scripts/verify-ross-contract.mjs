@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
 const projectRoot = resolve(import.meta.dirname, "..");
-const activeDocs = ["AGENT.md", "CLAUDE.md"];
+const activeDocs = ["AGENT.md"];
 const forbidden = [
   "8lyrpsdez5.execute-api.us-east-1.amazonaws.com",
   '"bot_name": "le-chat"',

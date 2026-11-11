@@ -1,58 +1,36 @@
-# Ross frontend contributor guide
+# Ross frontend maintenance
 
-## What this project contains
+This project owns the frontend and handoff only. Use the existing platform
+interface in [API_CONTRACT.md](../christopher-handoff/backend-inputs/API_CONTRACT.md).
+Keep backend, retrieval and model configuration unchanged.
 
-`ai-chatbot-lehigh` is the React Router 7 / React 19 frontend for the Ross engineering assistant. It does not contain the chatbot backend, retrieval system, model, or production data.
+## Build and deploy
 
-The frontend is configured at build time with:
+Use Node 22 and run `npm ci`, then `npm run verify` from this directory.
+For a production build, set `VITE_CHAT_API_URL`, `VITE_CHAT_BOT_NAME` and
+`VITE_BASE_PATH`, then run `npm run verify:deployment`.
 
-- `VITE_CHAT_API_URL`: the assigned Ross endpoint
-- `VITE_CHAT_BOT_NAME`: the assigned Ross clone slug
-- `VITE_BASE_PATH`: the public path
+Keep React Router in `ssr: false` mode. The build must produce
+`build/client/index.html`; Apache serves the static files without a production
+Node process. The public mount and Apache fallback must match `VITE_BASE_PATH`.
+The root deployment uses `/` and `/index.html`.
 
-Read `../christopher-handoff/backend-inputs/API_CONTRACT.md` before changing request or response handling.
-Treat that contract and the server behavior as fixed. Resolve integration mismatches in the frontend and its tests; never request a backend change from this repository.
+## API and state
 
-## Commands
+Every question sends the full `SYSTEM_PROMPT.txt` as `custom_prompt`, the
+configured bot name, `action: "question"` and `remember_conversation: "True"`.
+Send the latest question only and adopt returned canonical IDs. Responses are
+complete JSON, without streaming.
 
-```bash
-npm ci
-npm run dev
-npm run typecheck
-npm run test:contract
-npm run verify
-npm run verify:deployment
-npm run start
-```
+Keep the transcript in React state and only the session ID in tab-scoped
+storage, keyed by endpoint and bot. New Chat clears both, including the draft,
+and invalidates pending UI results. It does not delete server records.
+Preserve mobile layout, message wrapping, Markdown tables and subpath assets.
 
-`npm run verify` includes typechecking, contract tests, and a production build.
-`npm run start` previews the generated static files locally; it is not a
-production Node server.
+## Validation
 
-## Deployment rule
-
-Ross is deployed as a static SPA through Apache. Keep React Router in
-`ssr: false` mode, require `build/client/index.html`, and do not introduce a
-production Node process. Apache must fall back to the built `index.html` at the
-same path configured by `VITE_BASE_PATH`. Christopher's preferred public target
-is `https://ross.cc.lehigh.edu/`, which uses `VITE_BASE_PATH=/`.
-
-## Runtime behavior
-
-The API sends question and feedback payloads with `action`, `bot_name`, `sessionId`, and `questionId`. It renders the current Ross `Response` field and optional `Sources`.
-
-Questions also send `remember_conversation: "True"` (a string). The backend uses earlier turns in the same session as context; send the latest user message and retain the canonical session ID. The backend returns one complete JSON reply and does not support streaming.
-
-The transcript is local React state. A tab-scoped session is kept separately, scoped to endpoint and bot slug. Backend-returned canonical sessions are adopted for later requests; `NEW CHAT` clears the local transcript and stored session ID and invalidates stale pending responses. It does not delete backend conversation records.
-
-A missing endpoint is only permitted for the development demo. It is not evidence of a working Ross clone.
-
-## QA and historical material
-
-QA always requires an explicit endpoint and bot slug. By default it verifies the configured backend prompt; an explicit custom-prompt file is exploratory only. Its automated result is transport-only, so acceptance still requires manual review of grounding, sources, refusal behavior, and clone routing.
-
-`../fetched_site/` is an archival upstream snapshot. Do not copy its endpoint, bot identity, or prompt assumptions into Ross configuration.
-
-## Frontend boundaries
-
-Keep the frontend responsive for narrow screens, long unbroken user text, Markdown tables, short viewports, and static root or subpath deployments. Do not alter backend/RAG/model behavior from this repository.
+`npm run verify` runs types, contract tests and the static build.
+The API question suite defaults to the same prompt and questions shipped in
+the handoff. Supply the assigned endpoint and bot explicitly, using the command
+in the [handoff guide](../christopher-handoff/README.md). Automated API results
+check transport; review answers and sources separately.
