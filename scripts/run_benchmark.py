@@ -74,7 +74,10 @@ UTC_TIMESTAMP_FORMAT = "%Y-%m-%dT%H:%M:%SZ"
 # The site loads a few dozen scripts at most; the limit stops a runaway crawl.
 MAX_SITE_SCRIPT_FILES = 40
 SITE_SCRIPT_REFERENCE = re.compile(r"(?:/assets/|\./)([A-Za-z0-9_.-]+\.js)\b")
-SITE_PROMPT_LITERAL = re.compile(r"custom_prompt:\s*`((?:[^`\\]|\\[\s\S])*)`")
+# The build writes the prompt as a JavaScript template literal. The request body either
+# contains that literal after "custom_prompt:" or names a variable defined as one.
+SITE_TEMPLATE_LITERAL = r"`((?:[^`\\]|\\[\s\S])*)`"
+SITE_PROMPT_REFERENCE = re.compile(rf"custom_prompt:\s*(?:{SITE_TEMPLATE_LITERAL}|([A-Za-z_$][\w$]*))")
 SITE_ENDPOINT_LITERAL = re.compile(
     r'"(https://[A-Za-z0-9.-]+\.execute-api\.[A-Za-z0-9-]+\.amazonaws\.com/[^"]*)"'
 )
@@ -321,6 +324,37 @@ def fetch_site_text(url: str) -> str:
         return response.read().decode("utf-8", errors="replace")
 
 
+def find_site_prompts(script_text: str) -> set[str]:
+    """Collect the system prompts that one site script sends as `custom_prompt`.
+
+    The prompt can be written inline in the request body or defined once as a
+    variable, depending on how the site was built. A minified variable name only
+    has a meaning inside its own script, so it is looked up in `script_text` alone.
+
+    Args:
+        script_text (str): Source of one JavaScript file from the site.
+
+    Returns:
+        set[str]: The prompt texts with JavaScript escapes removed. Empty when
+        the script sends no prompt, or when it names a variable that is not
+        defined as a template literal in this script. More than one entry means
+        the script defines the name more than once with different contents.
+    """
+    prompts = set()
+    for inline_body, variable_name in SITE_PROMPT_REFERENCE.findall(script_text):
+        if variable_name:
+            definition = re.compile(
+                rf"(?<![\w$]){re.escape(variable_name)}\s*=\s*{SITE_TEMPLATE_LITERAL}"
+            )
+            bodies = definition.findall(script_text)
+        else:
+            bodies = [inline_body]
+        # The build writes real line breaks, so the only escapes are a backslash
+        # before a backtick, "$" or "\".
+        prompts.update(re.sub(r"\\([\s\S])", r"\1", body) for body in bodies)
+    return prompts
+
+
 def read_live_site_settings(site_url: str) -> dict[str, str]:
     """Read the chat API URL, bot name and system prompt from the deployed site.
 
@@ -358,9 +392,7 @@ def read_live_site_settings(site_url: str) -> dict[str, str]:
     bundle = "\n".join(script_texts)
 
     found_values = {
-        # The build writes the prompt as a template literal with real line breaks,
-        # so the only escapes are a backslash before a backtick, "$" or "\".
-        "system prompt": {re.sub(r"\\([\s\S])", r"\1", body) for body in SITE_PROMPT_LITERAL.findall(bundle)},
+        "system prompt": set().union(*(find_site_prompts(script_text) for script_text in script_texts)),
         "chat API URL": set(SITE_ENDPOINT_LITERAL.findall(bundle)),
         "bot name": set(SITE_BOT_NAME_LITERAL.findall(bundle)),
     }
