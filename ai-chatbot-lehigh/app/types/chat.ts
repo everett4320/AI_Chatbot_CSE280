@@ -17,6 +17,11 @@ export interface Message {
   feedback?: FeedbackRating;
 }
 
+export interface ChatError {
+  source: "question" | "feedback";
+  message: string;
+}
+
 export interface ChatReply {
   content: string;
   sources: Source[];

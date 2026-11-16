@@ -260,49 +260,100 @@ describe("Lehigh chatbot API contract", () => {
     expect(() => requireBotName("   ")).toThrow("chatbot identity");
   });
 
-  it("maps only gateway timeout responses to the timeout error", async () => {
-    const payload = buildQuestionPayload(
-      "What programs are there?",
-      "session-abc1234",
-      "question-def5678",
-      "ross-test",
-    );
+  const questionPayload = buildQuestionPayload(
+    "What programs are there?",
+    "session-abc1234",
+    "question-def5678",
+    "ross-test",
+  );
+  const feedbackPayload = buildFeedbackPayload(
+    "session-abc1234",
+    "question-def5678",
+    "down",
+    "ross-test",
+  );
+  type RequestLabel = Parameters<typeof postToApi>[2];
 
+  function requestAs(label: RequestLabel) {
+    return label === "API"
+      ? postToApi("https://example.test/call", questionPayload, label, {
+          parseJson: true,
+        })
+      : postToApi("https://example.test/call", feedbackPayload, label, {
+          parseJson: false,
+        });
+  }
+
+  function respondWith(
+    status: number,
+    statusText: string,
+    label: RequestLabel = "API",
+  ) {
     vi.stubGlobal(
       "fetch",
-      vi.fn().mockResolvedValue(
-        new Response(null, { status: 504, statusText: "Gateway Timeout" }),
-      ),
+      vi.fn().mockResolvedValue(new Response(null, { status, statusText })),
     );
-    await expect(
-      postToApi("https://example.test/call", payload, "API", {
-        parseJson: true,
-      }),
-    ).rejects.toBeInstanceOf(ChatTimeoutError);
+    return requestAs(label);
+  }
 
+  it("maps question failures to plain-language retry messages", async () => {
+    const gatewayTimeout = respondWith(504, "Gateway Timeout");
+    await expect(gatewayTimeout).rejects.toBeInstanceOf(ChatTimeoutError);
+    await expect(gatewayTimeout).rejects.toThrow(
+      "The server timed out before Ross could finish answering. Please try again.",
+    );
+
+    for (const [status, statusText] of [
+      [500, "Internal Server Error"],
+      [502, "Bad Gateway"],
+      [503, "Service Unavailable"],
+    ] as const) {
+      const serverError = respondWith(status, statusText);
+      await expect(serverError).rejects.not.toBeInstanceOf(ChatTimeoutError);
+      await expect(serverError).rejects.toThrow(
+        "Ross ran into a server error. Please try again in a moment.",
+      );
+    }
+
+    await expect(respondWith(429, "Too Many Requests")).rejects.toThrow(
+      "Ross is getting a lot of questions right now. Please wait a moment and try again.",
+    );
+    await expect(respondWith(400, "Bad Request")).rejects.toThrow(
+      "API error: 400 Bad Request",
+    );
+  });
+
+  it("words feedback failures without mentioning an answer", async () => {
+    const gatewayTimeout = respondWith(504, "Gateway Timeout", "Feedback API");
+    await expect(gatewayTimeout).rejects.toBeInstanceOf(ChatTimeoutError);
+    await expect(gatewayTimeout).rejects.toThrow(
+      "The server timed out. Please try again.",
+    );
+
+    await expect(
+      respondWith(502, "Bad Gateway", "Feedback API"),
+    ).rejects.toThrow("The server ran into an error. Please try again in a moment.");
+    await expect(
+      respondWith(400, "Bad Request", "Feedback API"),
+    ).rejects.toThrow("Feedback API error: 400 Bad Request");
+  });
+
+  it("explains a dropped or CORS-blocked connection", async () => {
     vi.stubGlobal(
       "fetch",
-      vi
-        .fn()
-        .mockResolvedValue(
-          new Response(null, { status: 502, statusText: "Bad Gateway" }),
-        ),
+      vi.fn().mockRejectedValue(new TypeError("Failed to fetch")),
     );
-    await expect(
-      postToApi("https://example.test/call", payload, "API", {
-        parseJson: true,
-      }),
-    ).rejects.toThrow("API error: 502 Bad Gateway");
+
+    await expect(requestAs("API")).rejects.toThrow(
+      "The connection to Ross was lost before an answer arrived. Please try again.",
+    );
+    await expect(requestAs("Feedback API")).rejects.toThrow(
+      "The connection to the server was lost. Please try again.",
+    );
   });
 
   it("keeps the timeout active while the response body is read", async () => {
     vi.useFakeTimers();
-    const payload = buildQuestionPayload(
-      "What programs are there?",
-      "session-abc1234",
-      "question-def5678",
-      "ross-test",
-    );
 
     vi.stubGlobal(
       "fetch",
@@ -326,13 +377,17 @@ describe("Lehigh chatbot API contract", () => {
 
     const request = postToApi(
       "https://example.test/call",
-      payload,
+      questionPayload,
       "API",
-      { parseJson: true, timeoutMs: 25 },
+      { parseJson: true, timeoutMs: 5_000 },
     );
     const rejection = expect(request).rejects.toBeInstanceOf(ChatTimeoutError);
-    await vi.advanceTimersByTimeAsync(25);
+    const message = expect(request).rejects.toThrow(
+      "Ross took too long to respond (over 5 seconds). Please try again.",
+    );
+    await vi.advanceTimersByTimeAsync(5_000);
 
     await rejection;
+    await message;
   });
 });

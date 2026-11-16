@@ -19,9 +19,42 @@ let sessionEpoch = 0;
 
 export const REQUEST_TIMEOUT_MS = 60_000;
 
+type RequestLabel = "API" | "Feedback API";
+
+interface FailureMessages {
+  tookTooLong: (seconds: number) => string;
+  gatewayTimeout: string;
+  busy: string;
+  serverError: string;
+  connectionLost: string;
+}
+
+// Feedback failures show under "Your rating wasn't saved", after Ross has
+// already answered, so their copy must not talk about answering.
+const FAILURE_MESSAGES: Record<RequestLabel, FailureMessages> = {
+  API: {
+    tookTooLong: (seconds) =>
+      `Ross took too long to respond (over ${seconds} seconds). Please try again.`,
+    gatewayTimeout:
+      "The server timed out before Ross could finish answering. Please try again.",
+    busy: "Ross is getting a lot of questions right now. Please wait a moment and try again.",
+    serverError: "Ross ran into a server error. Please try again in a moment.",
+    connectionLost:
+      "The connection to Ross was lost before an answer arrived. Please try again.",
+  },
+  "Feedback API": {
+    tookTooLong: (seconds) =>
+      `The server took too long to respond (over ${seconds} seconds). Please try again.`,
+    gatewayTimeout: "The server timed out. Please try again.",
+    busy: "The server is busy right now. Please wait a moment and try again.",
+    serverError: "The server ran into an error. Please try again in a moment.",
+    connectionLost: "The connection to the server was lost. Please try again.",
+  },
+};
+
 export class ChatTimeoutError extends Error {
-  constructor() {
-    super("The chat service did not respond in time. Please try again.");
+  constructor(message: string) {
+    super(message);
     this.name = "ChatTimeoutError";
   }
 }
@@ -259,10 +292,11 @@ function wait(milliseconds: number) {
 export async function postToApi(
   apiUrl: string,
   payload: QuestionPayload | FeedbackPayload,
-  requestLabel: "API" | "Feedback API",
+  requestLabel: RequestLabel,
   options: { parseJson: boolean; timeoutMs?: number },
 ): Promise<LehighApiResponse | undefined> {
   const timeoutMs = options.timeoutMs ?? REQUEST_TIMEOUT_MS;
+  const failure = FAILURE_MESSAGES[requestLabel];
 
   const controller = new AbortController();
   const timeoutId = globalThis.setTimeout(() => controller.abort(), timeoutMs);
@@ -278,10 +312,23 @@ export async function postToApi(
       signal: controller.signal,
     });
 
+    // API Gateway usually gives up before our own timer fires.
     if (response.status === 504) {
-      throw new ChatTimeoutError();
+      throw new ChatTimeoutError(failure.gatewayTimeout);
     }
 
+    if (response.status === 429) {
+      throw new Error(failure.busy);
+    }
+
+    // A Lambda that hits its own time limit also comes back as a 502, so this
+    // message does not claim the backend was fast or slow.
+    if (response.status >= 500) {
+      throw new Error(failure.serverError);
+    }
+
+    // Any other 4xx points at a configuration or contract problem, so keep the
+    // raw status for whoever reports it.
     if (!response.ok) {
       throw new Error(
         `${requestLabel} error: ${response.status} ${response.statusText}`,
@@ -297,7 +344,13 @@ export async function postToApi(
   } catch (error) {
     if (error instanceof ChatTimeoutError) throw error;
     if (error instanceof Error && error.name === "AbortError") {
-      throw new ChatTimeoutError();
+      throw new ChatTimeoutError(failure.tookTooLong(timeoutMs / 1000));
+    }
+    // fetch rejects with a TypeError when the connection drops or CORS hides
+    // the response. Error replies made by API Gateway itself carry no CORS
+    // headers, so a gateway 502 or 504 can end up here instead of above.
+    if (error instanceof TypeError) {
+      throw new Error(failure.connectionLost, { cause: error });
     }
     throw error;
   } finally {

@@ -1,5 +1,5 @@
 import { useRef, useEffect, useState } from "react";
-import type { FeedbackRating, Message } from "~/types/chat";
+import type { ChatError, FeedbackRating, Message } from "~/types/chat";
 import { ChatMessage } from "~/components/chat-message";
 import { ChatInput } from "~/components/chat-input";
 import { TypingIndicator } from "~/components/typing-indicator";
@@ -9,7 +9,7 @@ const figmaAssetBase = `${import.meta.env.BASE_URL}figma/`;
 interface ChatAreaProps {
   messages: Message[];
   isLoading: boolean;
-  error: string | null;
+  error: ChatError | null;
   chatRevision: number;
   onSend: (content: string) => void;
   onClose: () => void;
@@ -123,8 +123,12 @@ export function ChatArea({
             {isLoading && <TypingIndicator />}
             {error && (
               <div className="ross-error" role="alert">
-                <strong>Ross couldn’t answer just now.</strong>
-                <span>{error}</span>
+                <strong>
+                  {error.source === "feedback"
+                    ? "Your rating wasn’t saved."
+                    : "Ross couldn’t answer just now."}
+                </strong>
+                <span>{error.message}</span>
               </div>
             )}
           </div>
@@ -134,7 +138,7 @@ export function ChatArea({
       {!hasConversation && error && (
         <div className="ross-error ross-error--welcome" role="alert">
           <strong>Ross couldn’t connect.</strong>
-          <span>{error}</span>
+          <span>{error.message}</span>
         </div>
       )}
 
