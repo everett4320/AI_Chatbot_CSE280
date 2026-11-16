@@ -1,0 +1,534 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ross Benchmark Results</title>
+<style>
+  :root {
+    color-scheme: light;
+    --page: #f9f9f7;
+    --surface: #fcfcfb;
+    --text-primary: #0b0b0b;
+    --text-secondary: #52514e;
+    --gridline: #e1e0d9;
+    --baseline: #c3c2b7;
+    --border: rgba(11, 11, 11, 0.10);
+    --hover-wash: rgba(11, 11, 11, 0.04);
+    --link: #1c5cab;
+    --error: #d03b3b;
+    --error-wash: rgba(208, 59, 59, 0.08);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
+      --page: #0d0d0d;
+      --surface: #1a1a19;
+      --text-primary: #f0efec;
+      --text-secondary: #c3c2b7;
+      --gridline: #2c2c2a;
+      --baseline: #383835;
+      --border: rgba(255, 255, 255, 0.10);
+      --hover-wash: rgba(255, 255, 255, 0.05);
+      --link: #86b6ef;
+      --error-wash: rgba(208, 59, 59, 0.18);
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --page: #0d0d0d;
+    --surface: #1a1a19;
+    --text-primary: #f0efec;
+    --text-secondary: #c3c2b7;
+    --gridline: #2c2c2a;
+    --baseline: #383835;
+    --border: rgba(255, 255, 255, 0.10);
+    --hover-wash: rgba(255, 255, 255, 0.05);
+    --link: #86b6ef;
+    --error-wash: rgba(208, 59, 59, 0.18);
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--page);
+    color: var(--text-primary);
+    font: 14px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif;
+  }
+  main { max-width: 1240px; margin: 0 auto; padding: 32px 24px 64px; }
+  h1 { margin: 0; font-size: 24px; line-height: 1.25; font-weight: 600; }
+  h3 { margin: 0 0 6px; font-size: 13px; font-weight: 600; color: var(--text-secondary); }
+  a { color: var(--link); }
+  button, select, input { font: inherit; color: inherit; }
+
+  .run-details { margin: 6px 0 0; color: var(--text-secondary); }
+  .notice {
+    margin: 16px 0 0;
+    padding: 10px 14px;
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--error);
+    border-radius: 4px;
+    background: var(--surface);
+  }
+  .notice[hidden] { display: none; }
+  .failure-notice { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
+  .failure-notice strong { color: var(--error); }
+  .link-button {
+    padding: 0;
+    border: 0;
+    background: none;
+    color: var(--link);
+    font-weight: 600;
+    text-decoration: underline;
+    cursor: pointer;
+  }
+  .notice-button {
+    margin-left: auto;
+    height: 28px;
+    padding: 0 10px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--surface);
+    cursor: pointer;
+  }
+  .notice-button:hover { background: var(--hover-wash); }
+
+  .filters {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: 12px;
+    margin: 24px 0 16px;
+  }
+  .filters label { display: grid; gap: 4px; font-size: 12px; color: var(--text-secondary); }
+  .filters select, .filters input {
+    height: 34px;
+    max-width: 260px;
+    padding: 0 8px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--surface);
+    font-size: 14px;
+    color: var(--text-primary);
+  }
+
+  .table-card {
+    min-width: 0;
+    overflow-x: auto;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--surface);
+  }
+  table { width: 100%; border-collapse: collapse; }
+  th {
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--baseline);
+    text-align: left;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    white-space: nowrap;
+  }
+  td { padding: 9px 12px; border-bottom: 1px solid var(--gridline); vertical-align: top; }
+  .question-row { cursor: pointer; }
+  .question-row:hover { background: var(--hover-wash); }
+  .question-row.failed-row, .question-row.failed-row:hover { background: var(--error-wash); }
+  .failure-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    margin-left: 8px;
+    color: var(--error);
+    font-size: 12px;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+  .failure-label .error-mark { margin-top: 0; }
+  .id-toggle {
+    padding: 0;
+    border: 0;
+    background: none;
+    font-weight: 600;
+    white-space: nowrap;
+    cursor: pointer;
+  }
+  .id-toggle::before { content: "▸"; display: inline-block; width: 14px; color: var(--text-secondary); }
+  .id-toggle[aria-expanded="true"]::before { content: "▾"; }
+  .secondary-cell { color: var(--text-secondary); font-size: 13px; }
+  .empty-message { padding: 24px; text-align: center; color: var(--text-secondary); }
+
+  .detail-row > td { padding: 0; background: var(--page); }
+  .detail { max-width: 90ch; padding: 16px 16px 20px 26px; }
+  .turn + .turn { margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--gridline); }
+  .turn-question { margin-bottom: 8px; font-weight: 600; }
+  .markdown { overflow-wrap: anywhere; }
+  .markdown > :first-child { margin-top: 0; }
+  .markdown > :last-child { margin-bottom: 0; }
+  .markdown p { margin: 0 0 8px; }
+  .markdown .markdown-heading { margin: 14px 0 5px; font-weight: 600; line-height: 1.35; }
+  .markdown .markdown-heading.is-major { font-size: 1.1em; }
+  .markdown ul, .markdown ol { margin: 4px 0 10px; padding-left: 22px; }
+  .markdown li { margin: 2px 0; }
+  .markdown li > ul, .markdown li > ol { margin: 2px 0; }
+  .markdown code {
+    padding: 1px 4px;
+    border-radius: 4px;
+    background: var(--hover-wash);
+    font: 0.92em ui-monospace, SFMono-Regular, Menlo, monospace;
+  }
+  .sources { margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--gridline); font-size: 13px; }
+  .sources-heading { font-weight: 600; color: var(--text-secondary); }
+  .source-list { margin: 4px 0 0; padding-left: 20px; overflow-wrap: anywhere; }
+  .source-list li + li { margin-top: 2px; }
+  .no-sources { margin: 10px 0 0; font-size: 12.5px; color: var(--text-secondary); }
+  .error-text { display: flex; align-items: flex-start; gap: 6px; overflow-wrap: anywhere; }
+  .error-mark {
+    display: inline-grid;
+    place-items: center;
+    flex: none;
+    width: 16px;
+    height: 16px;
+    margin-top: 2px;
+    border-radius: 50%;
+    background: var(--error);
+    color: #fff;
+    font-size: 11px;
+    line-height: 1;
+    font-weight: 700;
+  }
+
+  @media (max-width: 760px) {
+    main { padding: 20px 16px 48px; }
+    .filters select, .filters input { max-width: none; width: 100%; }
+    .filters label { flex: 1 1 140px; }
+    .hide-narrow { display: none; }
+    .detail { padding-left: 16px; }
+  }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>Ross benchmark results</h1>
+    <p class="run-details" id="run-details"></p>
+    <p class="notice" id="settings-notice" hidden></p>
+    <p class="notice" id="incomplete-notice" hidden></p>
+    <div class="notice failure-notice" id="failure-notice" role="status" hidden></div>
+  </header>
+
+  <section class="filters" id="filters" aria-label="Filters">
+    <label id="search-filter">Search
+      <input type="search" id="search-input" placeholder="ID or question text">
+    </label>
+  </section>
+
+  <section class="table-card" aria-label="Questions">
+    <table>
+      <thead><tr id="table-head"></tr></thead>
+      <tbody id="table-body"></tbody>
+    </table>
+  </section>
+</main>
+
+<script id="run-record" type="application/json">__RUN_RECORD_JSON__</script>
+<script>
+  const record = JSON.parse(document.getElementById('run-record').textContent);
+  const results = record.results;
+  const config = record.config || {};
+
+  const FILTER_DEFINITIONS = [
+    { key: 'category', label: 'Category', getValue: (result) => result.category || '' },
+  ];
+  const COLUMNS = [
+    { label: 'ID' },
+    { label: 'Question' },
+    { label: 'Category', narrowHidden: true },
+  ];
+  const failedResults = results.filter((result) => result.status !== 'transport_ok');
+  const INLINE_MARKDOWN = /\*\*([^*]+)\*\*|`([^`]+)`|\[([^\]]+)\]\(([^)\s]+)\)|\*([^*\s][^*]*)\*/g;
+  const MARKDOWN_HEADING = /^(#{1,6})\s+(.*)$/;
+  const MARKDOWN_LIST_ITEM = /^(\s*)([-*•]|\d+[.)])\s+(.*)$/;
+
+  const state = { filters: {}, search: '', openIds: new Set(), onlyFailed: false };
+
+  function makeElement(tag, properties = {}, children = []) {
+    const element = document.createElement(tag);
+    Object.assign(element, properties);
+    element.append(...children);
+    return element;
+  }
+
+  function visibleResults() {
+    const search = state.search.trim().toLowerCase();
+    return results.filter((result) => {
+      const matchesFilters = FILTER_DEFINITIONS.every((definition) => {
+        const selected = state.filters[definition.key];
+        return !selected || definition.getValue(result) === selected;
+      });
+      const matchesFailureFilter = !state.onlyFailed || result.status !== 'transport_ok';
+      return matchesFilters && matchesFailureFilter && (!search || `${result.id} ${result.question}`.toLowerCase().includes(search));
+    });
+  }
+
+  function renderTableHead() {
+    document.getElementById('table-head').replaceChildren(...COLUMNS.map((column) => (
+      makeElement('th', { scope: 'col', className: column.narrowHidden ? 'hide-narrow' : '', textContent: column.label })
+    )));
+  }
+
+  function appendInlineMarkdown(parent, text) {
+    let position = 0;
+    for (const match of text.matchAll(INLINE_MARKDOWN)) {
+      const [token, boldText, codeText, linkText, linkUrl, italicText] = match;
+      parent.append(text.slice(position, match.index));
+      if (boldText !== undefined) {
+        parent.append(makeElement('strong', { textContent: boldText }));
+      } else if (codeText !== undefined) {
+        parent.append(makeElement('code', { textContent: codeText }));
+      } else if (linkText !== undefined) {
+        // Links come from the bot, so only web addresses become clickable.
+        parent.append(/^https?:\/\//i.test(linkUrl)
+          ? makeElement('a', { href: linkUrl, textContent: linkText, target: '_blank', rel: 'noopener noreferrer' })
+          : linkText);
+      } else {
+        parent.append(makeElement('em', { textContent: italicText }));
+      }
+      position = match.index + token.length;
+    }
+    parent.append(text.slice(position));
+  }
+
+  function renderMarkdown(text) {
+    // Covers what Ross replies use: headings, lists, bold, italic, code and links.
+    // Every piece is added as text, so a reply can never inject HTML into the page.
+    const container = makeElement('div', { className: 'markdown' });
+    let paragraph = null;
+    let list = null;
+    for (const line of text.split('\n')) {
+      const trimmed = line.trim();
+      const headingMatch = trimmed.match(MARKDOWN_HEADING);
+      const listMatch = line.match(MARKDOWN_LIST_ITEM);
+      if (!trimmed) {
+        paragraph = null;
+        list = null;
+      } else if (headingMatch) {
+        paragraph = null;
+        list = null;
+        const heading = makeElement('p', { className: `markdown-heading${headingMatch[1].length <= 2 ? ' is-major' : ''}` });
+        appendInlineMarkdown(heading, headingMatch[2]);
+        container.append(heading);
+      } else if (listMatch) {
+        const [, indent, marker, content] = listMatch;
+        const tag = /\d/.test(marker) ? 'ol' : 'ul';
+        let targetList = list;
+        paragraph = null;
+        if (indent.length >= 2 && list && list.lastElementChild) {
+          const parentItem = list.lastElementChild;
+          targetList = parentItem.querySelector(':scope > ul, :scope > ol');
+          if (!targetList) {
+            targetList = makeElement(tag);
+            parentItem.append(targetList);
+          }
+        } else if (!list || list.tagName.toLowerCase() !== tag) {
+          list = makeElement(tag);
+          if (tag === 'ol') list.start = Number.parseInt(marker, 10);
+          container.append(list);
+          targetList = list;
+        }
+        const item = makeElement('li');
+        appendInlineMarkdown(item, content);
+        targetList.append(item);
+      } else if (paragraph) {
+        paragraph.append(makeElement('br'));
+        appendInlineMarkdown(paragraph, trimmed);
+      } else {
+        list = null;
+        paragraph = makeElement('p');
+        appendInlineMarkdown(paragraph, trimmed);
+        container.append(paragraph);
+      }
+    }
+    return container;
+  }
+
+  function renderTurn(turn, isMultiTurn, index) {
+    const children = [];
+    if (isMultiTurn) {
+      children.push(makeElement('div', { className: 'turn-question', textContent: `T${index + 1}: ${turn.question}` }));
+    }
+    if (turn.response) {
+      children.push(renderMarkdown(turn.response));
+    }
+    if (turn.error) {
+      const attemptsNote = turn.attempts > 1 ? ` (tried ${turn.attempts} times)` : '';
+      children.push(makeElement('div', { className: 'error-text' }, [
+        makeElement('span', { className: 'error-mark', textContent: '!', ariaHidden: 'true' }),
+        turn.error + attemptsNote,
+      ]));
+    }
+    const sources = turn.sources || [];
+    if (sources.length) {
+      const items = sources.map((source) => {
+        const title = source.title || source.url;
+        // Links come from the bot, so only web addresses become clickable.
+        if (/^https?:\/\//i.test(source.url || '')) {
+          return makeElement('li', {}, [makeElement('a', { href: source.url, textContent: title, target: '_blank', rel: 'noopener noreferrer' })]);
+        }
+        return makeElement('li', { textContent: title });
+      });
+      children.push(makeElement('div', { className: 'sources' }, [
+        makeElement('div', { className: 'sources-heading', textContent: `Sources (${sources.length})` }),
+        makeElement('ol', { className: 'source-list' }, items),
+      ]));
+    } else if (turn.status === 'transport_ok') {
+      children.push(makeElement('p', { className: 'no-sources', textContent: 'No sources returned.' }));
+    }
+    return makeElement('div', { className: 'turn' }, children);
+  }
+
+  function renderDetail(result) {
+    const isMultiTurn = result.turns.length > 1;
+    return makeElement('div', { className: 'detail' }, [
+      makeElement('h3', { textContent: 'Ross\'s reply' }),
+      ...result.turns.map((turn, index) => renderTurn(turn, isMultiTurn, index)),
+    ]);
+  }
+
+  function failureLabel(result) {
+    const lastTurn = result.turns[result.turns.length - 1];
+    if (result.status === 'http_error') return `No reply (HTTP ${lastTurn.http_status})`;
+    if (result.status === 'request_failed') return 'No reply (request failed)';
+    if (result.status === 'api_error') return 'No reply (API error)';
+    return 'Empty or invalid reply';
+  }
+
+  function openQuestion(id) {
+    state.openIds.add(id);
+    renderTable();
+    const toggle = document.querySelector(`[data-toggle-id="${CSS.escape(id)}"]`);
+    if (toggle) {
+      toggle.focus({ preventScroll: true });
+      toggle.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    }
+  }
+
+  function renderFailureNotice() {
+    const notice = document.getElementById('failure-notice');
+    if (!failedResults.length) return;
+    const idButtons = failedResults.map((result) => {
+      const button = makeElement('button', { type: 'button', className: 'link-button', textContent: result.id });
+      button.addEventListener('click', () => openQuestion(result.id));
+      return button;
+    });
+    const filterButton = makeElement('button', {
+      type: 'button',
+      className: 'notice-button',
+      textContent: state.onlyFailed ? 'Show all questions' : 'Show only these',
+    });
+    filterButton.addEventListener('click', () => {
+      state.onlyFailed = !state.onlyFailed;
+      renderFailureNotice();
+      renderTable();
+    });
+    const count = failedResults.length;
+    notice.replaceChildren(
+      makeElement('strong', { textContent: `${count} question${count === 1 ? '' : 's'} got no usable reply:` }),
+      ...idButtons,
+      filterButton,
+    );
+    notice.hidden = false;
+  }
+
+  function renderRow(result) {
+    const isOpen = state.openIds.has(result.id);
+    const isFailed = result.status !== 'transport_ok';
+    const toggle = makeElement('button', { type: 'button', className: 'id-toggle', textContent: result.id });
+    toggle.dataset.toggleId = result.id;
+    toggle.setAttribute('aria-expanded', String(isOpen));
+    const questionCell = makeElement('td', {}, [result.question]);
+    if (isFailed) {
+      questionCell.append(makeElement('span', { className: 'failure-label' }, [
+        makeElement('span', { className: 'error-mark', textContent: '!', ariaHidden: 'true' }),
+        failureLabel(result),
+      ]));
+    }
+
+    const row = makeElement('tr', { className: `question-row${isFailed ? ' failed-row' : ''}` }, [
+      makeElement('td', {}, [toggle]),
+      questionCell,
+      makeElement('td', { className: 'secondary-cell hide-narrow', textContent: result.category || '' }),
+    ]);
+    row.addEventListener('click', () => {
+      // Selecting text in a row should not collapse it.
+      if (String(window.getSelection())) return;
+      if (isOpen) {
+        state.openIds.delete(result.id);
+      } else {
+        state.openIds.add(result.id);
+      }
+      renderTable();
+      const refreshed = document.querySelector(`[data-toggle-id="${CSS.escape(result.id)}"]`);
+      if (refreshed) refreshed.focus({ preventScroll: true });
+    });
+    if (!isOpen) return [row];
+    return [row, makeElement('tr', { className: 'detail-row' }, [makeElement('td', { colSpan: COLUMNS.length }, [renderDetail(result)])])];
+  }
+
+  function renderTable() {
+    const items = visibleResults();
+    const body = document.getElementById('table-body');
+    if (!items.length) {
+      body.replaceChildren(makeElement('tr', {}, [makeElement('td', { colSpan: COLUMNS.length, className: 'empty-message', textContent: 'No questions match these filters.' })]));
+      return;
+    }
+    body.replaceChildren(...items.flatMap(renderRow));
+  }
+
+  function renderFilters() {
+    const container = document.getElementById('filters');
+    const anchor = document.getElementById('search-filter');
+    for (const definition of FILTER_DEFINITIONS) {
+      const values = [...new Set(results.map(definition.getValue))].filter(Boolean);
+      if (values.length < 2) continue;
+      const select = makeElement('select', {}, [
+        makeElement('option', { value: '', textContent: 'All' }),
+        ...values.map((value) => makeElement('option', { value, textContent: value })),
+      ]);
+      select.addEventListener('change', () => {
+        state.filters[definition.key] = select.value;
+        renderTable();
+      });
+      container.insertBefore(makeElement('label', {}, [definition.label, select]), anchor);
+    }
+    document.getElementById('search-input').addEventListener('input', (event) => {
+      state.search = event.target.value;
+      renderTable();
+    });
+  }
+
+  function renderRunDetails() {
+    document.getElementById('run-details').textContent = new Date(record.started_at_utc).toLocaleString();
+
+    if (config.matches_site === false) {
+      const differences = [];
+      if (config.prompt_source !== 'site') differences.push(`used the local prompt ${config.prompt_source}`);
+      if (config.endpoint_source !== 'site') differences.push(`sent to ${config.endpoint}`);
+      const notice = document.getElementById('settings-notice');
+      notice.textContent = `This run ${differences.join(' and ')} instead of what ${config.site_url} sends, so its replies may differ from the site's.`;
+      notice.hidden = false;
+    }
+    if (results.length < record.total_questions) {
+      const notice = document.getElementById('incomplete-notice');
+      notice.textContent = `This run stopped early: ${results.length} of ${record.total_questions} questions were sent.`;
+      notice.hidden = false;
+    }
+  }
+
+  renderRunDetails();
+  renderFailureNotice();
+  renderFilters();
+  renderTableHead();
+  renderTable();
+</script>
+</body>
+</html>
