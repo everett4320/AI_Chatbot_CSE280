@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef } from "react";
-import type { FeedbackRating, Message } from "~/types/chat";
+import type { ChatError, FeedbackRating, Message } from "~/types/chat";
 import {
   createId,
   resetChatSession,
@@ -26,7 +26,7 @@ export class ChatRequestEpoch {
 export function useChat() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<ChatError | null>(null);
   const [chatRevision, setChatRevision] = useState(0);
   const loadingRef = useRef(false);
   const messagesRef = useRef(messages);
@@ -69,7 +69,10 @@ export function useChat() {
       setMessages((prev) => [...prev, assistantMessage]);
     } catch (err) {
       if (!requestEpochRef.current.isCurrent(requestEpoch)) return;
-      setError(err instanceof Error ? err.message : "Something went wrong");
+      setError({
+        source: "question",
+        message: err instanceof Error ? err.message : "Something went wrong",
+      });
     } finally {
       if (!requestEpochRef.current.isCurrent(requestEpoch)) return;
       loadingRef.current = false;
@@ -103,9 +106,11 @@ export function useChat() {
         await sendFeedback(message.questionId, rating, message.sessionId);
       } catch (err) {
         if (!requestEpochRef.current.isCurrent(requestEpoch)) return;
-        setError(
-          err instanceof Error ? err.message : "Feedback could not be submitted.",
-        );
+        setError({
+          source: "feedback",
+          message:
+            err instanceof Error ? err.message : "Feedback could not be submitted.",
+        });
       }
     },
     [],
